@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import type { PostScore } from "~scoring/types"
 import type { VoiceFingerprint } from "~scoring/voice-types"
+import type { LearnedInsights } from "~learning/types"
 
 import { scorePost } from "~scoring/scoring-pipeline"
 import { loadFingerprint } from "~scoring/voice-storage"
+import { loadLearnedInsights } from "~learning/storage"
 import { initConfig, onConfigChanged } from "~config/config-storage"
 
 /** Safely access chrome.storage.local — returns null if unavailable or context invalidated. */
@@ -31,6 +33,7 @@ import { ScoreBadge } from "./ScoreBadge"
 import { ScoreBreakdown } from "./ScoreBreakdown"
 import { VoiceMatchBadge } from "./VoiceMatchBadge"
 import { VoiceMatchBreakdown } from "./VoiceMatchBreakdown"
+import { InsightsPanel } from "./InsightsPanel"
 
 /**
  * Find the compose box associated with this panel instance.
@@ -102,6 +105,7 @@ export function PostPilotPanel() {
   const [expanded, setExpanded] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
+  const [insights, setInsights] = useState<LearnedInsights | null>(null)
   const [configRevision, setConfigRevision] = useState(0)
 
   // Initialize config on mount and listen for config changes
@@ -123,18 +127,22 @@ export function PostPilotPanel() {
     if (!storage) return
 
     storage.get("postpilot_enabled", (result: Record<string, unknown>) => {
-      if (result && result.postpilot_enabled === false) {
-        setEnabled(false)
-      }
+      try {
+        if (result && result.postpilot_enabled === false) {
+          setEnabled(false)
+        }
+      } catch {}
     })
 
     const listener = (changes: Record<string, { newValue?: unknown }>) => {
-      if ("postpilot_enabled" in changes) {
-        setEnabled(changes.postpilot_enabled.newValue !== false)
-      }
+      try {
+        if ("postpilot_enabled" in changes) {
+          setEnabled(changes.postpilot_enabled.newValue !== false)
+        }
+      } catch {}
     }
     storage.onChanged.addListener(listener)
-    return () => storage.onChanged.removeListener(listener)
+    return () => { try { storage.onChanged.removeListener(listener) } catch {} }
   }, [])
 
   // Load voice fingerprint from storage
@@ -145,21 +153,44 @@ export function PostPilotPanel() {
     if (!storage) return
 
     const listener = (changes: Record<string, { newValue?: unknown }>) => {
-      if ("postpilot_voice_fingerprint" in changes) {
-        setFingerprint(
-          (changes.postpilot_voice_fingerprint.newValue as VoiceFingerprint) ?? null
-        )
-      }
+      try {
+        if ("postpilot_voice_fingerprint" in changes) {
+          setFingerprint(
+            (changes.postpilot_voice_fingerprint.newValue as VoiceFingerprint) ?? null
+          )
+        }
+      } catch {}
     }
     storage.onChanged.addListener(listener)
-    return () => storage.onChanged.removeListener(listener)
+    return () => { try { storage.onChanged.removeListener(listener) } catch {} }
+  }, [])
+
+  // Load learned insights from storage
+  useEffect(() => {
+    loadLearnedInsights().then(setInsights).catch(() => {})
+
+    const storage = getStorage()
+    if (!storage) return
+
+    const listener = (changes: Record<string, { newValue?: unknown }>) => {
+      try {
+        if ("postpilot_learned_insights" in changes) {
+          setInsights(
+            (changes.postpilot_learned_insights.newValue as LearnedInsights) ?? null
+          )
+        }
+      } catch {}
+    }
+    storage.onChanged.addListener(listener)
+    return () => { try { storage.onChanged.removeListener(listener) } catch {} }
   }, [])
 
   if (!enabled || !text || text.length < 2) return null
 
   // configRevision forces re-render when config changes, scorePost reads updated config
   void configRevision
-  const result: PostScore = scorePost(text, fingerprint)
+  const hookTypeBoosts = insights?.isReady ? insights.hookTypeBoosts : undefined
+  const result: PostScore = scorePost(text, fingerprint, hookTypeBoosts)
   const errorCount = result.governor.issues.filter(
     (i) => i.severity === "error"
   ).length
@@ -207,6 +238,12 @@ export function PostPilotPanel() {
           <GovernorWarnings issues={result.governor.issues} />
           {result.voiceMatch && (
             <VoiceMatchBreakdown voiceMatch={result.voiceMatch} />
+          )}
+          {insights?.isReady && (
+            <InsightsPanel
+              insights={insights}
+              currentHookType={result.hookScore.hookType}
+            />
           )}
         </div>
       )}

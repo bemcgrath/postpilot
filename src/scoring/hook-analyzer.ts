@@ -4,6 +4,20 @@ import type { HookAnalyzerConfig } from "~config/types"
 import { classifyHookType, getHookTypeWeight } from "./hook-types"
 import { getHookAnalyzerConfig } from "~config/config-storage"
 
+/** Compute patternMatch score from learned hook type boosts. */
+function computePatternMatch(
+  hookType: HookTypeName | null,
+  boosts: Partial<Record<HookTypeName, number>> | undefined
+): number {
+  if (!hookType || !boosts) return 0
+  const boost = boosts[hookType]
+  if (boost == null) return 0
+  if (boost >= 1.3) return 10
+  if (boost >= 1.15) return 5
+  if (boost < 0.8) return -5
+  return 0
+}
+
 /**
  * Analyzes and scores hooks based on HookPoint principles.
  *
@@ -40,7 +54,11 @@ export class HookAnalyzer {
   }
 
   /** Score a hook on the 0-100 HookPoint scale. */
-  score(text: string, config?: HookAnalyzerConfig): HookScore {
+  score(
+    text: string,
+    config?: HookAnalyzerConfig,
+    hookTypeBoosts?: Partial<Record<HookTypeName, number>>
+  ): HookScore {
     const cfg = config ?? getHookAnalyzerConfig()
     const hookText = this.extractHook(text, cfg)
 
@@ -112,8 +130,10 @@ export class HookAnalyzer {
     breakdown.curiosityGap = curiosityScore
     if (curiositySuggestion) suggestions.push(curiositySuggestion)
 
-    // 5. Learned Patterns (stub: 0)
-    breakdown.patternMatch = 0
+    // 5. Learned Patterns (from user's historical data)
+    const patternMatch = computePatternMatch(hookType, hookTypeBoosts)
+    breakdown.patternMatch = patternMatch
+    total += patternMatch
 
     // 6. Penalties
     const [penalties, penaltySuggestions, penaltyReasons] =

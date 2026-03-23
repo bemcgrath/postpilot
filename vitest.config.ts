@@ -12,6 +12,7 @@ export default defineConfig({
       "~scoring": path.resolve(__dirname, "src/scoring"),
       "~config": path.resolve(__dirname, "src/config"),
       "~components": path.resolve(__dirname, "src/components"),
+      "~learning": path.resolve(__dirname, "src/learning"),
       "~": path.resolve(__dirname, "src")
     }
   }

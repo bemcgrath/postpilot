@@ -5,6 +5,21 @@ import type {
 } from "plasmo"
 import React from "react"
 
+// Suppress "Extension context invalidated" errors that fire when the extension
+// reloads but old content scripts are still alive on open tabs. These are
+// unavoidable in Chrome MV3 — the browser fires events/timers on dead contexts.
+window.addEventListener("error", (event) => {
+  if (event.message?.includes("Extension context invalidated")) {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+  }
+})
+window.addEventListener("unhandledrejection", (event) => {
+  if ((event.reason as Error)?.message?.includes("Extension context invalidated")) {
+    event.preventDefault()
+  }
+})
+
 import { PostPilotPanel } from "~components/PostPilotPanel"
 
 import overlayStyles from "data-text:~styles/overlay.css"

@@ -27,6 +27,7 @@ import { GovernorSettings } from "~components/settings/GovernorSettings"
 import { HookScoringSettings } from "~components/settings/HookScoringSettings"
 import { HookTypesSettings } from "~components/settings/HookTypesSettings"
 import { ConfigActions } from "~components/settings/ConfigActions"
+import { AnalyticsTab } from "~components/settings/AnalyticsTab"
 
 const MIN_POSTS = 5
 const SEPARATOR = "---"
@@ -50,7 +51,7 @@ function importFile(onLoad: (text: string) => void) {
   input.click()
 }
 
-type TabId = "profile" | "posts" | "governor" | "hookScoring" | "hookTypes"
+type TabId = "profile" | "posts" | "governor" | "hookScoring" | "hookTypes" | "analytics"
 
 function Options() {
   const [posts, setPosts] = useState<SamplePost[]>([])
@@ -185,7 +186,8 @@ function Options() {
           { id: "posts" as TabId, label: "Sample Posts", indicator: posts.length > 0 ? ` (${posts.length})` : "" },
           { id: "governor" as TabId, label: "Governor", indicator: "" },
           { id: "hookScoring" as TabId, label: "Hook Scoring", indicator: "" },
-          { id: "hookTypes" as TabId, label: "Hook Types", indicator: "" }
+          { id: "hookTypes" as TabId, label: "Hook Types", indicator: "" },
+          { id: "analytics" as TabId, label: "Analytics", indicator: "" }
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -512,6 +514,13 @@ function Options() {
               updateConfig({ ...config, hookTypes })
             }
           />
+        </div>
+      )}
+
+      {/* Analytics tab */}
+      {activeTab === "analytics" && (
+        <div style={styles.section}>
+          <AnalyticsTab />
         </div>
       )}
 

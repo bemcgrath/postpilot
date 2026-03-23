@@ -234,6 +234,51 @@
   color: #f4212e;
 }
 
+/* Insights panel (learned data) */
+.postpilot-insights__current {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.postpilot-insights__label {
+  color: #e7e9ea;
+}
+
+.postpilot-insights__boost--positive {
+  color: #00ba7c;
+  font-weight: 600;
+}
+
+.postpilot-insights__boost--negative {
+  color: #f4212e;
+  font-weight: 600;
+}
+
+.postpilot-insights__boost--neutral {
+  color: #71767b;
+  font-weight: 600;
+}
+
+.postpilot-insights__recs {
+  margin-top: 4px;
+}
+
+.postpilot-insights__rec {
+  font-size: 12px;
+  color: #71767b;
+  padding: 2px 0;
+  line-height: 1.4;
+}
+
+.postpilot-insights__meta {
+  font-size: 11px;
+  color: #536471;
+  margin-top: 4px;
+}
+
 /* Logo text */
 .postpilot-logo {
   font-size: 11px;

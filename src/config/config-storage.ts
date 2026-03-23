@@ -16,18 +16,19 @@ let currentConfig: PostPilotConfig = buildDefaults()
 /** Listeners for config changes. */
 const changeListeners: Array<(config: PostPilotConfig) => void> = []
 
-/** Safely access chrome.storage.local — returns null if unavailable. */
+/** Safely access chrome.storage.local — returns null if unavailable or context invalidated. */
 function getStorage(): typeof chrome.storage.local | null {
   try {
     if (
       typeof chrome !== "undefined" &&
+      chrome.runtime?.id &&
       typeof chrome.storage !== "undefined" &&
       typeof chrome.storage.local !== "undefined"
     ) {
       return chrome.storage.local
     }
   } catch {
-    // not available
+    // Extension context invalidated or not available
   }
   return null
 }
@@ -187,19 +188,23 @@ export function onConfigChanged(
   const storage = getStorage()
   if (storage) {
     const listener = (changes: Record<string, { newValue?: unknown }>) => {
-      if (STORAGE_KEY in changes) {
-        const saved = changes[STORAGE_KEY].newValue as
-          | Partial<PostPilotConfig>
-          | undefined
-        currentConfig = saved ? mergeWithDefaults(saved) : buildDefaults()
-        cb(currentConfig)
+      try {
+        if (STORAGE_KEY in changes) {
+          const saved = changes[STORAGE_KEY].newValue as
+            | Partial<PostPilotConfig>
+            | undefined
+          currentConfig = saved ? mergeWithDefaults(saved) : buildDefaults()
+          cb(currentConfig)
+        }
+      } catch {
+        // Extension context invalidated
       }
     }
     storage.onChanged.addListener(listener)
     return () => {
       const idx = changeListeners.indexOf(cb)
       if (idx >= 0) changeListeners.splice(idx, 1)
-      storage.onChanged.removeListener(listener)
+      try { storage.onChanged.removeListener(listener) } catch {}
     }
   }
 

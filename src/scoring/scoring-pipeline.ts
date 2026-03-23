@@ -1,4 +1,4 @@
-import type { PostScore } from "./types"
+import type { HookTypeName, PostScore } from "./types"
 import type { VoiceFingerprint } from "./voice-types"
 
 import { HookAnalyzer } from "./hook-analyzer"
@@ -11,10 +11,11 @@ const analyzer = new HookAnalyzer()
 /** Run the full scoring pipeline on post text. */
 export function scorePost(
   text: string,
-  fingerprint?: VoiceFingerprint | null
+  fingerprint?: VoiceFingerprint | null,
+  hookTypeBoosts?: Partial<Record<HookTypeName, number>>
 ): PostScore {
   const config = getPipelineConfig()
-  const hookScore = analyzer.score(text)
+  const hookScore = analyzer.score(text, undefined, hookTypeBoosts)
   const governor = checkGovernor(text)
   const charCount = text.length
   const inSweetSpot =
