@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PostPilot — Privacy Policy</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 720px;
+      margin: 60px auto;
+      padding: 0 24px;
+      color: #1a1a1a;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; margin-bottom: 6px; }
+    p, li { font-size: 0.97rem; }
+    ul { padding-left: 1.4rem; }
+    a { color: #0070f3; }
+    .updated { color: #666; font-size: 0.875rem; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+
+<h1>PostPilot Privacy Policy</h1>
+<p class="updated">Last updated: May 23, 2026</p>
+
+<p>PostPilot is a Chrome extension that scores your X/Twitter posts in real time. This policy explains what data the extension accesses, what it stores, and what it sends over the network.</p>
+
+<h2>What data PostPilot accesses</h2>
+<p>PostPilot reads the following from the X.com page you are viewing:</p>
+<ul>
+  <li>The text you are currently composing in the X post composer, in order to score it in real time.</li>
+  <li>Your own published posts (tweet text, impression counts, likes, retweets, replies) to train the personalized scoring engine. PostPilot only reads posts attributed to your own account handle — it does not read posts from other users.</li>
+</ul>
+
+<h2>What data PostPilot stores</h2>
+<p>All data is stored locally on your device using <code>chrome.storage.local</code>. This includes:</p>
+<ul>
+  <li>Your extension settings and scoring preferences.</li>
+  <li>Your license key and a locally generated instance ID (PostPilot Pro only).</li>
+  <li>A local dataset of your own past posts and their engagement metrics, used to personalize scoring over time.</li>
+</ul>
+<p>None of this data is transmitted to PostPilot or any third party, except as described below.</p>
+
+<h2>What data PostPilot transmits</h2>
+<p>PostPilot Pro sends your license key and instance ID to <a href="https://www.lemonsqueezy.com" target="_blank">LemonSqueezy</a> solely to verify that your license is valid. No post content, engagement data, or personal information is included in these requests. LemonSqueezy's privacy policy applies to that interaction.</p>
+<p>PostPilot does not operate any servers of its own and does not transmit data to any other third party.</p>
+
+<h2>Permissions</h2>
+<p>PostPilot requests the following Chrome permissions:</p>
+<ul>
+  <li><strong>storage</strong> — to save your settings and local post dataset.</li>
+  <li><strong>host permission for x.com and twitter.com</strong> — to inject the scoring overlay into the post composer and read your own post metrics.</li>
+  <li><strong>host permission for api.lemonsqueezy.com</strong> — to validate your Pro license key.</li>
+</ul>
+
+<h2>Data retention and deletion</h2>
+<p>All locally stored data can be cleared at any time by removing the PostPilot extension from Chrome (<em>chrome://extensions</em>). Uninstalling the extension permanently deletes all stored data from your device.</p>
+
+<h2>Children's privacy</h2>
+<p>PostPilot is not directed at children under 13 and does not knowingly collect data from minors.</p>
+
+<h2>Changes to this policy</h2>
+<p>If this policy changes materially, the "Last updated" date above will be revised. Continued use of the extension after an update constitutes acceptance of the revised policy.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy can be sent to <a href="mailto:brianemcgrath@gmail.com">brianemcgrath@gmail.com</a>.</p>
+
+</body>
+</html>
