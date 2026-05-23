@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react"
 
-import type { SamplePost, VoiceFingerprint } from "~scoring/voice-types"
+import type { SamplePost, VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 import type { PostPilotConfig } from "~config/types"
 
 import { extractFingerprint } from "~scoring/voice-fingerprint"
@@ -10,24 +10,31 @@ import {
   parseVoiceProfile
 } from "~scoring/voice-profile-parser"
 import {
+  emptyOverrides,
   loadFingerprint,
   loadNicheSpec,
   loadSamplePosts,
+  loadVoiceOverrides,
   loadVoiceProfile,
   saveFingerprint,
   saveNicheSpec,
   saveSamplePosts,
+  saveVoiceOverrides,
   saveVoiceProfile
 } from "~scoring/voice-storage"
+import { diagnoseFingerprint } from "~scoring/voice-diagnostics"
 import { humanizeHookType } from "~scoring/hook-types"
 import { buildDefaults } from "~config/defaults"
 import { initConfig, saveConfig } from "~config/config-storage"
+import { activateLicense, deactivateLicense, loadLicenseStatus } from "~config/license"
+import type { LicenseStatus } from "~config/license"
 
 import { GovernorSettings } from "~components/settings/GovernorSettings"
 import { HookScoringSettings } from "~components/settings/HookScoringSettings"
 import { HookTypesSettings } from "~components/settings/HookTypesSettings"
 import { ConfigActions } from "~components/settings/ConfigActions"
 import { AnalyticsTab } from "~components/settings/AnalyticsTab"
+import { VoiceCoachPanel } from "~components/settings/VoiceCoachPanel"
 
 const MIN_POSTS = 5
 const SEPARATOR = "---"
@@ -51,24 +58,30 @@ function importFile(onLoad: (text: string) => void) {
   input.click()
 }
 
-type TabId = "profile" | "posts" | "governor" | "hookScoring" | "hookTypes" | "analytics"
+type TabId = "license" | "profile" | "posts" | "governor" | "hookScoring" | "hookTypes" | "analytics"
 
 function Options() {
   const [posts, setPosts] = useState<SamplePost[]>([])
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
+  const [overrides, setOverrides] = useState<VoiceOverrides>(emptyOverrides())
   const [inputText, setInputText] = useState("")
   const [profileText, setProfileText] = useState("")
   const [nicheText, setNicheText] = useState("")
   const [status, setStatus] = useState("")
-  const [activeTab, setActiveTab] = useState<TabId>("profile")
+  const [activeTab, setActiveTab] = useState<TabId>("license")
   const [config, setConfig] = useState<PostPilotConfig>(buildDefaults())
+  const [license, setLicense] = useState<LicenseStatus>({ isActive: false, licenseKey: null, instanceId: null, error: null })
+  const [licenseInput, setLicenseInput] = useState("")
+  const [licenseLoading, setLicenseLoading] = useState(false)
 
   useEffect(() => {
     loadSamplePosts().then(setPosts)
     loadFingerprint().then(setFingerprint)
+    loadVoiceOverrides().then(setOverrides)
     loadVoiceProfile().then(setProfileText)
     loadNicheSpec().then(setNicheText)
     initConfig().then(setConfig)
+    loadLicenseStatus().then(setLicense)
   }, [])
 
   // Auto-save config when it changes (debounced via state)
@@ -76,6 +89,14 @@ function Options() {
     (newConfig: PostPilotConfig) => {
       setConfig(newConfig)
       saveConfig(newConfig)
+    },
+    []
+  )
+
+  const updateOverrides = useCallback(
+    (newOverrides: VoiceOverrides) => {
+      setOverrides(newOverrides)
+      saveVoiceOverrides(newOverrides)
     },
     []
   )
@@ -182,6 +203,7 @@ function Options() {
       {/* Tabs */}
       <div style={styles.tabBar}>
         {([
+          { id: "license" as TabId, label: license.isActive ? "Pro ✓" : "License", indicator: "" },
           { id: "profile" as TabId, label: "Voice Profile", indicator: profileText.trim().length > 100 ? " *" : "" },
           { id: "posts" as TabId, label: "Sample Posts", indicator: posts.length > 0 ? ` (${posts.length})` : "" },
           { id: "governor" as TabId, label: "Governor", indicator: "" },
@@ -203,6 +225,69 @@ function Options() {
           </button>
         ))}
       </div>
+
+      {/* License tab */}
+      {activeTab === "license" && (
+        <div style={{ padding: "24px 0" }}>
+          {license.isActive ? (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+                <span style={{ fontSize: "20px" }}>✓</span>
+                <span style={{ fontWeight: 600, fontSize: "15px" }}>PostPilot Pro is active</span>
+              </div>
+              <p style={{ color: "#555", fontSize: "13px", marginBottom: "20px" }}>
+                Voice fingerprinting and the learning engine are unlocked.
+              </p>
+              <button
+                onClick={async () => {
+                  await deactivateLicense()
+                  setLicense({ isActive: false, licenseKey: null, instanceId: null, error: null })
+                  setLicenseInput("")
+                }}
+                style={{ fontSize: "12px", color: "#999", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                Deactivate license
+              </button>
+            </div>
+          ) : (
+            <div>
+              <h3 style={{ margin: "0 0 8px", fontSize: "15px" }}>Activate PostPilot Pro</h3>
+              <p style={{ color: "#555", fontSize: "13px", margin: "0 0 20px" }}>
+                Enter your license key from your purchase email to unlock voice fingerprinting and the learning engine.
+              </p>
+              <p style={{ color: "#555", fontSize: "13px", margin: "0 0 20px" }}>
+                Don't have a license?{" "}
+                <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/921ab388-2b1b-44e0-afd7-54da993317d0?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
+                  Get PostPilot Pro for $5/mo
+                </a>
+              </p>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+                <input
+                  type="text"
+                  value={licenseInput}
+                  onChange={(e) => setLicenseInput(e.target.value)}
+                  placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                  style={{ flex: 1, padding: "8px 10px", fontSize: "13px", border: "1px solid #ccc", borderRadius: "6px", fontFamily: "monospace" }}
+                />
+                <button
+                  disabled={licenseLoading || !licenseInput.trim()}
+                  onClick={async () => {
+                    setLicenseLoading(true)
+                    const result = await activateLicense(licenseInput)
+                    setLicense(result)
+                    if (result.isActive) setLicenseInput("")
+                    setLicenseLoading(false)
+                  }}
+                  style={{ padding: "8px 16px", fontSize: "13px", background: "#1d9bf0", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", opacity: licenseLoading ? 0.6 : 1 }}>
+                  {licenseLoading ? "Activating…" : "Activate"}
+                </button>
+              </div>
+              {license.error && (
+                <p style={{ color: "#e0245e", fontSize: "13px", margin: 0 }}>{license.error}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Voice Profile tab */}
       {activeTab === "profile" && (
@@ -472,6 +557,13 @@ function Options() {
                 {" \u2022 "}
                 {new Date(fingerprint.generatedAt).toLocaleDateString()}
               </p>
+
+              <VoiceCoachPanel
+                fingerprint={fingerprint}
+                overrides={overrides}
+                diagnostics={diagnoseFingerprint(fingerprint, posts.length)}
+                onChange={updateOverrides}
+              />
             </div>
           )}
         </>
@@ -530,6 +622,7 @@ function Options() {
           config={config}
           onImport={(imported) => updateConfig(imported)}
           onReset={() => updateConfig(buildDefaults())}
+          onGovernorImport={(governor) => updateConfig({ ...config, governor })}
         />
       )}
     </div>

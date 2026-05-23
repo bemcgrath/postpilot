@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import type { PostScore } from "~scoring/types"
-import type { VoiceFingerprint } from "~scoring/voice-types"
+import type { VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 import type { LearnedInsights } from "~learning/types"
 
 import { scorePost } from "~scoring/scoring-pipeline"
-import { loadFingerprint } from "~scoring/voice-storage"
+import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
 import { loadLearnedInsights } from "~learning/storage"
 import { initConfig, onConfigChanged } from "~config/config-storage"
+import { validateStoredLicense } from "~config/license"
 
 /** Safely access chrome.storage.local — returns null if unavailable or context invalidated. */
 function getStorage(): typeof chrome.storage.local | null {
@@ -105,8 +106,10 @@ export function PostPilotPanel() {
   const [expanded, setExpanded] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
+  const [overrides, setOverrides] = useState<VoiceOverrides | null>(null)
   const [insights, setInsights] = useState<LearnedInsights | null>(null)
   const [configRevision, setConfigRevision] = useState(0)
+  const [isPro, setIsPro] = useState(false)
 
   // Initialize config on mount and listen for config changes
   useEffect(() => {
@@ -119,6 +122,11 @@ export function PostPilotPanel() {
       setConfigRevision((r) => r + 1)
     })
     return unsubscribe
+  }, [])
+
+  // Check Pro license status on mount
+  useEffect(() => {
+    validateStoredLicense().then((status) => setIsPro(status.isActive)).catch(() => {})
   }, [])
 
   // Read enabled state from storage (safely — may not be available in CSUI)
@@ -165,6 +173,26 @@ export function PostPilotPanel() {
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
   }, [])
 
+  // Load voice overrides from storage
+  useEffect(() => {
+    loadVoiceOverrides().then(setOverrides).catch(() => {})
+
+    const storage = getStorage()
+    if (!storage) return
+
+    const listener = (changes: Record<string, { newValue?: unknown }>) => {
+      try {
+        if ("postpilot_voice_overrides" in changes) {
+          setOverrides(
+            (changes.postpilot_voice_overrides.newValue as VoiceOverrides) ?? null
+          )
+        }
+      } catch {}
+    }
+    storage.onChanged.addListener(listener)
+    return () => { try { storage.onChanged.removeListener(listener) } catch {} }
+  }, [])
+
   // Load learned insights from storage
   useEffect(() => {
     loadLearnedInsights().then(setInsights).catch(() => {})
@@ -189,8 +217,10 @@ export function PostPilotPanel() {
 
   // configRevision forces re-render when config changes, scorePost reads updated config
   void configRevision
-  const hookTypeBoosts = insights?.isReady ? insights.hookTypeBoosts : undefined
-  const result: PostScore = scorePost(text, fingerprint, hookTypeBoosts)
+  const proFingerprint = isPro ? fingerprint : null
+  const proOverrides = isPro ? overrides : null
+  const hookTypeBoosts = isPro && insights?.isReady ? insights.hookTypeBoosts : undefined
+  const result: PostScore = scorePost(text, proFingerprint, hookTypeBoosts, proOverrides)
   const errorCount = result.governor.issues.filter(
     (i) => i.severity === "error"
   ).length
@@ -213,7 +243,7 @@ export function PostPilotPanel() {
           count={result.charCount}
           inSweetSpot={result.inSweetSpot}
         />
-        {result.voiceMatch && (
+        {isPro && result.voiceMatch && (
           <VoiceMatchBadge voiceMatch={result.voiceMatch} />
         )}
         {totalIssues > 0 && (
@@ -236,14 +266,22 @@ export function PostPilotPanel() {
             suggestions={result.hookScore.suggestions}
           />
           <GovernorWarnings issues={result.governor.issues} />
-          {result.voiceMatch && (
+          {isPro && result.voiceMatch && (
             <VoiceMatchBreakdown voiceMatch={result.voiceMatch} />
           )}
-          {insights?.isReady && (
+          {isPro && insights?.isReady && (
             <InsightsPanel
               insights={insights}
               currentHookType={result.hookScore.hookType}
             />
+          )}
+          {!isPro && (
+            <div style={{ padding: "8px 12px", fontSize: "12px", color: "#888", borderTop: "1px solid #eee", marginTop: "4px" }}>
+              <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/921ab388-2b1b-44e0-afd7-54da993317d0?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0", textDecoration: "none" }}>
+                Upgrade to PostPilot Pro
+              </a>
+              {" "}for voice fingerprinting &amp; learning engine
+            </div>
           )}
         </div>
       )}
