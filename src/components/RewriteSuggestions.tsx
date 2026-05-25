@@ -9,13 +9,15 @@ interface Props {
   originalText: string
   score: PostScore
   isPro: boolean
+  onReplace: (text: string) => void
 }
 
-export function RewriteSuggestions({ originalText, score, isPro }: Props) {
+export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Props) {
   const [loading, setLoading] = useState(false)
   const [suggestions, setSuggestions] = useState<RewriteSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  const [replacedIdx, setReplacedIdx] = useState<number | null>(null)
 
   async function handleGenerate() {
     setLoading(true)
@@ -88,11 +90,22 @@ export function RewriteSuggestions({ originalText, score, isPro }: Props) {
                   {s.hookType ? `${humanizeHookType(s.hookType)}: ` : ""}
                   {s.rationale}
                 </span>
-                <button
-                  className={`postpilot-rewrites__copy${copiedIdx === i ? " postpilot-rewrites__copy--copied" : ""}`}
-                  onClick={() => copyText(s.text, i)}>
-                  {copiedIdx === i ? "Copied!" : "Copy"}
-                </button>
+                <div className="postpilot-rewrites__btns">
+                  <button
+                    className="postpilot-rewrites__copy"
+                    onClick={() => copyText(s.text, i)}>
+                    {copiedIdx === i ? "Copied!" : "Copy"}
+                  </button>
+                  <button
+                    className={`postpilot-rewrites__copy postpilot-rewrites__replace${replacedIdx === i ? " postpilot-rewrites__copy--copied" : ""}`}
+                    onClick={() => {
+                      onReplace(s.text)
+                      setReplacedIdx(i)
+                      setTimeout(() => setReplacedIdx(null), 1500)
+                    }}>
+                    {replacedIdx === i ? "Done!" : "Replace"}
+                  </button>
+                </div>
               </div>
             </div>
           ))}

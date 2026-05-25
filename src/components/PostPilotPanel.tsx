@@ -377,6 +377,13 @@ export function PostPilotPanel() {
               originalText={text}
               score={result}
               isPro={isPro}
+              onReplace={(newText) => {
+                const box = findNearestComposeBox(panelRef.current)
+                if (!box) return
+                box.focus()
+                document.execCommand("selectAll", false)
+                document.execCommand("insertText", false, newText)
+              }}
             />
           )}
           {weekStats && <ScoreHistoryBadge stats={weekStats} />}

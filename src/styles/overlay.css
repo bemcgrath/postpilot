@@ -561,6 +561,12 @@
   flex: 1;
 }
 
+.postpilot-rewrites__btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .postpilot-rewrites__copy {
   background: #2f3336;
   border: none;
@@ -576,6 +582,10 @@
 
 .postpilot-rewrites__copy--copied {
   color: #00ba7c;
+}
+
+.postpilot-rewrites__replace {
+  color: #1d9bf0;
 }
 
 .postpilot-rewrites__settings-link {
