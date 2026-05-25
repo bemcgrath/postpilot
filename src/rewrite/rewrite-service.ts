@@ -8,16 +8,11 @@ export interface RewriteSuggestion {
   rationale: string
 }
 
-export async function generateRewrites(
+function buildPrompt(
   originalText: string,
   score: PostScore,
-  isPro: boolean
-): Promise<RewriteSuggestion[]> {
-  const apiKey = await getClaudeApiKey()
-  if (!apiKey) throw new Error("NO_API_KEY")
-
-  const count = isPro ? 3 : 1
-
+  count: number
+): string {
   const governorLines = score.governor.issues
     .filter((i) => i.severity === "error" || i.severity === "warning")
     .map((i) => `- ${i.message} (matched: "${i.matchedText}")`)
@@ -31,7 +26,7 @@ export async function generateRewrites(
     ? score.hookScore.suggestions.map((s) => `- ${s}`).join("\n")
     : ""
 
-  const prompt = `You are helping improve an X (Twitter) post that scored below 65/100.
+  return `You are helping improve an X (Twitter) post that scored below 65/100.
 
 ORIGINAL POST:
 ${originalText}
@@ -55,32 +50,46 @@ Respond with valid JSON only, no other text:
     { "text": "...", "hookType": "one of: data_reveal|contrarian|curiosity_gap|stakes_urgency|personal_failure|question|pattern_recognition|shocking_stat|prediction|before_after|declarative_claim|direct_challenge|binary_frame", "rationale": "one sentence on why this is stronger" }
   ]
 }`
+}
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  })
-
-  if (!response.ok) {
-    if (response.status === 401) throw new Error("INVALID_API_KEY")
-    throw new Error(`API_ERROR:${response.status}`)
-  }
-
-  const data = await response.json() as { content: Array<{ type: string; text: string }> }
-  const content = data.content.find((c) => c.type === "text")?.text ?? ""
-
+function parseRewrites(data: unknown): RewriteSuggestion[] {
+  const d = data as { content?: Array<{ type: string; text: string }> }
+  const content = d.content?.find((c) => c.type === "text")?.text ?? ""
   const jsonMatch = content.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error("PARSE_ERROR")
-
   const parsed = JSON.parse(jsonMatch[0]) as { rewrites?: RewriteSuggestion[] }
   return parsed.rewrites ?? []
+}
+
+export async function generateRewrites(
+  originalText: string,
+  score: PostScore,
+  isPro: boolean
+): Promise<RewriteSuggestion[]> {
+  const apiKey = await getClaudeApiKey()
+  if (!apiKey) throw new Error("NO_API_KEY")
+
+  const prompt = buildPrompt(originalText, score, isPro ? 3 : 1)
+
+  // Route through background service worker to avoid CORS restrictions
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { type: "GENERATE_REWRITES", apiKey, prompt },
+      (response: { ok: boolean; data?: unknown; error?: string }) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+          return
+        }
+        if (!response.ok) {
+          reject(new Error(response.error ?? "API_ERROR"))
+          return
+        }
+        try {
+          resolve(parseRewrites(response.data))
+        } catch (e) {
+          reject(e)
+        }
+      }
+    )
+  })
 }

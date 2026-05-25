@@ -127,6 +127,8 @@
   border-radius: 0 0 12px 12px;
   padding: 10px 12px;
   margin-top: -1px;
+  max-height: 340px;
+  overflow-y: auto;
 }
 
 .postpilot-details__section {
@@ -518,6 +520,16 @@
 
 .postpilot-rewrites__copy--copied {
   color: #00ba7c;
+}
+
+.postpilot-rewrites__settings-link {
+  background: none;
+  border: none;
+  color: #1d9bf0;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
 }
 
 .postpilot-rewrites__retry {

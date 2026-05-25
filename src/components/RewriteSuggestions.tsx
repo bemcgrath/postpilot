@@ -27,7 +27,7 @@ export function RewriteSuggestions({ originalText, score, isPro }: Props) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : ""
       if (msg === "NO_API_KEY") {
-        setError("Add your Claude API key in PostPilot settings (AI Rewrites tab) to use this feature.")
+        setError("NO_API_KEY")
       } else if (msg === "INVALID_API_KEY") {
         setError("Invalid API key — check the AI Rewrites tab in PostPilot settings.")
       } else if (msg === "PARSE_ERROR") {
@@ -65,9 +65,18 @@ export function RewriteSuggestions({ originalText, score, isPro }: Props) {
         </div>
       )}
 
-      {error && (
+      {error === "NO_API_KEY" ? (
+        <div className="postpilot-rewrites__error">
+          Add your Claude API key to use this.{" "}
+          <button
+            className="postpilot-rewrites__settings-link"
+            onClick={() => chrome.runtime.openOptionsPage()}>
+            Open settings
+          </button>
+        </div>
+      ) : error ? (
         <div className="postpilot-rewrites__error">{error}</div>
-      )}
+      ) : null}
 
       {suggestions && suggestions.length > 0 && (
         <div className="postpilot-rewrites__results">
