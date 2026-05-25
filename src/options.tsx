@@ -59,7 +59,7 @@ function importFile(onLoad: (text: string) => void) {
   input.click()
 }
 
-type TabId = "license" | "profile" | "posts" | "governor" | "hookScoring" | "hookTypes" | "analytics" | "aiRewrites"
+type TabId = "license" | "profile" | "posts" | "governor" | "hooks" | "analytics" | "aiRewrites"
 
 function Options() {
   const [posts, setPosts] = useState<SamplePost[]>([])
@@ -196,7 +196,7 @@ function Options() {
     posts.length >= 15 ? "#00ba7c" : posts.length >= 10 ? "#f7b731" : "#71767b"
 
   const isVoiceTab = activeTab === "profile" || activeTab === "posts"
-  const isConfigTab = activeTab === "governor" || activeTab === "hookScoring" || activeTab === "hookTypes"
+  const isConfigTab = activeTab === "governor" || activeTab === "hooks"
 
   return (
     <div style={styles.container}>
@@ -209,11 +209,10 @@ function Options() {
       <div style={styles.tabBar}>
         {([
           { id: "license" as TabId, label: license.isActive ? "Pro ✓" : "License", indicator: "" },
-          { id: "profile" as TabId, label: "Voice Profile", indicator: profileText.trim().length > 100 ? " *" : "" },
-          { id: "posts" as TabId, label: "Sample Posts", indicator: posts.length > 0 ? ` (${posts.length})` : "" },
+          { id: "profile" as TabId, label: "Voice", indicator: profileText.trim().length > 100 ? " *" : "" },
+          { id: "posts" as TabId, label: "Posts", indicator: posts.length > 0 ? ` (${posts.length})` : "" },
           { id: "governor" as TabId, label: "Governor", indicator: "" },
-          { id: "hookScoring" as TabId, label: "Hook Scoring", indicator: "" },
-          { id: "hookTypes" as TabId, label: "Hook Types", indicator: "" },
+          { id: "hooks" as TabId, label: "Hooks", indicator: "" },
           { id: "analytics" as TabId, label: "Analytics", indicator: "" },
           { id: "aiRewrites" as TabId, label: "AI Rewrites", indicator: claudeApiKey ? " ✓" : "" }
         ]).map((tab) => (
@@ -587,32 +586,31 @@ function Options() {
         </div>
       )}
 
-      {/* Hook Scoring tab */}
-      {activeTab === "hookScoring" && (
-        <div style={styles.section}>
-          <HookScoringSettings
-            analyzerConfig={config.hookAnalyzer}
-            pipelineConfig={config.pipeline}
-            onAnalyzerChange={(hookAnalyzer) =>
-              updateConfig({ ...config, hookAnalyzer })
-            }
-            onPipelineChange={(pipeline) =>
-              updateConfig({ ...config, pipeline })
-            }
-          />
-        </div>
-      )}
-
-      {/* Hook Types tab */}
-      {activeTab === "hookTypes" && (
-        <div style={styles.section}>
-          <HookTypesSettings
-            config={config.hookTypes}
-            onChange={(hookTypes) =>
-              updateConfig({ ...config, hookTypes })
-            }
-          />
-        </div>
+      {/* Hooks tab (scoring + types combined) */}
+      {activeTab === "hooks" && (
+        <>
+          <div style={styles.section}>
+            <HookScoringSettings
+              analyzerConfig={config.hookAnalyzer}
+              pipelineConfig={config.pipeline}
+              onAnalyzerChange={(hookAnalyzer) =>
+                updateConfig({ ...config, hookAnalyzer })
+              }
+              onPipelineChange={(pipeline) =>
+                updateConfig({ ...config, pipeline })
+              }
+            />
+          </div>
+          <div style={{ borderTop: "1px solid #2f3336", marginBottom: 24 }} />
+          <div style={styles.section}>
+            <HookTypesSettings
+              config={config.hookTypes}
+              onChange={(hookTypes) =>
+                updateConfig({ ...config, hookTypes })
+              }
+            />
+          </div>
+        </>
       )}
 
       {/* Analytics tab */}
