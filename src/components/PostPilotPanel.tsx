@@ -35,6 +35,7 @@ import { ScoreBreakdown } from "./ScoreBreakdown"
 import { VoiceMatchBadge } from "./VoiceMatchBadge"
 import { VoiceMatchBreakdown } from "./VoiceMatchBreakdown"
 import { InsightsPanel } from "./InsightsPanel"
+import { RewriteSuggestions } from "./RewriteSuggestions"
 
 /**
  * Find the compose box associated with this panel instance.
@@ -266,6 +267,13 @@ export function PostPilotPanel() {
             suggestions={result.hookScore.suggestions}
           />
           <GovernorWarnings issues={result.governor.issues} />
+          {result.hookScore.totalScore < 65 && (
+            <RewriteSuggestions
+              originalText={text}
+              score={result}
+              isPro={isPro}
+            />
+          )}
           {isPro && result.voiceMatch && (
             <VoiceMatchBreakdown voiceMatch={result.voiceMatch} />
           )}

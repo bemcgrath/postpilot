@@ -28,6 +28,7 @@ import { buildDefaults } from "~config/defaults"
 import { initConfig, saveConfig } from "~config/config-storage"
 import { activateLicense, deactivateLicense, loadLicenseStatus } from "~config/license"
 import type { LicenseStatus } from "~config/license"
+import { getClaudeApiKey, setClaudeApiKey, clearClaudeApiKey } from "~rewrite/api-key-storage"
 
 import { GovernorSettings } from "~components/settings/GovernorSettings"
 import { HookScoringSettings } from "~components/settings/HookScoringSettings"
@@ -58,7 +59,7 @@ function importFile(onLoad: (text: string) => void) {
   input.click()
 }
 
-type TabId = "license" | "profile" | "posts" | "governor" | "hookScoring" | "hookTypes" | "analytics"
+type TabId = "license" | "profile" | "posts" | "governor" | "hookScoring" | "hookTypes" | "analytics" | "aiRewrites"
 
 function Options() {
   const [posts, setPosts] = useState<SamplePost[]>([])
@@ -73,6 +74,9 @@ function Options() {
   const [license, setLicense] = useState<LicenseStatus>({ isActive: false, licenseKey: null, instanceId: null, error: null })
   const [licenseInput, setLicenseInput] = useState("")
   const [licenseLoading, setLicenseLoading] = useState(false)
+  const [claudeApiKey, setClaudeApiKeyState] = useState<string | null>(null)
+  const [claudeApiKeyInput, setClaudeApiKeyInput] = useState("")
+  const [apiKeySavedMsg, setApiKeySavedMsg] = useState("")
 
   useEffect(() => {
     loadSamplePosts().then(setPosts)
@@ -82,6 +86,7 @@ function Options() {
     loadNicheSpec().then(setNicheText)
     initConfig().then(setConfig)
     loadLicenseStatus().then(setLicense)
+    getClaudeApiKey().then(setClaudeApiKeyState)
   }, [])
 
   // Auto-save config when it changes (debounced via state)
@@ -209,7 +214,8 @@ function Options() {
           { id: "governor" as TabId, label: "Governor", indicator: "" },
           { id: "hookScoring" as TabId, label: "Hook Scoring", indicator: "" },
           { id: "hookTypes" as TabId, label: "Hook Types", indicator: "" },
-          { id: "analytics" as TabId, label: "Analytics", indicator: "" }
+          { id: "analytics" as TabId, label: "Analytics", indicator: "" },
+          { id: "aiRewrites" as TabId, label: "AI Rewrites", indicator: claudeApiKey ? " ✓" : "" }
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -613,6 +619,71 @@ function Options() {
       {activeTab === "analytics" && (
         <div style={styles.section}>
           <AnalyticsTab />
+        </div>
+      )}
+
+      {/* AI Rewrites tab */}
+      {activeTab === "aiRewrites" && (
+        <div style={{ padding: "24px 0" }}>
+          <h3 style={{ margin: "0 0 8px", fontSize: "15px" }}>AI Rewrite Suggestions</h3>
+          <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.5 }}>
+            When your post scores below 65, PostPilot can suggest stronger rewrites using Claude.
+            Your API key is stored locally — it never leaves your browser.
+          </p>
+          <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 20px", lineHeight: 1.5 }}>
+            Free users get 1 suggestion. Pro users get 3 variants with different hook types.
+            Get a key at{" "}
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
+              console.anthropic.com
+            </a>.
+          </p>
+
+          {claudeApiKey ? (
+            <div style={{ marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                <span style={{ fontSize: "14px", color: "#00ba7c" }}>✓</span>
+                <span style={{ fontSize: "13px", color: "#e7e9ea" }}>
+                  API key saved: sk-ant-…{claudeApiKey.slice(-6)}
+                </span>
+              </div>
+              <button
+                onClick={async () => {
+                  await clearClaudeApiKey()
+                  setClaudeApiKeyState(null)
+                  setClaudeApiKeyInput("")
+                  setApiKeySavedMsg("")
+                }}
+                style={{ fontSize: "12px", color: "#71767b", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                Remove key
+              </button>
+            </div>
+          ) : null}
+
+          <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+            <input
+              type="password"
+              value={claudeApiKeyInput}
+              onChange={(e) => setClaudeApiKeyInput(e.target.value)}
+              placeholder="sk-ant-api03-..."
+              style={{ flex: 1, padding: "8px 10px", fontSize: "13px", background: "#1e2024", border: "1px solid #2f3336", borderRadius: "6px", color: "#e7e9ea", fontFamily: "monospace" }}
+            />
+            <button
+              disabled={!claudeApiKeyInput.trim()}
+              onClick={async () => {
+                const key = claudeApiKeyInput.trim()
+                await setClaudeApiKey(key)
+                setClaudeApiKeyState(key)
+                setClaudeApiKeyInput("")
+                setApiKeySavedMsg("API key saved")
+                setTimeout(() => setApiKeySavedMsg(""), 2000)
+              }}
+              style={{ padding: "8px 16px", fontSize: "13px", background: "#1d9bf0", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", opacity: claudeApiKeyInput.trim() ? 1 : 0.5 }}>
+              Save
+            </button>
+          </div>
+          {apiKeySavedMsg && (
+            <p style={{ color: "#00ba7c", fontSize: "13px", margin: 0 }}>{apiKeySavedMsg}</p>
+          )}
         </div>
       )}
 

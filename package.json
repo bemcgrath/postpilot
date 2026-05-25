@@ -31,7 +31,9 @@
     ],
     "host_permissions": [
       "https://x.com/*",
-      "https://twitter.com/*"
+      "https://twitter.com/*",
+      "https://api.lemonsqueezy.com/*",
+      "https://api.anthropic.com/*"
     ]
   }
 }
