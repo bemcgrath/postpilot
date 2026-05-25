@@ -16,7 +16,6 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
   const [loading, setLoading] = useState(false)
   const [suggestions, setSuggestions] = useState<RewriteSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [replacedIdx, setReplacedIdx] = useState<number | null>(null)
 
   async function handleGenerate() {
@@ -42,14 +41,7 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
     }
   }
 
-  function copyText(text: string, idx: number) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedIdx(idx)
-      setTimeout(() => setCopiedIdx(null), 1500)
-    }).catch(() => {})
-  }
-
-  return (
+return (
     <div className="postpilot-rewrites">
       <div className="postpilot-details__heading">AI Rewrite{isPro ? " Suggestions" : " Suggestion"}</div>
 
@@ -90,22 +82,15 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
                   {s.hookType ? `${humanizeHookType(s.hookType)}: ` : ""}
                   {s.rationale}
                 </span>
-                <div className="postpilot-rewrites__btns">
-                  <button
-                    className="postpilot-rewrites__copy"
-                    onClick={() => copyText(s.text, i)}>
-                    {copiedIdx === i ? "Copied!" : "Copy"}
-                  </button>
-                  <button
-                    className={`postpilot-rewrites__copy postpilot-rewrites__replace${replacedIdx === i ? " postpilot-rewrites__copy--copied" : ""}`}
-                    onClick={() => {
-                      onReplace(s.text)
-                      setReplacedIdx(i)
-                      setTimeout(() => setReplacedIdx(null), 1500)
-                    }}>
-                    {replacedIdx === i ? "Done!" : "Replace"}
-                  </button>
-                </div>
+                <button
+                  className={`postpilot-rewrites__copy postpilot-rewrites__replace${replacedIdx === i ? " postpilot-rewrites__copy--copied" : ""}`}
+                  onClick={() => {
+                    onReplace(s.text)
+                    setReplacedIdx(i)
+                    setTimeout(() => setReplacedIdx(null), 1500)
+                  }}>
+                  {replacedIdx === i ? "Done!" : "Use this"}
+                </button>
               </div>
             </div>
           ))}
