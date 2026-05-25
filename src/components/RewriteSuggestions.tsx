@@ -1,9 +1,14 @@
 import React, { useState } from "react"
 
 import type { PostScore } from "~scoring/types"
+import { scorePost } from "~scoring/scoring-pipeline"
 import { generateRewrites } from "~rewrite/rewrite-service"
 import type { RewriteSuggestion } from "~rewrite/rewrite-service"
 import { humanizeHookType } from "~scoring/hook-types"
+
+interface ScoredSuggestion extends RewriteSuggestion {
+  computedScore: number
+}
 
 interface Props {
   originalText: string
@@ -12,20 +17,33 @@ interface Props {
   onReplace: (text: string) => void
 }
 
+function scoreColor(s: number): string {
+  if (s >= 70) return "#00ba7c"
+  if (s >= 50) return "#f7b731"
+  return "#f4212e"
+}
+
 export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Props) {
   const [loading, setLoading] = useState(false)
-  const [suggestions, setSuggestions] = useState<RewriteSuggestion[] | null>(null)
+  const [suggestions, setSuggestions] = useState<ScoredSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [replacedIdx, setReplacedIdx] = useState<number | null>(null)
   const [undoText, setUndoText] = useState<string | null>(null)
+
+  const originalScore = score.hookScore.totalScore
 
   async function handleGenerate() {
     setLoading(true)
     setError(null)
     setSuggestions(null)
+    setUndoText(null)
     try {
       const results = await generateRewrites(originalText, score, isPro)
-      setSuggestions(results)
+      const scored: ScoredSuggestion[] = results.map((r) => ({
+        ...r,
+        computedScore: scorePost(r.text, null, undefined, null).hookScore.totalScore,
+      }))
+      setSuggestions(scored)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ""
       if (msg === "NO_API_KEY") {
@@ -42,7 +60,7 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
     }
   }
 
-return (
+  return (
     <div className="postpilot-rewrites">
       <div className="postpilot-details__heading">AI Rewrite{isPro ? " Suggestions" : " Suggestion"}</div>
 
@@ -75,27 +93,46 @@ return (
 
       {suggestions && suggestions.length > 0 && (
         <div className="postpilot-rewrites__results">
-          {suggestions.map((s, i) => (
-            <div key={i} className="postpilot-rewrites__card">
-              <div className="postpilot-rewrites__text">{s.text}</div>
-              <div className="postpilot-rewrites__footer">
-                <span className="postpilot-rewrites__rationale">
-                  {s.hookType ? `${humanizeHookType(s.hookType)}: ` : ""}
-                  {s.rationale}
-                </span>
-                <button
-                  className={`postpilot-rewrites__copy postpilot-rewrites__replace${replacedIdx === i ? " postpilot-rewrites__copy--copied" : ""}`}
-                  onClick={() => {
-                    setUndoText(originalText)
-                    onReplace(s.text)
-                    setReplacedIdx(i)
-                    setTimeout(() => setReplacedIdx(null), 1500)
-                  }}>
-                  {replacedIdx === i ? "Done!" : "Use this"}
-                </button>
+          {suggestions.map((s, i) => {
+            const delta = s.computedScore - originalScore
+            return (
+              <div key={i} className="postpilot-rewrites__card">
+                <div className="postpilot-rewrites__card-header">
+                  <span
+                    className="postpilot-rewrites__score"
+                    style={{ color: scoreColor(s.computedScore) }}>
+                    {s.computedScore}
+                  </span>
+                  {delta !== 0 && (
+                    <span
+                      className="postpilot-rewrites__delta"
+                      style={{ color: delta > 0 ? "#00ba7c" : "#f4212e" }}>
+                      {delta > 0 ? `+${delta}` : delta}
+                    </span>
+                  )}
+                  {s.hookType && (
+                    <span className="postpilot-rewrites__hook-label">
+                      {humanizeHookType(s.hookType)}
+                    </span>
+                  )}
+                </div>
+                <div className="postpilot-rewrites__text">{s.text}</div>
+                <div className="postpilot-rewrites__footer">
+                  <span className="postpilot-rewrites__rationale">{s.rationale}</span>
+                  <button
+                    className={`postpilot-rewrites__copy postpilot-rewrites__replace${replacedIdx === i ? " postpilot-rewrites__copy--copied" : ""}`}
+                    onClick={() => {
+                      setUndoText(originalText)
+                      onReplace(s.text)
+                      setReplacedIdx(i)
+                      setTimeout(() => setReplacedIdx(null), 1500)
+                    }}>
+                    {replacedIdx === i ? "Done!" : "Use this"}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
           {undoText && (
             <button
               className="postpilot-rewrites__undo"

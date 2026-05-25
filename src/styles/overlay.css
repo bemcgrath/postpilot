@@ -538,6 +538,32 @@
   padding: 10px 12px;
 }
 
+.postpilot-rewrites__card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.postpilot-rewrites__score {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.postpilot-rewrites__delta {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.postpilot-rewrites__hook-label {
+  font-size: 11px;
+  color: #71767b;
+  background: #2f3336;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
 .postpilot-rewrites__text {
   font-size: 13px;
   color: #e7e9ea;
