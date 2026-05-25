@@ -16,6 +16,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 })
 
 async function fetchRewrites(apiKey: string, prompt: string): Promise<unknown> {
+  console.log("[PostPilot] Calling Anthropic API, key prefix:", apiKey.slice(0, 14) + "...")
+
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -31,6 +33,8 @@ async function fetchRewrites(apiKey: string, prompt: string): Promise<unknown> {
   })
 
   if (!response.ok) {
+    const body = await response.text()
+    console.error("[PostPilot] Anthropic error", response.status, body)
     if (response.status === 401) throw new Error("INVALID_API_KEY")
     throw new Error(`API_ERROR:${response.status}`)
   }
