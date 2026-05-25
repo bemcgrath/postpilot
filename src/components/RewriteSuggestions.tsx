@@ -17,6 +17,7 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
   const [suggestions, setSuggestions] = useState<RewriteSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [replacedIdx, setReplacedIdx] = useState<number | null>(null)
+  const [undoText, setUndoText] = useState<string | null>(null)
 
   async function handleGenerate() {
     setLoading(true)
@@ -85,6 +86,7 @@ return (
                 <button
                   className={`postpilot-rewrites__copy postpilot-rewrites__replace${replacedIdx === i ? " postpilot-rewrites__copy--copied" : ""}`}
                   onClick={() => {
+                    setUndoText(originalText)
                     onReplace(s.text)
                     setReplacedIdx(i)
                     setTimeout(() => setReplacedIdx(null), 1500)
@@ -94,6 +96,17 @@ return (
               </div>
             </div>
           ))}
+          {undoText && (
+            <button
+              className="postpilot-rewrites__undo"
+              onClick={() => {
+                onReplace(undoText)
+                setUndoText(null)
+                setReplacedIdx(null)
+              }}>
+              Undo replacement
+            </button>
+          )}
           <div className="postpilot-rewrites__regen-row">
             <button
               className="postpilot-rewrites__retry"

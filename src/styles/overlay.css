@@ -588,6 +588,17 @@
   color: #1d9bf0;
 }
 
+.postpilot-rewrites__undo {
+  background: none;
+  border: none;
+  color: #f7b731;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0 0 4px 0;
+  text-decoration: underline;
+  display: block;
+}
+
 .postpilot-rewrites__settings-link {
   background: none;
   border: none;
