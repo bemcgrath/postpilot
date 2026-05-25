@@ -12,30 +12,14 @@ interface TweetScore {
 }
 
 function findThreadTexts(): string[] {
-  const toolbars = Array.from(
-    document.querySelectorAll('[data-testid="toolBar"]')
+  // Each tweet in a thread has its own tweetTextarea_0 — query all in document order
+  const containers = Array.from(
+    document.querySelectorAll('[data-testid="tweetTextarea_0"]')
   )
-  const texts: string[] = []
-
-  for (const toolbar of toolbars) {
-    let container: Element | null = toolbar.parentElement
-    for (let i = 0; i < 6 && container; i++) {
-      const textarea =
-        container.querySelector<HTMLElement>(
-          '[data-testid="tweetTextarea_0"] [data-text="true"]'
-        ) ??
-        container.querySelector<HTMLElement>(
-          '[data-testid="tweetTextarea_0"]'
-        )
-      if (textarea) {
-        texts.push(textarea.textContent ?? "")
-        break
-      }
-      container = container.parentElement
-    }
-  }
-
-  return texts
+  return containers.map((el) => {
+    const textNode = el.querySelector('[data-text="true"]')
+    return textNode?.textContent ?? el.textContent ?? ""
+  })
 }
 
 function scoreColor(score: number): string {
