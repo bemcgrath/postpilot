@@ -2,7 +2,7 @@
   "name": "postpilot",
   "displayName": "PostPilot for X",
   "version": "0.6.0",
-  "description": "Score your X/Twitter posts as you type. Real-time hook analysis, governor warnings, and character optimization.",
+  "description": "Score, fix, and improve every X post. Real-time hook analysis, AI rewrites, and voice coaching that adapts to how you write.",
   "author": "PostPilot",
   "scripts": {
     "dev": "plasmo dev",
