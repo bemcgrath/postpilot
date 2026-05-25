@@ -279,6 +279,36 @@
   margin-top: 4px;
 }
 
+/* Score History Badge */
+.postpilot-history {
+  padding-top: 8px;
+  border-top: 1px solid #2f3336;
+  margin-top: 6px;
+}
+
+.postpilot-history__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.postpilot-history__avg {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.postpilot-history__meta {
+  font-size: 12px;
+  color: #71767b;
+}
+
+.postpilot-history__trend {
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* AI Rewrite Suggestions */
 .postpilot-rewrites {
   padding-top: 8px;

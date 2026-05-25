@@ -36,6 +36,9 @@ import { VoiceMatchBadge } from "./VoiceMatchBadge"
 import { VoiceMatchBreakdown } from "./VoiceMatchBreakdown"
 import { InsightsPanel } from "./InsightsPanel"
 import { RewriteSuggestions } from "./RewriteSuggestions"
+import { ScoreHistoryBadge } from "./ScoreHistoryBadge"
+import { saveScoreEntry, getWeekStats } from "~history/score-history-storage"
+import type { WeekStats } from "~history/score-history-storage"
 
 /**
  * Find the compose box associated with this panel instance.
@@ -111,6 +114,9 @@ export function PostPilotPanel() {
   const [insights, setInsights] = useState<LearnedInsights | null>(null)
   const [configRevision, setConfigRevision] = useState(0)
   const [isPro, setIsPro] = useState(false)
+  const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
+  const lastScoreRef = useRef<number>(0)
+  const prevTextRef = useRef<string>("")
 
   // Initialize config on mount and listen for config changes
   useEffect(() => {
@@ -214,6 +220,34 @@ export function PostPilotPanel() {
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
   }, [])
 
+  // Detect compose box clearing after substantial text — record the score
+  useEffect(() => {
+    const prev = prevTextRef.current
+    prevTextRef.current = text
+    if (text.length < 2 && prev.length >= 20 && lastScoreRef.current > 0) {
+      saveScoreEntry(lastScoreRef.current).then(() => {
+        getWeekStats().then(setWeekStats).catch(() => {})
+      }).catch(() => {})
+    }
+  }, [text])
+
+  // Load week stats on mount and when storage changes
+  useEffect(() => {
+    getWeekStats().then(setWeekStats).catch(() => {})
+
+    const storage = getStorage()
+    if (!storage) return
+    const listener = (changes: Record<string, { newValue?: unknown }>) => {
+      try {
+        if ("postpilot_score_history" in changes) {
+          getWeekStats().then(setWeekStats).catch(() => {})
+        }
+      } catch {}
+    }
+    storage.onChanged.addListener(listener)
+    return () => { try { storage.onChanged.removeListener(listener) } catch {} }
+  }, [])
+
   if (!enabled || !text || text.length < 2) return null
 
   // configRevision forces re-render when config changes, scorePost reads updated config
@@ -222,6 +256,7 @@ export function PostPilotPanel() {
   const proOverrides = isPro ? overrides : null
   const hookTypeBoosts = isPro && insights?.isReady ? insights.hookTypeBoosts : undefined
   const result: PostScore = scorePost(text, proFingerprint, hookTypeBoosts, proOverrides)
+  lastScoreRef.current = result.hookScore.totalScore
   const errorCount = result.governor.issues.filter(
     (i) => i.severity === "error"
   ).length
@@ -274,6 +309,7 @@ export function PostPilotPanel() {
               isPro={isPro}
             />
           )}
+          {weekStats && <ScoreHistoryBadge stats={weekStats} />}
           {isPro && result.voiceMatch && (
             <VoiceMatchBreakdown voiceMatch={result.voiceMatch} />
           )}
