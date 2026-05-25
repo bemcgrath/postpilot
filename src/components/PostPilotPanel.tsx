@@ -40,6 +40,26 @@ import { ScoreHistoryBadge } from "./ScoreHistoryBadge"
 import { saveScoreEntry, getWeekStats } from "~history/score-history-storage"
 import type { WeekStats } from "~history/score-history-storage"
 
+function fmtHour(h: number): string {
+  if (h === 0) return "12 AM"
+  if (h < 12) return `${h} AM`
+  if (h === 12) return "12 PM"
+  return `${h - 12} PM`
+}
+
+function getBestTimeLabel(
+  timePerformance: Array<{ hour: number; postCount: number; boostMultiplier: number }>
+): string | null {
+  const candidates = timePerformance.filter((t) => t.postCount >= 3)
+  if (candidates.length === 0) return null
+  const best = candidates.reduce((a, b) =>
+    a.boostMultiplier > b.boostMultiplier ? a : b
+  )
+  if (best.boostMultiplier < 1.1) return null
+  const end = (best.hour + 2) % 24
+  return `${fmtHour(best.hour)}–${fmtHour(end)}`
+}
+
 /**
  * Find the compose box associated with this panel instance.
  * The panel is injected inside a <plasmo-csui> shadow host, placed afterend
@@ -292,6 +312,12 @@ export function PostPilotPanel() {
             {totalIssues} {totalIssues === 1 ? "issue" : "issues"}
           </span>
         )}
+        {isPro && insights?.isReady && (() => {
+          const label = getBestTimeLabel(insights.timePerformance)
+          return label ? (
+            <span className="postpilot-best-time">Best: {label}</span>
+          ) : null
+        })()}
         <span className="postpilot-logo">PostPilot</span>
       </div>
 
