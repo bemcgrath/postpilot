@@ -1,7 +1,7 @@
 {
   "name": "postpilot",
   "displayName": "PostPilot for X",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "Score your X/Twitter posts as you type. Real-time hook analysis, governor warnings, and character optimization.",
   "author": "PostPilot",
   "scripts": {
