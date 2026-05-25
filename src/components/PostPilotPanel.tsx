@@ -38,10 +38,13 @@ import { InsightsPanel } from "./InsightsPanel"
 import { RewriteSuggestions } from "./RewriteSuggestions"
 import { ScoreHistoryBadge } from "./ScoreHistoryBadge"
 import { DraftQueue } from "./DraftQueue"
+import { HookLibrary } from "./HookLibrary"
 import { saveScoreEntry, getWeekStats } from "~history/score-history-storage"
 import type { WeekStats } from "~history/score-history-storage"
 import { loadDrafts, saveDraft, deleteDraft } from "~drafts/draft-storage"
 import type { DraftEntry } from "~drafts/draft-storage"
+import { loadHooks, saveHook, deleteHook } from "~hooks/hook-storage"
+import type { HookEntry } from "~hooks/hook-storage"
 
 function fmtHour(h: number): string {
   if (h === 0) return "12 AM"
@@ -197,7 +200,9 @@ export function PostPilotPanel() {
   const [isPro, setIsPro] = useState(false)
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
   const [drafts, setDrafts] = useState<DraftEntry[]>([])
+  const [hooks, setHooks] = useState<HookEntry[]>([])
   const [savedMsg, setSavedMsg] = useState(false)
+  const [hookSavedMsg, setHookSavedMsg] = useState(false)
   const lastScoreRef = useRef<number>(0)
   const prevTextRef = useRef<string>("")
   const lastSavedAtRef = useRef<number>(0)
@@ -304,7 +309,7 @@ export function PostPilotPanel() {
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
   }, [])
 
-  // Detect compose box clearing after substantial text — record the score
+  // Detect compose box clearing after substantial text — record score + auto-save hook
   useEffect(() => {
     const prev = prevTextRef.current
     prevTextRef.current = text
@@ -319,13 +324,19 @@ export function PostPilotPanel() {
       saveScoreEntry(lastScoreRef.current).then(() => {
         getWeekStats().then(setWeekStats).catch(() => {})
       }).catch(() => {})
+      if (isPro && lastScoreRef.current >= 70) {
+        saveHook(prev, null, lastScoreRef.current, "auto").then((entry) => {
+          setHooks((h) => [entry, ...h].slice(0, 50))
+        }).catch(() => {})
+      }
     }
-  }, [text])
+  }, [text, isPro])
 
-  // Load week stats and drafts on mount; keep in sync with storage changes
+  // Load week stats, drafts, and hooks on mount; keep in sync with storage changes
   useEffect(() => {
     getWeekStats().then(setWeekStats).catch(() => {})
     loadDrafts().then(setDrafts).catch(() => {})
+    loadHooks().then(setHooks).catch(() => {})
 
     const storage = getStorage()
     if (!storage) return
@@ -336,6 +347,9 @@ export function PostPilotPanel() {
         }
         if ("postpilot_drafts" in changes) {
           setDrafts((changes.postpilot_drafts.newValue as DraftEntry[]) ?? [])
+        }
+        if ("postpilot_hook_library" in changes) {
+          setHooks((changes.postpilot_hook_library.newValue as HookEntry[]) ?? [])
         }
       } catch {}
     }
@@ -359,6 +373,16 @@ export function PostPilotPanel() {
         setDrafts((prev) => [entry, ...prev].slice(0, 20))
         setSavedMsg(true)
         setTimeout(() => setSavedMsg(false), 1500)
+      })
+      .catch(() => {})
+  }
+
+  function handleSaveHook() {
+    saveHook(text, result.hookScore.hookType, result.hookScore.totalScore, "manual")
+      .then((entry) => {
+        setHooks((prev) => [entry, ...prev].slice(0, 50))
+        setHookSavedMsg(true)
+        setTimeout(() => setHookSavedMsg(false), 1500)
       })
       .catch(() => {})
   }
@@ -424,11 +448,20 @@ export function PostPilotPanel() {
 
       {expanded && (
         <div className="postpilot-details">
-          <button
-            className={`postpilot-save-btn${savedMsg ? " postpilot-save-btn--saved" : ""}`}
-            onClick={handleSaveDraft}>
-            {savedMsg ? "Saved!" : "Save draft"}
-          </button>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button
+              className={`postpilot-save-btn${savedMsg ? " postpilot-save-btn--saved" : ""}`}
+              onClick={handleSaveDraft}>
+              {savedMsg ? "Saved!" : "Save draft"}
+            </button>
+            {isPro && result.hookScore.totalScore >= 70 && (
+              <button
+                className={`postpilot-save-btn${hookSavedMsg ? " postpilot-save-btn--saved" : ""}`}
+                onClick={handleSaveHook}>
+                {hookSavedMsg ? "Saved!" : "Save hook"}
+              </button>
+            )}
+          </div>
           <ScoreBreakdown
             breakdown={result.hookScore.breakdown}
             suggestions={result.hookScore.suggestions}
@@ -462,6 +495,15 @@ export function PostPilotPanel() {
             onRestore={handleRestoreDraft}
             onDelete={handleDeleteDraft}
           />
+          {isPro && hooks.length > 0 && (
+            <HookLibrary
+              hooks={hooks}
+              onUse={(entry) => setTimeout(() => injectText(panelRef.current, entry.fullText), 10)}
+              onDelete={(id) => {
+                deleteHook(id).then(() => setHooks((prev) => prev.filter((h) => h.id !== id))).catch(() => {})
+              }}
+            />
+          )}
           {!isPro && (
             <div style={{ padding: "8px 12px", fontSize: "12px", color: "#888", borderTop: "1px solid #eee", marginTop: "4px" }}>
               <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/921ab388-2b1b-44e0-afd7-54da993317d0?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0", textDecoration: "none" }}>

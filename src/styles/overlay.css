@@ -447,6 +447,113 @@
   border-color: #00ba7c;
 }
 
+/* Hook Library */
+.postpilot-hooklist {
+  border-top: 1px solid #2f3336;
+  padding: 8px 12px;
+}
+
+.postpilot-hooklist__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.postpilot-hooklist__title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #71767b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.postpilot-hooklist__count {
+  font-size: 11px;
+  color: #536471;
+}
+
+.postpilot-hooklist__row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0;
+  border-bottom: 1px solid #1e2124;
+  min-width: 0;
+}
+
+.postpilot-hooklist__score {
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 22px;
+  flex-shrink: 0;
+}
+
+.postpilot-hooklist__type {
+  font-size: 10px;
+  color: #71767b;
+  background: #1e2124;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.postpilot-hooklist__text {
+  font-size: 12px;
+  color: #e7e9ea;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.postpilot-hooklist__meta {
+  font-size: 10px;
+  color: #536471;
+  flex-shrink: 0;
+}
+
+.postpilot-hooklist__use {
+  background: none;
+  border: 1px solid #2f3336;
+  color: #1d9bf0;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.postpilot-hooklist__use:hover {
+  border-color: #1d9bf0;
+}
+
+.postpilot-hooklist__del {
+  background: none;
+  border: none;
+  color: #536471;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.postpilot-hooklist__del:hover {
+  color: #f4212e;
+}
+
+.postpilot-hooklist__more {
+  background: none;
+  border: none;
+  color: #1d9bf0;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 0 0;
+}
+
 /* Drafts count chip in bar */
 .postpilot-drafts-count {
   font-size: 11px;
