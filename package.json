@@ -28,7 +28,8 @@
   "manifest": {
     "permissions": [
       "storage",
-      "tabs"
+      "tabs",
+      "management"
     ],
     "host_permissions": [
       "https://x.com/*",

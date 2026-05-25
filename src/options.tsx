@@ -76,6 +76,8 @@ function Options() {
   const [licenseLoading, setLicenseLoading] = useState(false)
   const [claudeApiKey, setClaudeApiKeyState] = useState<string | null>(null)
   const [claudeApiKeyInput, setClaudeApiKeyInput] = useState("")
+  const [devPro, setDevPro] = useState(false)
+  const [isDev, setIsDev] = useState(false)
   const [apiKeySavedMsg, setApiKeySavedMsg] = useState("")
 
   useEffect(() => {
@@ -87,6 +89,12 @@ function Options() {
     initConfig().then(setConfig)
     loadLicenseStatus().then(setLicense)
     getClaudeApiKey().then(setClaudeApiKeyState)
+    chrome.storage.local.get("postpilot_dev_pro", (r) => {
+      if (r.postpilot_dev_pro === true) setDevPro(true)
+    })
+    chrome.management.getSelf((info) => {
+      if (info.installType === "development") setIsDev(true)
+    })
     const hash = window.location.hash.slice(1) as TabId
     if (hash) {
       setActiveTab(hash)
@@ -301,6 +309,23 @@ function Options() {
               {license.error && (
                 <p style={{ color: "#e0245e", fontSize: "13px", margin: 0 }}>{license.error}</p>
               )}
+            </div>
+          )}
+          {isDev && (
+            <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #eee" }}>
+              <p style={{ fontSize: "12px", color: "#999", margin: "0 0 8px" }}>Developer</p>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={devPro}
+                  onChange={(e) => {
+                    const val = e.target.checked
+                    setDevPro(val)
+                    chrome.storage.local.set({ postpilot_dev_pro: val })
+                  }}
+                />
+                <span style={{ fontSize: "13px", color: "#999" }}>Enable Pro features without a license (dev only)</span>
+              </label>
             </div>
           )}
         </div>
@@ -694,6 +719,7 @@ function Options() {
           {apiKeySavedMsg && (
             <p style={{ color: "#00ba7c", fontSize: "13px", margin: 0 }}>{apiKeySavedMsg}</p>
           )}
+
         </div>
       )}
 

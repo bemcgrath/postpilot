@@ -134,30 +134,23 @@ function findNearestComposeBox(
 function injectText(panelEl: HTMLElement | null, newText: string) {
   const editable = findNearestContentEditable(panelEl)
   if (!editable) return
-  editable.focus()
 
-  // Select all existing content
-  const sel = window.getSelection()
-  if (sel) {
-    const range = document.createRange()
-    range.selectNodeContents(editable)
-    sel.removeAllRanges()
-    sel.addRange(range)
-  }
+  // Click transfers focus more reliably than focus() when called from shadow DOM context
+  editable.click()
 
-  // Dispatch a synthetic paste event — Draft.js's paste handler updates
-  // internal EditorState correctly, leaving the box fully editable.
-  // dispatchEvent returns false when preventDefault() was called (i.e. Draft.js consumed it).
-  const dt = new DataTransfer()
-  dt.setData("text/plain", newText)
-  const notConsumed = editable.dispatchEvent(
-    new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt })
-  )
+  setTimeout(() => {
+    // selectAll scoped to the focused editable — replaces text when paste fires
+    document.execCommand("selectAll")
 
-  // Fall back to execCommand if Draft.js did not consume the paste event
-  if (notConsumed) {
-    document.execCommand("insertText", false, newText)
-  }
+    const dt = new DataTransfer()
+    dt.setData("text/plain", newText)
+    const notConsumed = editable.dispatchEvent(
+      new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt })
+    )
+    if (notConsumed) {
+      document.execCommand("insertText", false, newText)
+    }
+  }, 20)
 }
 
 /**
@@ -220,9 +213,16 @@ export function PostPilotPanel() {
     return unsubscribe
   }, [])
 
-  // Check Pro license status on mount
+  // Check Pro license status on mount (dev bypass: set postpilot_dev_pro=true in storage)
   useEffect(() => {
-    validateStoredLicense().then((status) => setIsPro(status.isActive)).catch(() => {})
+    validateStoredLicense().then((status) => {
+      if (status.isActive) { setIsPro(true); return }
+      const storage = getStorage()
+      if (!storage) return
+      storage.get("postpilot_dev_pro", (r) => {
+        if (r.postpilot_dev_pro === true) setIsPro(true)
+      })
+    }).catch(() => {})
   }, [])
 
   // Read enabled state from storage (safely — may not be available in CSUI)
@@ -472,10 +472,13 @@ export function PostPilotPanel() {
               originalText={text}
               score={result}
               isPro={isPro}
+              fingerprint={proFingerprint}
+              overrides={proOverrides}
+              hookTypeBoosts={hookTypeBoosts}
               onReplace={(newText) => {
                 setTimeout(() => {
                   injectText(panelRef.current, newText)
-                  setTimeout(readTextNow, 150)
+                  setTimeout(readTextNow, 300)
                 }, 10)
               }}
             />

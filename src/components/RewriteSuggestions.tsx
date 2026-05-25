@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 
 import type { PostScore } from "~scoring/types"
+import type { VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 import { scorePost } from "~scoring/scoring-pipeline"
 import { generateRewrites } from "~rewrite/rewrite-service"
 import type { RewriteSuggestion } from "~rewrite/rewrite-service"
@@ -15,6 +16,9 @@ interface Props {
   originalText: string
   score: PostScore
   isPro: boolean
+  fingerprint: VoiceFingerprint | null
+  overrides: VoiceOverrides | null
+  hookTypeBoosts: Record<string, number> | undefined
   onReplace: (text: string) => void
 }
 
@@ -24,7 +28,7 @@ function scoreColor(s: number): string {
   return "#f4212e"
 }
 
-export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Props) {
+export function RewriteSuggestions({ originalText, score, isPro, fingerprint, overrides, hookTypeBoosts, onReplace }: Props) {
   const [loading, setLoading] = useState(false)
   const [suggestions, setSuggestions] = useState<ScoredSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +45,7 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
     try {
       const results = await generateRewrites(originalText, score, isPro)
       const scored: ScoredSuggestion[] = results.map((r) => {
-        const s = scorePost(r.text, null, undefined, null)
+        const s = scorePost(r.text, fingerprint, hookTypeBoosts, overrides)
         return {
           ...r,
           computedScore: s.hookScore.totalScore,
