@@ -135,21 +135,20 @@ function injectText(panelEl: HTMLElement | null, newText: string) {
   const editable = findNearestContentEditable(panelEl)
   if (!editable) return
 
-  // Click transfers focus more reliably than focus() when called from shadow DOM context
   editable.click()
-
   setTimeout(() => {
-    // selectAll scoped to the focused editable — replaces text when paste fires
-    document.execCommand("selectAll")
-
-    const dt = new DataTransfer()
-    dt.setData("text/plain", newText)
-    const notConsumed = editable.dispatchEvent(
-      new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt })
-    )
-    if (notConsumed) {
-      document.execCommand("insertText", false, newText)
+    // Set DOM selection to cover all content in the compose box
+    const sel = window.getSelection()
+    if (sel) {
+      const range = document.createRange()
+      range.selectNodeContents(editable)
+      sel.removeAllRanges()
+      sel.addRange(range)
     }
+    // Replace the selection with new text
+    document.execCommand("insertText", false, newText)
+    // Refocus after execCommand so Draft.js re-establishes its cursor state
+    setTimeout(() => editable.focus(), 50)
   }, 20)
 }
 
