@@ -1,5 +1,5 @@
 import type { HookTypeName } from "./types"
-import type { NumericProfile, VocabEntry, VoiceFingerprint } from "./voice-types"
+import type { NumericProfile, VocabEntry, VoiceFingerprint, VoiceOverrides } from "./voice-types"
 
 import { classifyHookType } from "./hook-types"
 
@@ -213,4 +213,79 @@ export function extractFingerprint(posts: string[]): VoiceFingerprint {
     usesColons,
     usesLists
   }
+}
+
+/** Apply manual overrides to a fingerprint, returning a new modified copy. */
+export function applyOverrides(
+  fp: VoiceFingerprint,
+  overrides: VoiceOverrides
+): VoiceFingerprint {
+  const result = { ...fp }
+
+  // Signature words: remove then add
+  if (overrides.removeSignatureWords.length > 0) {
+    const removeSet = new Set(overrides.removeSignatureWords.map((w) => w.toLowerCase()))
+    result.distinctiveTerms = result.distinctiveTerms.filter(
+      (t) => !removeSet.has(t.term.toLowerCase())
+    )
+  }
+  if (overrides.addSignatureWords.length > 0) {
+    const existing = new Set(result.distinctiveTerms.map((t) => t.term.toLowerCase()))
+    const toAdd: VocabEntry[] = overrides.addSignatureWords
+      .filter((w) => !existing.has(w.toLowerCase()))
+      .map((w) => ({ term: w.toLowerCase(), count: 1, frequency: 1 }))
+    result.distinctiveTerms = [...result.distinctiveTerms, ...toAdd]
+  }
+
+  // Niche keywords: remove then add
+  if (overrides.removeNicheKeywords.length > 0) {
+    const removeSet = new Set(overrides.removeNicheKeywords.map((w) => w.toLowerCase()))
+    result.nicheKeywords = result.nicheKeywords.filter(
+      (t) => !removeSet.has(t.term.toLowerCase())
+    )
+  }
+  if (overrides.addNicheKeywords.length > 0) {
+    const existing = new Set(result.nicheKeywords.map((t) => t.term.toLowerCase()))
+    const toAdd: VocabEntry[] = overrides.addNicheKeywords
+      .filter((w) => !existing.has(w.toLowerCase()))
+      .map((w) => ({ term: w.toLowerCase(), count: 1, frequency: 1 }))
+    result.nicheKeywords = [...result.nicheKeywords, ...toAdd]
+  }
+
+  // Length range
+  if (overrides.lengthMin != null || overrides.lengthMax != null) {
+    const min = overrides.lengthMin ?? fp.postLength.min
+    const max = overrides.lengthMax ?? fp.postLength.max
+    const mean = (min + max) / 2
+    const stdDev = (max - min) / 4 // approximate
+    result.postLength = { mean, stdDev, min, max }
+  }
+
+  // Hook preferences
+  if (overrides.preferredHookTypes.length > 0) {
+    result.topHookTypes = overrides.preferredHookTypes.slice(0, 3)
+    const dist: Partial<Record<HookTypeName, number>> = { ...fp.hookTypeDistribution }
+    for (const ht of overrides.preferredHookTypes) {
+      if (!(ht in dist)) {
+        dist[ht] = 0.1
+      }
+    }
+    result.hookTypeDistribution = dist
+  }
+
+  // Tone ratios
+  if (overrides.firstPersonRatio != null) {
+    result.firstPersonRatio = overrides.firstPersonRatio
+  }
+  if (overrides.secondPersonRatio != null) {
+    result.secondPersonRatio = overrides.secondPersonRatio
+  }
+  if (overrides.questionRatio != null) {
+    result.questionRatio = overrides.questionRatio
+  }
+  if (overrides.exclamationRatio != null) {
+    result.exclamationRatio = overrides.exclamationRatio
+  }
+
+  return result
 }

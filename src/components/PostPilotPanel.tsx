@@ -63,6 +63,33 @@ function getBestTimeLabel(
   return `${fmtHour(best.hour)}–${fmtHour(end)}`
 }
 
+function findNearestContentEditable(
+  panelEl: HTMLElement | null
+): HTMLElement | null {
+  if (panelEl) {
+    let host: Element | null = panelEl
+    const root = panelEl.getRootNode()
+    if (root instanceof ShadowRoot) host = root.host
+    if (host) {
+      let container = host.parentElement
+      for (let i = 0; i < 5 && container; i++) {
+        const el = container.querySelector<HTMLElement>(
+          '[data-testid="tweetTextarea_0"] [contenteditable="true"]'
+        ) ?? container.querySelector<HTMLElement>(
+          '[data-testid="tweetTextarea_0"]'
+        )
+        if (el) return el
+        container = container.parentElement
+      }
+    }
+  }
+  return document.querySelector<HTMLElement>(
+    '[data-testid="tweetTextarea_0"] [contenteditable="true"]'
+  ) ?? document.querySelector<HTMLElement>(
+    '[data-testid="tweetTextarea_0"]'
+  )
+}
+
 /**
  * Find the compose box associated with this panel instance.
  * The panel is injected inside a <plasmo-csui> shadow host, placed afterend
@@ -101,35 +128,66 @@ function findNearestComposeBox(
   )
 }
 
+function injectText(panelEl: HTMLElement | null, newText: string) {
+  const editable = findNearestContentEditable(panelEl)
+  if (!editable) return
+  editable.focus()
+
+  // Select all existing content
+  const sel = window.getSelection()
+  if (sel) {
+    const range = document.createRange()
+    range.selectNodeContents(editable)
+    sel.removeAllRanges()
+    sel.addRange(range)
+  }
+
+  // Dispatch a synthetic paste event — Draft.js's paste handler updates
+  // internal EditorState correctly, leaving the box fully editable.
+  // dispatchEvent returns false when preventDefault() was called (i.e. Draft.js consumed it).
+  const dt = new DataTransfer()
+  dt.setData("text/plain", newText)
+  const notConsumed = editable.dispatchEvent(
+    new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt })
+  )
+
+  // Fall back to execCommand if Draft.js did not consume the paste event
+  if (notConsumed) {
+    document.execCommand("insertText", false, newText)
+  }
+}
+
 /**
  * Poll the host page's compose box for text changes.
  * Polling is more reliable than MutationObserver on X.com's
  * Draft.js contenteditable which mutates deeply nested spans.
  * Scoped to the nearest compose box via the panel's DOM ref.
  */
-function useComposeText(panelRef: React.RefObject<HTMLElement | null>): string {
+function useComposeText(panelRef: React.RefObject<HTMLElement | null>): [string, () => void] {
   const [text, setText] = useState("")
   const lastTextRef = useRef("")
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const composeBox = findNearestComposeBox(panelRef.current)
-      const raw = composeBox?.textContent ?? ""
-      if (raw !== lastTextRef.current) {
-        lastTextRef.current = raw
-        setText(raw)
-      }
-    }, 500)
-
-    return () => clearInterval(interval)
+  const readNow = useCallback(() => {
+    const composeBox = findNearestComposeBox(panelRef.current)
+    const raw = composeBox?.textContent ?? ""
+    if (raw !== lastTextRef.current) {
+      lastTextRef.current = raw
+      setText(raw)
+    }
   }, [panelRef])
 
-  return text
+  useEffect(() => {
+    const interval = setInterval(readNow, 200)
+
+    return () => clearInterval(interval)
+  }, [readNow])
+
+  return [text, readNow]
 }
 
 export function PostPilotPanel() {
   const panelRef = useRef<HTMLDivElement>(null)
-  const text = useComposeText(panelRef)
+  const [text, readTextNow] = useComposeText(panelRef)
   const [expanded, setExpanded] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
@@ -142,6 +200,7 @@ export function PostPilotPanel() {
   const [savedMsg, setSavedMsg] = useState(false)
   const lastScoreRef = useRef<number>(0)
   const prevTextRef = useRef<string>("")
+  const lastSavedAtRef = useRef<number>(0)
 
   // Initialize config on mount and listen for config changes
   useEffect(() => {
@@ -249,7 +308,14 @@ export function PostPilotPanel() {
   useEffect(() => {
     const prev = prevTextRef.current
     prevTextRef.current = text
-    if (text.length < 2 && prev.length >= 20 && lastScoreRef.current > 0) {
+    const now = Date.now()
+    if (
+      text.length < 2 &&
+      prev.length >= 20 &&
+      lastScoreRef.current > 0 &&
+      now - lastSavedAtRef.current > 30_000
+    ) {
+      lastSavedAtRef.current = now
       saveScoreEntry(lastScoreRef.current).then(() => {
         getWeekStats().then(setWeekStats).catch(() => {})
       }).catch(() => {})
@@ -298,11 +364,7 @@ export function PostPilotPanel() {
   }
 
   function handleRestoreDraft(draft: DraftEntry) {
-    const box = findNearestComposeBox(panelRef.current)
-    if (!box) return
-    box.focus()
-    document.execCommand("selectAll", false)
-    document.execCommand("insertText", false, draft.text)
+    setTimeout(() => injectText(panelRef.current, draft.text), 10)
   }
 
   function handleDeleteDraft(id: string) {
@@ -378,11 +440,10 @@ export function PostPilotPanel() {
               score={result}
               isPro={isPro}
               onReplace={(newText) => {
-                const box = findNearestComposeBox(panelRef.current)
-                if (!box) return
-                box.focus()
-                document.execCommand("selectAll", false)
-                document.execCommand("insertText", false, newText)
+                setTimeout(() => {
+                  injectText(panelRef.current, newText)
+                  setTimeout(readTextNow, 150)
+                }, 10)
               }}
             />
           )}

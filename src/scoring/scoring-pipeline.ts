@@ -1,9 +1,10 @@
 import type { HookTypeName, PostScore } from "./types"
-import type { VoiceFingerprint } from "./voice-types"
+import type { VoiceFingerprint, VoiceOverrides } from "./voice-types"
 
 import { HookAnalyzer } from "./hook-analyzer"
 import { checkGovernor } from "./governor"
 import { scoreVoiceMatch } from "./voice-match"
+import { applyOverrides } from "./voice-fingerprint"
 import { getPipelineConfig } from "~config/config-storage"
 
 const analyzer = new HookAnalyzer()
@@ -12,7 +13,8 @@ const analyzer = new HookAnalyzer()
 export function scorePost(
   text: string,
   fingerprint?: VoiceFingerprint | null,
-  hookTypeBoosts?: Partial<Record<HookTypeName, number>>
+  hookTypeBoosts?: Partial<Record<HookTypeName, number>>,
+  overrides?: VoiceOverrides | null
 ): PostScore {
   const config = getPipelineConfig()
   const hookScore = analyzer.score(text, undefined, hookTypeBoosts)
@@ -21,9 +23,14 @@ export function scorePost(
   const inSweetSpot =
     charCount >= config.sweetSpotMin && charCount <= config.sweetSpotMax
 
+  let effectiveFp = fingerprint ?? null
+  if (effectiveFp && overrides) {
+    effectiveFp = applyOverrides(effectiveFp, overrides)
+  }
+
   const voiceMatch =
-    fingerprint && text.length > 0
-      ? scoreVoiceMatch(text, fingerprint)
+    effectiveFp && text.length > 0
+      ? scoreVoiceMatch(text, effectiveFp)
       : null
 
   return {

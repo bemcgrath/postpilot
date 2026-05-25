@@ -573,6 +573,30 @@
   margin-bottom: 8px;
 }
 
+.postpilot-rewrites__gov-issues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.postpilot-rewrites__gov-issue {
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.postpilot-rewrites__gov-issue--error {
+  background: rgba(244, 33, 46, 0.15);
+  color: #f4212e;
+}
+
+.postpilot-rewrites__gov-issue--warning {
+  background: rgba(247, 183, 49, 0.15);
+  color: #f7b731;
+}
+
 .postpilot-rewrites__footer {
   display: flex;
   align-items: flex-start;

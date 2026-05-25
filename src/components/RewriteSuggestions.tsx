@@ -8,6 +8,7 @@ import { humanizeHookType } from "~scoring/hook-types"
 
 interface ScoredSuggestion extends RewriteSuggestion {
   computedScore: number
+  governorIssues: Array<{ severity: string; matchedText: string }>
 }
 
 interface Props {
@@ -39,10 +40,14 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
     setUndoText(null)
     try {
       const results = await generateRewrites(originalText, score, isPro)
-      const scored: ScoredSuggestion[] = results.map((r) => ({
-        ...r,
-        computedScore: scorePost(r.text, null, undefined, null).hookScore.totalScore,
-      }))
+      const scored: ScoredSuggestion[] = results.map((r) => {
+        const s = scorePost(r.text, null, undefined, null)
+        return {
+          ...r,
+          computedScore: s.hookScore.totalScore,
+          governorIssues: s.governor.issues.map((i) => ({ severity: i.severity, matchedText: i.matchedText })),
+        }
+      })
       setSuggestions(scored)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ""
@@ -83,7 +88,11 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
           Add your Claude API key to use this.{" "}
           <button
             className="postpilot-rewrites__settings-link"
-            onClick={() => chrome.runtime.sendMessage({ type: "OPEN_OPTIONS_TAB", tab: "aiRewrites" })}>
+            onClick={() => {
+              chrome.storage.local.set({ postpilot_options_tab: "aiRewrites" }, () => {
+                chrome.runtime.openOptionsPage()
+              })
+            }}>
             Open settings
           </button>
         </div>
@@ -117,6 +126,17 @@ export function RewriteSuggestions({ originalText, score, isPro, onReplace }: Pr
                   )}
                 </div>
                 <div className="postpilot-rewrites__text">{s.text}</div>
+                {s.governorIssues.length > 0 && (
+                  <div className="postpilot-rewrites__gov-issues">
+                    {s.governorIssues.map((issue, j) => (
+                      <span
+                        key={j}
+                        className={`postpilot-rewrites__gov-issue postpilot-rewrites__gov-issue--${issue.severity}`}>
+                        {issue.matchedText}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="postpilot-rewrites__footer">
                   <span className="postpilot-rewrites__rationale">{s.rationale}</span>
                   <button

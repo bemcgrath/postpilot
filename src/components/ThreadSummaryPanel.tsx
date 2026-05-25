@@ -12,13 +12,24 @@ interface TweetScore {
 }
 
 function findThreadTexts(): string[] {
-  // Each tweet in a thread has its own tweetTextarea_0 — query all in document order
-  const containers = Array.from(
+  const all = Array.from(
     document.querySelectorAll('[data-testid="tweetTextarea_0"]')
   )
+
+  // Skip containers that are descendants of an earlier container (nested duplicates)
+  const containers = all.filter(
+    (el, i) => !all.slice(0, i).some((earlier) => earlier.contains(el))
+  )
+
   return containers.map((el) => {
-    const textNode = el.querySelector('[data-text="true"]')
-    return textNode?.textContent ?? el.textContent ?? ""
+    // Prefer the contenteditable's full textContent (captures all Draft.js blocks)
+    const editable = el.querySelector<HTMLElement>('[contenteditable="true"]')
+    if (editable) return editable.textContent ?? ""
+    // Fallback: join all data-text spans
+    const spans = Array.from(el.querySelectorAll('[data-text="true"]'))
+    return spans.length > 0
+      ? spans.map((s) => s.textContent ?? "").join("")
+      : el.textContent ?? ""
   })
 }
 

@@ -40,6 +40,28 @@ export interface VoiceFingerprint {
   usesLists: number // ratio
 }
 
+export type DiagnosticSeverity = "info" | "warning"
+
+export interface DiagnosticTip {
+  severity: DiagnosticSeverity
+  category: string
+  message: string
+}
+
+export interface VoiceOverrides {
+  addSignatureWords: string[]
+  removeSignatureWords: string[]
+  addNicheKeywords: string[]
+  removeNicheKeywords: string[]
+  lengthMin: number | null
+  lengthMax: number | null
+  preferredHookTypes: HookTypeName[]
+  firstPersonRatio: number | null
+  secondPersonRatio: number | null
+  questionRatio: number | null
+  exclamationRatio: number | null
+}
+
 export interface VoiceMatchDimension {
   name: string
   score: number // 0-100

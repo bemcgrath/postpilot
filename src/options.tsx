@@ -88,7 +88,17 @@ function Options() {
     loadLicenseStatus().then(setLicense)
     getClaudeApiKey().then(setClaudeApiKeyState)
     const hash = window.location.hash.slice(1) as TabId
-    if (hash) setActiveTab(hash)
+    if (hash) {
+      setActiveTab(hash)
+    } else {
+      chrome.storage.local.get("postpilot_options_tab", (result) => {
+        const tab = result.postpilot_options_tab as TabId | undefined
+        if (tab) {
+          setActiveTab(tab)
+          chrome.storage.local.remove("postpilot_options_tab")
+        }
+      })
+    }
   }, [])
 
   // Auto-save config when it changes (debounced via state)

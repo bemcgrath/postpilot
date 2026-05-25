@@ -1,6 +1,7 @@
 import type { PostScore } from "~scoring/types"
 import { humanizeHookType } from "~scoring/hook-types"
 import { getClaudeApiKey } from "./api-key-storage"
+import { BANNED_PHRASE_LABELS, WEAK_PHRASE_PATTERNS } from "~config/defaults"
 
 export interface RewriteSuggestion {
   text: string
@@ -37,12 +38,17 @@ ${governorLines ? `Governor violations:\n${governorLines}` : "No governor violat
 ${suggestionLines ? `Hook suggestions:\n${suggestionLines}` : ""}
 
 Write ${count} improved version${count > 1 ? "s" : ""} of this post. Rules:
-- Fix any governor violations (remove the flagged phrases)
-- Open with a stronger hook
+- Fix any governor violations listed above (remove the flagged phrases)
+- Open with a stronger hook, acting on the hook suggestions listed above
 - Keep the same core message and roughly the same length
 - Sound like a real person writing, not AI-generated
-- No hype words ("game-changer", "leverage", "delve", "exciting")
 ${count > 1 ? "- Each version should use a clearly different hook angle or framing" : ""}
+
+BANNED — never use these in your rewrites:
+${BANNED_PHRASE_LABELS.map((l) => `- ${l}`).join("\n")}
+
+WEAK — avoid these generic phrases too:
+${WEAK_PHRASE_PATTERNS.slice(0, 20).map((p) => `- ${p}`).join("\n")}
 
 Respond with valid JSON only, no other text:
 {
