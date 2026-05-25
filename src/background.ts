@@ -7,6 +7,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .catch((err: Error) => sendResponse({ ok: false, error: err.message }))
     return true // keep channel open for async response
   }
+
+  if (message.type === "OPEN_OPTIONS_TAB") {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL("options.html") + "#" + message.tab
+    })
+  }
 })
 
 async function fetchRewrites(apiKey: string, prompt: string): Promise<unknown> {

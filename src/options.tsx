@@ -87,6 +87,8 @@ function Options() {
     initConfig().then(setConfig)
     loadLicenseStatus().then(setLicense)
     getClaudeApiKey().then(setClaudeApiKeyState)
+    const hash = window.location.hash.slice(1) as TabId
+    if (hash) setActiveTab(hash)
   }, [])
 
   // Auto-save config when it changes (debounced via state)

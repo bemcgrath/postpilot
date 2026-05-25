@@ -70,7 +70,7 @@ export function RewriteSuggestions({ originalText, score, isPro }: Props) {
           Add your Claude API key to use this.{" "}
           <button
             className="postpilot-rewrites__settings-link"
-            onClick={() => chrome.runtime.openOptionsPage()}>
+            onClick={() => chrome.runtime.sendMessage({ type: "OPEN_OPTIONS_TAB", tab: "aiRewrites" })}>
             Open settings
           </button>
         </div>
