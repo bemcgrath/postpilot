@@ -37,8 +37,11 @@ import { VoiceMatchBreakdown } from "./VoiceMatchBreakdown"
 import { InsightsPanel } from "./InsightsPanel"
 import { RewriteSuggestions } from "./RewriteSuggestions"
 import { ScoreHistoryBadge } from "./ScoreHistoryBadge"
+import { DraftQueue } from "./DraftQueue"
 import { saveScoreEntry, getWeekStats } from "~history/score-history-storage"
 import type { WeekStats } from "~history/score-history-storage"
+import { loadDrafts, saveDraft, deleteDraft } from "~drafts/draft-storage"
+import type { DraftEntry } from "~drafts/draft-storage"
 
 function fmtHour(h: number): string {
   if (h === 0) return "12 AM"
@@ -135,6 +138,8 @@ export function PostPilotPanel() {
   const [configRevision, setConfigRevision] = useState(0)
   const [isPro, setIsPro] = useState(false)
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
+  const [drafts, setDrafts] = useState<DraftEntry[]>([])
+  const [savedMsg, setSavedMsg] = useState(false)
   const lastScoreRef = useRef<number>(0)
   const prevTextRef = useRef<string>("")
 
@@ -251,9 +256,10 @@ export function PostPilotPanel() {
     }
   }, [text])
 
-  // Load week stats on mount and when storage changes
+  // Load week stats and drafts on mount; keep in sync with storage changes
   useEffect(() => {
     getWeekStats().then(setWeekStats).catch(() => {})
+    loadDrafts().then(setDrafts).catch(() => {})
 
     const storage = getStorage()
     if (!storage) return
@@ -261,6 +267,9 @@ export function PostPilotPanel() {
       try {
         if ("postpilot_score_history" in changes) {
           getWeekStats().then(setWeekStats).catch(() => {})
+        }
+        if ("postpilot_drafts" in changes) {
+          setDrafts((changes.postpilot_drafts.newValue as DraftEntry[]) ?? [])
         }
       } catch {}
     }
@@ -277,6 +286,31 @@ export function PostPilotPanel() {
   const hookTypeBoosts = isPro && insights?.isReady ? insights.hookTypeBoosts : undefined
   const result: PostScore = scorePost(text, proFingerprint, hookTypeBoosts, proOverrides)
   lastScoreRef.current = result.hookScore.totalScore
+
+  function handleSaveDraft() {
+    saveDraft(text, result.hookScore.totalScore, result.hookScore.hookType)
+      .then((entry) => {
+        setDrafts((prev) => [entry, ...prev].slice(0, 20))
+        setSavedMsg(true)
+        setTimeout(() => setSavedMsg(false), 1500)
+      })
+      .catch(() => {})
+  }
+
+  function handleRestoreDraft(draft: DraftEntry) {
+    const box = findNearestComposeBox(panelRef.current)
+    if (!box) return
+    box.focus()
+    document.execCommand("selectAll", false)
+    document.execCommand("insertText", false, draft.text)
+  }
+
+  function handleDeleteDraft(id: string) {
+    deleteDraft(id).then(() => {
+      setDrafts((prev) => prev.filter((d) => d.id !== id))
+    }).catch(() => {})
+  }
+
   const errorCount = result.governor.issues.filter(
     (i) => i.severity === "error"
   ).length
@@ -318,11 +352,21 @@ export function PostPilotPanel() {
             <span className="postpilot-best-time">Best: {label}</span>
           ) : null
         })()}
+        {drafts.length > 0 && (
+          <span className="postpilot-drafts-count">
+            {drafts.length} draft{drafts.length !== 1 ? "s" : ""}
+          </span>
+        )}
         <span className="postpilot-logo">PostPilot</span>
       </div>
 
       {expanded && (
         <div className="postpilot-details">
+          <button
+            className={`postpilot-save-btn${savedMsg ? " postpilot-save-btn--saved" : ""}`}
+            onClick={handleSaveDraft}>
+            {savedMsg ? "Saved!" : "Save draft"}
+          </button>
           <ScoreBreakdown
             breakdown={result.hookScore.breakdown}
             suggestions={result.hookScore.suggestions}
@@ -345,6 +389,11 @@ export function PostPilotPanel() {
               currentHookType={result.hookScore.hookType}
             />
           )}
+          <DraftQueue
+            drafts={drafts}
+            onRestore={handleRestoreDraft}
+            onDelete={handleDeleteDraft}
+          />
           {!isPro && (
             <div style={{ padding: "8px 12px", fontSize: "12px", color: "#888", borderTop: "1px solid #eee", marginTop: "4px" }}>
               <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/921ab388-2b1b-44e0-afd7-54da993317d0?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0", textDecoration: "none" }}>
