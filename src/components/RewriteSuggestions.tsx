@@ -96,11 +96,25 @@ export function RewriteSuggestions({ originalText, score, isPro }: Props) {
               </div>
             </div>
           ))}
-          <button
-            className="postpilot-rewrites__retry"
-            onClick={handleGenerate}>
-            Regenerate
-          </button>
+          <div className="postpilot-rewrites__regen-row">
+            <button
+              className="postpilot-rewrites__retry"
+              onClick={handleGenerate}>
+              Regenerate
+            </button>
+            {!isPro && (
+              <span className="postpilot-rewrites__pro-nudge">
+                Pro gets 3 variants —{" "}
+                <a
+                  href="https://postpilotpro.lemonsqueezy.com/checkout/buy/921ab388-2b1b-44e0-afd7-54da993317d0?discount=0"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="postpilot-rewrites__pro-link">
+                  upgrade
+                </a>
+              </span>
+            )}
+          </div>
         </div>
       )}
     </div>

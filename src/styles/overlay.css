@@ -532,6 +532,13 @@
   text-decoration: underline;
 }
 
+.postpilot-rewrites__regen-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
 .postpilot-rewrites__retry {
   background: none;
   border: none;
@@ -540,6 +547,16 @@
   cursor: pointer;
   padding: 2px 0;
   text-decoration: underline;
+}
+
+.postpilot-rewrites__pro-nudge {
+  font-size: 11px;
+  color: #536471;
+}
+
+.postpilot-rewrites__pro-link {
+  color: #1d9bf0;
+  text-decoration: none;
 }
 
 /* Logo text */
