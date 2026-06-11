@@ -27,9 +27,7 @@
   },
   "manifest": {
     "permissions": [
-      "storage",
-      "tabs",
-      "management"
+      "storage"
     ],
     "host_permissions": [
       "https://x.com/*",
