@@ -92,9 +92,7 @@ function Options() {
     chrome.storage.local.get("postpilot_dev_pro", (r) => {
       if (r.postpilot_dev_pro === true) setDevPro(true)
     })
-    chrome.management.getSelf((info) => {
-      if (info.installType === "development") setIsDev(true)
-    })
+    if (!("update_url" in chrome.runtime.getManifest())) setIsDev(true)
     const hash = window.location.hash.slice(1) as TabId
     if (hash) {
       setActiveTab(hash)
@@ -281,7 +279,7 @@ function Options() {
               </p>
               <p style={{ color: "#555", fontSize: "13px", margin: "0 0 20px" }}>
                 Don't have a license?{" "}
-                <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/921ab388-2b1b-44e0-afd7-54da993317d0?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
+                <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
                   Get PostPilot Pro for $5/mo
                 </a>
               </p>
