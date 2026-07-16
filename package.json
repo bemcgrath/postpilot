@@ -2,7 +2,7 @@
   "name": "postpilot",
   "displayName": "PostPilot for X",
   "version": "0.6.0",
-  "description": "Score, fix, and improve every X post. Real-time hook analysis, AI rewrites, and voice coaching that adapts to how you write.",
+  "description": "Score every X post as you type — AI rewrites, thread scoring, voice coaching, and a hook library that learns what works for you.",
   "author": "PostPilot",
   "scripts": {
     "dev": "plasmo dev",
