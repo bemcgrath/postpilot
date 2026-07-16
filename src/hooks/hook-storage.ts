@@ -46,6 +46,26 @@ export async function saveHook(
   source: "auto" | "manual"
 ): Promise<HookEntry> {
   const storage = getStorage()
+  const existing = storage ? await loadHooks() : []
+
+  // Re-saving the same text (e.g. reusing a hook via "Use", then posting it)
+  // refreshes the existing entry instead of adding a duplicate.
+  const trimmed = fullText.trim()
+  const dup = existing.find((h) => h.fullText.trim() === trimmed)
+  if (dup && storage) {
+    const refreshed: HookEntry = {
+      ...dup,
+      hookType: hookType ?? dup.hookType,
+      score,
+      savedAt: Date.now(),
+      source,
+    }
+    const updated = [refreshed, ...existing.filter((h) => h.id !== dup.id)]
+    return new Promise((resolve) => {
+      storage.set({ [HOOK_KEY]: updated }, () => resolve(refreshed))
+    })
+  }
+
   const entry: HookEntry = {
     id: `hook_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     hook: firstLine(fullText),
@@ -56,7 +76,6 @@ export async function saveHook(
     source,
   }
   if (!storage) return entry
-  const existing = await loadHooks()
   const updated = [entry, ...existing].slice(0, MAX_HOOKS)
   return new Promise((resolve) => {
     storage.set({ [HOOK_KEY]: updated }, () => resolve(entry))

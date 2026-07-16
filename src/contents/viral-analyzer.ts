@@ -29,18 +29,25 @@ function injectBadge(article: Element, score: number, hookType: string | null, t
   badge.setAttribute("data-pp-text", text)
 
   const color = scoreColor(score)
+  // Absolutely positioned overlay: the badge must never affect the article's
+  // height. X's virtualized timeline re-measures cells on layout change, and
+  // an in-flow badge made posts visibly bounce every time X's own re-renders
+  // removed it and the MutationObserver re-injected it.
   badge.style.cssText = [
+    "position:absolute",
+    "top:8px",
+    "right:44px",
+    "z-index:1",
     "display:inline-flex",
     "align-items:center",
     "gap:5px",
-    "padding:3px 7px",
-    "margin:4px 0 2px 0",
+    "padding:2px 7px",
     "border-radius:4px",
     "font-size:11px",
     "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
     `border:1px solid ${color}40`,
-    "background:rgba(0,0,0,0.03)",
-    "cursor:default",
+    "background:rgba(0,0,0,0.55)",
+    "pointer-events:none",
     "user-select:none",
   ].join(";")
 
@@ -51,28 +58,26 @@ function injectBadge(article: Element, score: number, hookType: string | null, t
 
   if (hookType) {
     const sep = document.createElement("span")
-    sep.style.color = "#536471"
+    sep.style.color = "#8b98a5"
     sep.textContent = "·"
     badge.appendChild(sep)
 
     const typeEl = document.createElement("span")
-    typeEl.style.cssText = "color:#536471;font-size:10px"
+    typeEl.style.cssText = "color:#8b98a5;font-size:10px"
     typeEl.textContent = humanizeHookType(hookType)
     badge.appendChild(typeEl)
   }
 
   const label = document.createElement("span")
-  label.style.cssText = "color:#536471;font-size:10px;opacity:0.6"
+  label.style.cssText = "color:#8b98a5;font-size:10px;opacity:0.7"
   label.textContent = "PostPilot"
   badge.appendChild(label)
 
-  // Insert before the action bar
-  const actionBar = article.querySelector('[role="group"]')
-  if (actionBar?.parentElement) {
-    actionBar.parentElement.insertBefore(badge, actionBar)
-  } else {
-    article.appendChild(badge)
+  const host = article as HTMLElement
+  if (getComputedStyle(host).position === "static") {
+    host.style.position = "relative"
   }
+  host.appendChild(badge)
 }
 
 function processTweet(article: Element) {

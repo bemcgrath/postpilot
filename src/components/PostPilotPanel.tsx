@@ -85,6 +85,9 @@ function findNearestContentEditable(
         container = container.parentElement
       }
     }
+    // This panel's own compose box is gone — never inject into a different
+    // compose box elsewhere on the page (e.g. a reply modal's).
+    return null
   }
   return document.querySelector<HTMLElement>(
     '[data-testid="tweetTextarea_0"] [contenteditable="true"]'
@@ -121,9 +124,15 @@ function findNearestComposeBox(
         container = container.parentElement
       }
     }
+    // This panel's own compose box is gone. Never fall back to another
+    // compose box on the page: when a reply modal is open, the background
+    // panel would mirror the modal's text, and its mounting/unmounting
+    // shifts the whole timeline behind the dialog (~58px bounce). It also
+    // caused duplicate auto-saves of the same hook from multiple panels.
+    return null
   }
 
-  // Fallback: global search (always works, needed before ref is attached)
+  // Fallback: global search (only before the ref is attached on first render)
   return document.querySelector<HTMLElement>(
     'div[data-testid="tweetTextarea_0"] [data-text="true"]'
   ) ?? document.querySelector<HTMLElement>(
@@ -198,6 +207,9 @@ export function PostPilotPanel() {
   const lastScoreRef = useRef<number>(0)
   const prevTextRef = useRef<string>("")
   const lastSavedAtRef = useRef<number>(0)
+  const pendingClearRef = useRef<{ prev: string; score: number; timer: number } | null>(null)
+  const isProRef = useRef(isPro)
+  isProRef.current = isPro
 
   // Initialize config on mount and listen for config changes
   useEffect(() => {
@@ -308,28 +320,55 @@ export function PostPilotPanel() {
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
   }, [])
 
-  // Detect compose box clearing after substantial text — record score + auto-save hook
+  const commitClearSave = useCallback((prev: string, score: number, pro: boolean) => {
+    lastSavedAtRef.current = Date.now()
+    saveScoreEntry(score).then(() => {
+      getWeekStats().then(setWeekStats).catch(() => {})
+    }).catch(() => {})
+    if (pro && score >= 70) {
+      saveHook(prev, null, score, "auto").then((entry) => {
+        setHooks((h) => [entry, ...h.filter((x) => x.id !== entry.id)].slice(0, 50))
+      }).catch(() => {})
+    }
+  }, [])
+
+  // Detect compose box clearing after substantial text — record score + auto-save hook.
+  // Draft.js re-renders can make the compose box read as empty for a poll tick,
+  // so the save is deferred: if text reappears the pending save is discarded.
   useEffect(() => {
+    if (pendingClearRef.current) {
+      window.clearTimeout(pendingClearRef.current.timer)
+      pendingClearRef.current = null
+    }
     const prev = prevTextRef.current
     prevTextRef.current = text
-    const now = Date.now()
     if (
       text.length < 2 &&
       prev.length >= 20 &&
       lastScoreRef.current > 0 &&
-      now - lastSavedAtRef.current > 30_000
+      Date.now() - lastSavedAtRef.current > 30_000
     ) {
-      lastSavedAtRef.current = now
-      saveScoreEntry(lastScoreRef.current).then(() => {
-        getWeekStats().then(setWeekStats).catch(() => {})
-      }).catch(() => {})
-      if (isPro && lastScoreRef.current >= 70) {
-        saveHook(prev, null, lastScoreRef.current, "auto").then((entry) => {
-          setHooks((h) => [entry, ...h].slice(0, 50))
-        }).catch(() => {})
+      const score = lastScoreRef.current
+      const timer = window.setTimeout(() => {
+        pendingClearRef.current = null
+        commitClearSave(prev, score, isPro)
+      }, 600)
+      pendingClearRef.current = { prev, score, timer }
+    }
+  }, [text, isPro, commitClearSave])
+
+  // If the panel unmounts while a clear-save is pending (reply modal closes
+  // right after posting), flush it so the post still gets recorded.
+  useEffect(() => {
+    return () => {
+      const pending = pendingClearRef.current
+      if (pending) {
+        window.clearTimeout(pending.timer)
+        pendingClearRef.current = null
+        commitClearSave(pending.prev, pending.score, isProRef.current)
       }
     }
-  }, [text, isPro])
+  }, [commitClearSave])
 
   // Load week stats, drafts, and hooks on mount; keep in sync with storage changes
   useEffect(() => {
@@ -356,7 +395,15 @@ export function PostPilotPanel() {
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
   }, [])
 
-  if (!enabled || !text || text.length < 2) return null
+  if (!enabled) return null
+  // Keep the ref'd root mounted (zero-height) even when there's nothing to
+  // show: the ref anchors the scoped compose-box lookup. If it unmounted,
+  // the next poll would run ref-less with the global fallback and could pick
+  // up a different compose box's text (e.g. an open reply modal's), making
+  // the panel oscillate mount/unmount and bounce the page behind the modal.
+  if (!text || text.length < 2) {
+    return <div className="postpilot-root" ref={panelRef} />
+  }
 
   // configRevision forces re-render when config changes, scorePost reads updated config
   void configRevision
@@ -379,7 +426,7 @@ export function PostPilotPanel() {
   function handleSaveHook() {
     saveHook(text, result.hookScore.hookType, result.hookScore.totalScore, "manual")
       .then((entry) => {
-        setHooks((prev) => [entry, ...prev].slice(0, 50))
+        setHooks((prev) => [entry, ...prev.filter((h) => h.id !== entry.id)].slice(0, 50))
         setHookSavedMsg(true)
         setTimeout(() => setHookSavedMsg(false), 1500)
       })
