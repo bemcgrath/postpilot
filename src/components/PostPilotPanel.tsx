@@ -370,6 +370,31 @@ export function PostPilotPanel() {
     }
   }, [commitClearSave])
 
+  // While expanded, lift the containing timeline cell above its siblings.
+  // X's virtualized cells are transform-positioned siblings — each one is its
+  // own stacking context, painted in DOM order — so the details dropdown
+  // (z-index 9999) can never escape its cell and later cells paint over it.
+  useEffect(() => {
+    if (!expanded) return
+    const root = panelRef.current?.getRootNode()
+    const host = root instanceof ShadowRoot ? (root.host as HTMLElement) : null
+    if (!host) return
+    const targets: HTMLElement[] = [host]
+    const cell = host.closest<HTMLElement>('[data-testid="cellInnerDiv"]')
+    if (cell) targets.push(cell)
+    const prev = targets.map((t) => ({ t, z: t.style.zIndex, pos: t.style.position }))
+    for (const t of targets) {
+      t.style.zIndex = "9999"
+      if (getComputedStyle(t).position === "static") t.style.position = "relative"
+    }
+    return () => {
+      for (const { t, z, pos } of prev) {
+        t.style.zIndex = z
+        t.style.position = pos
+      }
+    }
+  }, [expanded])
+
   // Load week stats, drafts, and hooks on mount; keep in sync with storage changes
   useEffect(() => {
     getWeekStats().then(setWeekStats).catch(() => {})
