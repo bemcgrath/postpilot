@@ -3,60 +3,394 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PostPilot — Score your X posts before you send</title>
+  <title>PostPilot for X — See your post's score before you hit send</title>
+  <meta name="description" content="PostPilot scores your X posts in real time as you type. Hook analysis, 79 engagement-killer checks, AI rewrites, voice coaching. Free on the Chrome Web Store." />
+  <meta property="og:title" content="PostPilot for X" />
+  <meta property="og:description" content="See your post's score before you hit send. Real-time scoring inside the X composer — free Chrome extension." />
+  <meta property="og:image" content="https://bemcgrath.github.io/postpilot/assets/icon.png" />
+  <link rel="icon" href="assets/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --bg: #0a0b0d;
+      --panel: #121417;
+      --panel-2: #16191d;
+      --line: #23272d;
+      --text: #e9ecef;
+      --muted: #8b939c;
+      --faint: #565e66;
+      --green: #4ade80;
+      --green-dim: #14532d;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --blue: #7dd3fc;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --display: "Bricolage Grotesque", sans-serif;
+      --body: "Instrument Sans", sans-serif;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      background: #0f0f0f;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 24px;
-      text-align: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      line-height: 1.6;
+      overflow-x: hidden;
     }
-    .icon { width: 80px; height: 80px; margin-bottom: 24px; border-radius: 18px; }
-    h1 { font-size: 2.4rem; font-weight: 700; margin-bottom: 12px; }
-    p { font-size: 1.1rem; color: #999; max-width: 480px; line-height: 1.6; margin-bottom: 32px; }
+    /* atmosphere */
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: -2;
+      background:
+        radial-gradient(ellipse 60% 40% at 75% -5%, rgba(74, 222, 128, 0.07), transparent),
+        radial-gradient(ellipse 50% 35% at 10% 100%, rgba(125, 211, 252, 0.04), transparent);
+    }
+    body::after {
+      content: ""; position: fixed; inset: 0; z-index: -1; opacity: .35; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* top bar */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand img { width: 34px; height: 34px; border-radius: 8px; }
+    .brand strong { font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+    .brand span { font-family: var(--mono); font-size: .7rem; color: var(--green); border: 1px solid var(--green-dim); border-radius: 4px; padding: 2px 6px; }
+    .top-cta { font-size: .85rem; font-weight: 600; color: var(--bg); background: var(--green); padding: 8px 16px; border-radius: 7px; text-decoration: none; }
+
+    /* hero */
+    .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; padding: 56px 0 72px; }
+    h1 {
+      font-family: var(--display); font-weight: 800; letter-spacing: -0.03em;
+      font-size: clamp(2.2rem, 4.5vw, 3.3rem); line-height: 1.06; margin-bottom: 18px;
+    }
+    h1 em { font-style: normal; color: var(--green); }
+    .sub { color: var(--muted); font-size: 1.08rem; max-width: 42ch; margin-bottom: 28px; }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 18px; }
     .cta {
-      display: inline-block;
-      background: #4ade80;
-      color: #000;
-      font-weight: 600;
-      font-size: 1rem;
-      padding: 14px 28px;
-      border-radius: 8px;
-      text-decoration: none;
-      margin-bottom: 16px;
+      background: var(--green); color: #04170b; font-weight: 600; font-size: 1rem;
+      padding: 14px 26px; border-radius: 9px; text-decoration: none;
+      box-shadow: 0 0 0 1px rgba(74,222,128,.4), 0 8px 30px rgba(74,222,128,.18);
+      transition: transform .15s ease, box-shadow .15s ease;
     }
-    .pro {
-      display: inline-block;
-      background: transparent;
-      color: #4ade80;
-      font-size: 0.9rem;
-      text-decoration: none;
-      border: 1px solid #4ade80;
-      padding: 10px 24px;
-      border-radius: 8px;
-      margin-left: 12px;
+    .cta:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(74,222,128,.6), 0 12px 36px rgba(74,222,128,.28); }
+    .pro { color: var(--text); font-size: .95rem; text-decoration: none; border: 1px solid var(--line); padding: 13px 22px; border-radius: 9px; transition: border-color .15s ease; }
+    .pro:hover { border-color: var(--green); }
+    .fine { font-family: var(--mono); font-size: .72rem; color: var(--faint); }
+    .fine b { color: var(--muted); font-weight: 500; }
+
+    /* demo composer */
+    .demo {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+      padding: 20px; box-shadow: 0 30px 80px rgba(0,0,0,.5);
+      position: relative;
     }
-    .footer { margin-top: 60px; font-size: 0.8rem; color: #555; }
-    .footer a { color: #555; text-decoration: underline; }
+    .demo::before {
+      content: "x.com"; position: absolute; top: -11px; left: 18px;
+      font-family: var(--mono); font-size: .68rem; color: var(--faint);
+      background: var(--bg); padding: 0 8px;
+    }
+    .demo-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #2d3439, #1b2025); border: 1px solid var(--line); }
+    .who { font-size: .85rem; color: var(--muted); }
+    .composer { min-height: 96px; font-size: 1.02rem; line-height: 1.5; color: var(--text); }
+    .composer .ph { color: var(--faint); }
+    .caret { display: inline-block; width: 2px; height: 1.1em; background: var(--blue); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .demo-foot { display: flex; justify-content: flex-end; margin-top: 10px; }
+    .post-btn { background: #eff3f4; color: #0f1419; font-weight: 700; font-size: .85rem; border-radius: 999px; padding: 7px 18px; opacity: .5; }
+
+    /* score chip */
+    .chip {
+      margin-top: 16px; background: #101215; border: 1px solid var(--line); border-radius: 12px;
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      font-family: var(--mono); font-size: .78rem; flex-wrap: wrap;
+      transition: border-color .4s ease;
+    }
+    .chip.good { border-color: rgba(74,222,128,.35); }
+    .score {
+      width: 34px; height: 34px; border-radius: 50%; flex: none;
+      display: grid; place-items: center; font-weight: 600; font-size: .82rem; color: #04170b;
+      background: var(--amber); transition: background .4s ease;
+    }
+    .chip.good .score { background: var(--green); }
+    .hook { color: var(--text); font-weight: 500; }
+    .badge { border-radius: 5px; padding: 2px 7px; font-size: .7rem; }
+    .badge.mult { background: #23272d; color: var(--muted); }
+    .badge.voice { background: rgba(248,113,113,.15); color: var(--red); }
+    .badge.time { background: rgba(125,211,252,.12); color: var(--blue); }
+    .chars { color: var(--faint); }
+    .chip .wordmark { margin-left: auto; color: var(--faint); font-size: .7rem; }
+
+    /* stat strip */
+    .stats {
+      display: flex; flex-wrap: wrap; gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    }
+    .stat { flex: 1 1 160px; padding: 26px 18px; text-align: center; border-left: 1px solid var(--line); }
+    .stat:first-child { border-left: none; }
+    .stat b { display: block; font-family: var(--mono); font-size: 1.7rem; font-weight: 600; color: var(--green); letter-spacing: -0.02em; }
+    .stat span { font-size: .8rem; color: var(--muted); }
+
+    /* sections */
+    section { padding: 84px 0 0; }
+    .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--green); margin-bottom: 12px; }
+    h2 { font-family: var(--display); font-weight: 800; letter-spacing: -0.02em; font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.15; margin-bottom: 14px; }
+    .lead { color: var(--muted); max-width: 56ch; margin-bottom: 36px; }
+
+    /* features */
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+      transition: border-color .2s ease, transform .2s ease;
+    }
+    .card:hover { border-color: #323942; transform: translateY(-2px); }
+    .card h3 { font-family: var(--display); font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+    .card p { font-size: .87rem; color: var(--muted); }
+    .card .tag { float: right; font-family: var(--mono); font-size: .62rem; color: var(--green); border: 1px solid var(--green-dim); border-radius: 4px; padding: 1px 6px; margin-left: 8px; }
+
+    /* comparison */
+    .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 560px; }
+    th, td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+    th { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); font-weight: 500; }
+    tr:last-child td { border-bottom: none; }
+    td.price { font-family: var(--mono); }
+    td .no { color: var(--faint); }
+    td .yes { color: var(--green); font-weight: 600; }
+    tr.me { background: linear-gradient(90deg, rgba(74,222,128,.08), transparent 70%); }
+    tr.me td:first-child { color: var(--green); font-weight: 600; }
+
+    /* privacy */
+    .privacy { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
+    .privacy ul { list-style: none; }
+    .privacy li { padding: 8px 0 8px 26px; position: relative; color: var(--muted); font-size: .95rem; }
+    .privacy li::before { content: "▸"; position: absolute; left: 4px; color: var(--green); font-family: var(--mono); }
+
+    /* final cta */
+    .final { text-align: center; padding: 96px 0; }
+    .final h2 { margin-bottom: 22px; }
+
+    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; align-items: center; font-size: .8rem; color: var(--faint); }
+    footer a { color: var(--muted); text-decoration: none; margin-left: 18px; }
+    footer a:hover { color: var(--green); }
+
+    /* reveal on scroll */
+    .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; gap: 36px; padding-top: 32px; }
+      .grid { grid-template-columns: 1fr; }
+      .privacy { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .caret { animation: none; }
+    }
   </style>
 </head>
 <body>
-  <img src="assets/icon.png" alt="PostPilot" class="icon" />
-  <h1>PostPilot</h1>
-  <p>Score your X posts in real time. Know what to fix before you hit send — hook analysis, specificity scoring, and governor warnings as you type.</p>
-  <div>
-    <a class="cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank">Add to Chrome — Free</a>
-    <a class="pro" href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0" target="_blank">Go Pro — $5/mo</a>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <img src="assets/icon.png" alt="" />
+        <strong>PostPilot</strong>
+        <span>for X</span>
+      </div>
+      <a class="top-cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome</a>
+    </header>
+
+    <div class="hero">
+      <div>
+        <h1>See your post's <em>score</em> before you hit send.</h1>
+        <p class="sub">PostPilot lives inside the X composer and scores every post as you type — hook strength, specificity, and 79 engagement-killing patterns, caught while you can still fix them.</p>
+        <div class="cta-row">
+          <a class="cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome — Free</a>
+          <a class="pro" href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f" target="_blank" rel="noopener">Go Pro — $5/mo</a>
+        </div>
+        <p class="fine">No account. No servers. <b>Everything stays on your device.</b></p>
+      </div>
+
+      <div class="demo" aria-label="Animated demo of PostPilot scoring a post">
+        <div class="demo-head">
+          <div class="avatar"></div>
+          <div class="who">Everyone ▾</div>
+        </div>
+        <div class="composer"><span id="text"></span><span class="caret" id="caret"></span><span class="ph" id="ph">What's happening?</span></div>
+        <div class="demo-foot"><span class="post-btn">Post</span></div>
+        <div class="chip" id="chip" style="visibility:hidden">
+          <span class="score" id="score">55</span>
+          <span class="hook" id="hook">No hook detected</span>
+          <span class="badge mult" id="mult" hidden>1.30x</span>
+          <span class="chars" id="chars">0</span>
+          <span class="badge voice">40 Voice</span>
+          <span class="badge time">Best: 7 AM–9 AM</span>
+          <span class="wordmark">PostPilot</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats reveal">
+      <div class="stat"><b>0–100</b><span>live score as you type</span></div>
+      <div class="stat"><b>20</b><span>hook types detected</span></div>
+      <div class="stat"><b>79</b><span>engagement killers flagged</span></div>
+      <div class="stat"><b>13</b><span>voice dimensions learned</span></div>
+    </div>
+
+    <section class="reveal">
+      <p class="kicker">Free forever</p>
+      <h2>The feedback loop X never gave you.</h2>
+      <p class="lead">Every tool for X works after the fact — schedulers, analytics, autopsies. PostPilot works in the only moment that matters: while you're still writing.</p>
+      <div class="grid">
+        <div class="card"><h3>Real-time scoring</h3><p>A 0–100 score updates with every keystroke, right under the compose box.</p></div>
+        <div class="card"><h3>Hook analysis</h3><p>Detects which of 20 hook types you're using — curiosity gap, data reveal, contrarian — and how strong it lands.</p></div>
+        <div class="card"><h3>Governor warnings</h3><p>79 patterns that suppress engagement, flagged with severity before you post them.</p></div>
+        <div class="card"><h3>Specificity scoring</h3><p>Vague claims get called out. Numbers and concrete details get rewarded.</p></div>
+        <div class="card"><h3>AI rewrite</h3><p>One-click improved version via Claude — your own API key, your own data.</p></div>
+        <div class="card"><h3>Score history &amp; drafts</h3><p>Track published-post scores with a 7-day rolling average. Queue drafts with scores attached.</p></div>
+      </div>
+    </section>
+
+    <section class="reveal">
+      <p class="kicker">Pro — $5/mo</p>
+      <h2>It learns what works <em>for you</em>.</h2>
+      <p class="lead">Generic advice scores generic posts. Pro fingerprints your voice and your audience, then scores against them.</p>
+      <div class="grid">
+        <div class="card"><h3>Voice fingerprinting <span class="tag">PRO</span></h3><p>Learns your writing style across 13 dimensions and personalizes every score.</p></div>
+        <div class="card"><h3>Viral Post Analyzer <span class="tag">PRO</span></h3><p>Scores any post in your feed — every viral post becomes a lesson you can steal from.</p></div>
+        <div class="card"><h3>3 rewrite variants <span class="tag">PRO</span></h3><p>Each variant targets a different hook type. Pick the angle, keep your voice.</p></div>
+        <div class="card"><h3>Thread scorer <span class="tag">PRO</span></h3><p>Every tweet in a thread scored individually — the weakest link gets flagged.</p></div>
+        <div class="card"><h3>Hook Library <span class="tag">PRO</span></h3><p>Your best-performing openers, saved automatically and remixable when you're stuck.</p></div>
+        <div class="card"><h3>Learning engine <span class="tag">PRO</span></h3><p>Analyzes your past performance to find what your audience actually responds to.</p></div>
+      </div>
+    </section>
+
+    <section class="reveal">
+      <p class="kicker">The math</p>
+      <h2>A tenth of the price. The one feature none of them have.</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Tool</th><th>Price</th><th>Scores as you type</th><th>Focus</th></tr></thead>
+          <tbody>
+            <tr class="me"><td>PostPilot</td><td class="price">$5/mo</td><td><span class="yes">✓ in the composer</span></td><td>Post quality, before you send</td></tr>
+            <tr><td>Typefully</td><td class="price">$12.50–100/mo</td><td><span class="no">✗</span></td><td>Thread writing &amp; scheduling</td></tr>
+            <tr><td>Tweet Hunter</td><td class="price">$49/mo</td><td><span class="no">✗</span></td><td>Inspiration &amp; scheduling</td></tr>
+            <tr><td>Taplio</td><td class="price">$49/mo</td><td><span class="no">✗</span></td><td>Analytics &amp; scheduling</td></tr>
+            <tr><td>Buffer / Hootsuite</td><td class="price">$15–100/mo</td><td><span class="no">✗</span></td><td>Multi-network scheduling</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="reveal">
+      <p class="kicker">Privacy</p>
+      <div class="privacy">
+        <div>
+          <h2>No servers.<br />Nothing to leak.</h2>
+        </div>
+        <ul>
+          <li>All data lives in <span style="font-family:var(--mono);font-size:.85em">chrome.storage.local</span> — scores, drafts, voice fingerprint, everything.</li>
+          <li>Exactly two network calls: license validation and optional AI rewrites with <em>your</em> Claude API key.</li>
+          <li>Uninstall and it's all gone. There is no PostPilot database to be breached.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="final reveal">
+      <h2>Your next post is a draft.<br />Make it a <em>good</em> one.</h2>
+      <a class="cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome — Free</a>
+    </div>
+
+    <footer>
+      <span>© 2026 Brian McGrath LLC</span>
+      <span>
+        <a href="privacy-policy.html">Privacy Policy</a>
+        <a href="https://github.com/bemcgrath/postpilot/issues" target="_blank" rel="noopener">Support</a>
+      </span>
+    </footer>
   </div>
-  <div class="footer">
-    <a href="privacy-policy.html">Privacy Policy</a>
-  </div>
+
+  <script>
+    // ---- hero demo loop ----
+    const WEAK = "AI is changing everything. This is huge and it will revolutionize the industry.";
+    const STRONG = "I tracked 50 AI agents for 90 days. Most failed silently at process boundaries. Here's what the data showed:";
+    const el = {
+      text: document.getElementById("text"), ph: document.getElementById("ph"),
+      chip: document.getElementById("chip"), score: document.getElementById("score"),
+      hook: document.getElementById("hook"), mult: document.getElementById("mult"),
+      chars: document.getElementById("chars"), caret: document.getElementById("caret")
+    };
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    function setChip(score, good, hook, mult, chars) {
+      el.chip.style.visibility = "visible";
+      el.score.textContent = score;
+      el.hook.textContent = hook;
+      el.mult.hidden = !mult;
+      el.chars.textContent = chars;
+      el.chip.classList.toggle("good", good);
+    }
+
+    async function typeOut(str, from = 0) {
+      el.ph.hidden = true;
+      for (let i = from; i <= str.length; i++) {
+        el.text.textContent = str.slice(0, i);
+        el.chars.textContent = i;
+        await sleep(24);
+      }
+    }
+
+    async function wipe() {
+      const cur = el.text.textContent;
+      for (let i = cur.length; i >= 0; i -= 4) {
+        el.text.textContent = cur.slice(0, i);
+        await sleep(8);
+      }
+      el.text.textContent = "";
+    }
+
+    async function loop() {
+      while (true) {
+        await sleep(900);
+        await typeOut(WEAK);
+        setChip(55, false, "No hook detected", false, WEAK.length);
+        await sleep(2600);
+        await wipe();
+        setChip(55, false, "No hook detected", false, 0);
+        await sleep(400);
+        await typeOut(STRONG.slice(0, 35));
+        setChip(75, true, "Data Reveal", true, 35);
+        await sleep(600);
+        await typeOut(STRONG, 35);
+        setChip(75, true, "Data Reveal", true, STRONG.length);
+        await sleep(4200);
+        await wipe();
+        el.ph.hidden = false;
+        el.chip.style.visibility = "hidden";
+      }
+    }
+
+    if (reduced) {
+      el.text.textContent = STRONG;
+      el.ph.hidden = true;
+      el.caret.hidden = true;
+      setChip(75, true, "Data Reveal", true, STRONG.length);
+    } else {
+      loop();
+    }
+
+    // ---- scroll reveals ----
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    }, { threshold: 0.12 });
+    document.querySelectorAll(".reveal").forEach((n) => io.observe(n));
+  </script>
 </body>
 </html>
