@@ -663,12 +663,16 @@ function Options() {
             When your post scores below 65, PostPilot can suggest stronger rewrites using Claude.
             Your API key is stored locally — it never leaves your browser.
           </p>
-          <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 20px", lineHeight: 1.5 }}>
+          <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.5 }}>
             Free users get 1 suggestion. Pro users get 3 variants with different hook types.
             Get a key at{" "}
             <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
               console.anthropic.com
             </a>.
+          </p>
+          <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 20px", lineHeight: 1.5 }}>
+            Rewrites use Claude Haiku — Anthropic's fastest, most economical model.
+            Typical usage costs well under $1/month, billed to your key.
           </p>
 
           {claudeApiKey ? (
