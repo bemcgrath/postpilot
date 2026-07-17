@@ -69,6 +69,11 @@ export function parseVoiceProfile(
   }
 }
 
+/** Strip markdown emphasis/code markers that leak into extracted terms. */
+function cleanTerm(raw: string): string {
+  return raw.replace(/[*_`]/g, "").trim().toLowerCase()
+}
+
 /** Extract niche keywords from "Trending keywords:" lines and keyword tables. */
 function extractNicheKeywords(text: string): VocabEntry[] {
   const keywords = new Set<string>()
@@ -78,7 +83,7 @@ function extractNicheKeywords(text: string): VocabEntry[] {
     /(?:trending keywords|keywords)[:\s]*([^\n|]+)/gi
   )
   for (const match of trendingMatches) {
-    const terms = match[1].split(/[,;]/).map((t) => t.trim().toLowerCase())
+    const terms = match[1].split(/[,;]/).map(cleanTerm)
     for (const term of terms) {
       if (term.length > 1 && term.length < 30) keywords.add(term)
     }
@@ -89,7 +94,7 @@ function extractNicheKeywords(text: string): VocabEntry[] {
     /\|\s*(?:\*\*)?(?:AI Agents|Longevity|Bitcoin|Crypto)[^|]*\|[^|]*\|[^|]*?([a-z][^|]+)\|/gi
   )
   for (const match of tableMatches) {
-    const terms = match[1].split(/[,;]/).map((t) => t.trim().toLowerCase())
+    const terms = match[1].split(/[,;]/).map(cleanTerm)
     for (const term of terms) {
       if (term.length > 1 && term.length < 30) keywords.add(term)
     }
@@ -119,13 +124,24 @@ function extractNicheKeywords(text: string): VocabEntry[] {
 function extractHookRanking(text: string): HookTypeName[] {
   const ranked: Array<{ type: HookTypeName; rank: number }> = []
 
-  // Match hook table rows: | **Hook Name** | ... | ... | **#N** |
-  const rows = text.matchAll(
+  // Legacy format: | **Hook Name** | ... | ... | **#N** |
+  const legacyRows = text.matchAll(
     /\|\s*\*\*([^*]+)\*\*\s*\|[^|]*\|[^|]*\|\s*\*\*#(\d+)/g
   )
-  for (const match of rows) {
+  for (const match of legacyRows) {
     const name = match[1].trim().toLowerCase()
     const rank = parseInt(match[2], 10)
+    const hookType = HOOK_NAME_MAP[name]
+    if (hookType && !isNaN(rank)) {
+      ranked.push({ type: hookType, rank })
+    }
+  }
+
+  // Rank-first format: | 3 | **Hook Name** | ... |
+  const rankFirstRows = text.matchAll(/\|\s*(\d+)\s*\|\s*\*\*([^*|]+)\*\*/g)
+  for (const match of rankFirstRows) {
+    const rank = parseInt(match[1], 10)
+    const name = match[2].trim().toLowerCase()
     const hookType = HOOK_NAME_MAP[name]
     if (hookType && !isNaN(rank)) {
       ranked.push({ type: hookType, rank })
