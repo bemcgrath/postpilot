@@ -42,6 +42,8 @@ import { HookLibrary } from "./HookLibrary"
 import { saveScoreEntry, getWeekStats } from "~history/score-history-storage"
 import type { WeekStats } from "~history/score-history-storage"
 import { loadDrafts, saveDraft, deleteDraft } from "~drafts/draft-storage"
+import { ReviewPrompt } from "./ReviewPrompt"
+import { recordHighScorePost, shouldShowPrompt } from "~review/review-prompt-storage"
 import type { DraftEntry } from "~drafts/draft-storage"
 import { loadHooks, saveHook, deleteHook } from "~hooks/hook-storage"
 import type { HookEntry } from "~hooks/hook-storage"
@@ -204,6 +206,7 @@ export function PostPilotPanel() {
   const [hooks, setHooks] = useState<HookEntry[]>([])
   const [savedMsg, setSavedMsg] = useState(false)
   const [hookSavedMsg, setHookSavedMsg] = useState(false)
+  const [reviewPromptVisible, setReviewPromptVisible] = useState(false)
   const lastScoreRef = useRef<number>(0)
   const prevTextRef = useRef<string>("")
   const lastSavedAtRef = useRef<number>(0)
@@ -325,6 +328,11 @@ export function PostPilotPanel() {
     saveScoreEntry(score).then(() => {
       getWeekStats().then(setWeekStats).catch(() => {})
     }).catch(() => {})
+    if (score >= 70) {
+      recordHighScorePost().then((show) => {
+        if (show) setReviewPromptVisible(true)
+      }).catch(() => {})
+    }
     if (pro && score >= 70) {
       saveHook(prev, null, score, "auto").then((entry) => {
         setHooks((h) => [entry, ...h.filter((x) => x.id !== entry.id)].slice(0, 50))
@@ -400,6 +408,7 @@ export function PostPilotPanel() {
     getWeekStats().then(setWeekStats).catch(() => {})
     loadDrafts().then(setDrafts).catch(() => {})
     loadHooks().then(setHooks).catch(() => {})
+    shouldShowPrompt().then(setReviewPromptVisible).catch(() => {})
 
     const storage = getStorage()
     if (!storage) return
@@ -519,6 +528,9 @@ export function PostPilotPanel() {
 
       {expanded && (
         <div className="postpilot-details">
+          {reviewPromptVisible && (
+            <ReviewPrompt onDone={() => setReviewPromptVisible(false)} />
+          )}
           <div style={{ display: "flex", gap: "6px" }}>
             <button
               className={`postpilot-save-btn${savedMsg ? " postpilot-save-btn--saved" : ""}`}
