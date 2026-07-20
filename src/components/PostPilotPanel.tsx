@@ -550,22 +550,22 @@ export function PostPilotPanel() {
             suggestions={result.hookScore.suggestions}
           />
           <GovernorWarnings issues={result.governor.issues} />
-          {result.hookScore.totalScore < 65 && (
-            <RewriteSuggestions
-              originalText={text}
-              score={result}
-              isPro={isPro}
-              fingerprint={proFingerprint}
-              overrides={proOverrides}
-              hookTypeBoosts={hookTypeBoosts}
-              onReplace={(newText) => {
-                setTimeout(() => {
-                  injectText(panelRef.current, newText)
-                  setTimeout(readTextNow, 300)
-                }, 10)
-              }}
-            />
-          )}
+          {/* Always offer rewrite — previously hidden at score ≥65, which hid
+              the button on borderline posts (e.g. 66) that still need a stronger open. */}
+          <RewriteSuggestions
+            originalText={text}
+            score={result}
+            isPro={isPro}
+            fingerprint={proFingerprint}
+            overrides={proOverrides}
+            hookTypeBoosts={hookTypeBoosts}
+            onReplace={(newText) => {
+              setTimeout(() => {
+                injectText(panelRef.current, newText)
+                setTimeout(readTextNow, 300)
+              }, 10)
+            }}
+          />
           {weekStats && <ScoreHistoryBadge stats={weekStats} />}
           {isPro && result.voiceMatch && (
             <VoiceMatchBreakdown voiceMatch={result.voiceMatch} />

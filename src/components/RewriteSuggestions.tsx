@@ -36,6 +36,14 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
   const [undoText, setUndoText] = useState<string | null>(null)
 
   const originalScore = score.hookScore.totalScore
+  const isBorderlineOrAbove = originalScore >= 65
+  const generateLabel = isPro
+    ? isBorderlineOrAbove
+      ? "Rewrite anyway (3 variants)"
+      : "Generate 3 rewrites"
+    : isBorderlineOrAbove
+      ? "Rewrite anyway"
+      : "Improve this post"
 
   async function handleGenerate() {
     setLoading(true)
@@ -74,11 +82,18 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
       <div className="postpilot-details__heading">AI Rewrite{isPro ? " Suggestions" : " Suggestion"}</div>
 
       {!suggestions && !loading && (
-        <button
-          className="postpilot-rewrites__btn"
-          onClick={handleGenerate}>
-          {isPro ? "Generate 3 rewrites" : "Improve this post"}
-        </button>
+        <>
+          {isBorderlineOrAbove && (
+            <div className="postpilot-rewrites__hint" style={{ fontSize: "12px", color: "#71767b", marginBottom: "6px" }}>
+              Score is {originalScore}/100 — solid, but a stronger hook could push it higher.
+            </div>
+          )}
+          <button
+            className="postpilot-rewrites__btn"
+            onClick={handleGenerate}>
+            {generateLabel}
+          </button>
+        </>
       )}
 
       {loading && (
