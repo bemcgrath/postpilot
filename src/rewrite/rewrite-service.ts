@@ -27,7 +27,7 @@ function buildPrompt(
     ? score.hookScore.suggestions.map((s) => `- ${s}`).join("\n")
     : ""
 
-  return `You are helping improve an X (Twitter) post that scored below 65/100.
+  return `You are helping improve an X (Twitter) post (current hook score ${score.hookScore.totalScore}/100).
 
 ORIGINAL POST:
 ${originalText}
@@ -39,7 +39,7 @@ ${suggestionLines ? `Hook suggestions:\n${suggestionLines}` : ""}
 
 Write ${count} improved version${count > 1 ? "s" : ""} of this post. Rules:
 - Fix any governor violations listed above (remove the flagged phrases)
-- Open with a stronger hook, acting on the hook suggestions listed above
+- Open with a stronger hook (claim/collision/number first; builder proof second). Act on the hook suggestions listed above when present
 - Keep the same core message and roughly the same length
 - Sound like a real person writing, not AI-generated
 ${count > 1 ? "- Each version should use a clearly different hook angle or framing" : ""}

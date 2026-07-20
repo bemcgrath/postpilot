@@ -660,7 +660,7 @@ function Options() {
         <div style={{ padding: "24px 0" }}>
           <h3 style={{ margin: "0 0 8px", fontSize: "15px" }}>AI Rewrite Suggestions</h3>
           <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.5 }}>
-            When your post scores below 65, PostPilot can suggest stronger rewrites using Claude.
+            PostPilot can suggest stronger rewrites using Claude (always available; especially useful under 65).
             Your API key is stored locally — it never leaves your browser.
           </p>
           <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.5 }}>
