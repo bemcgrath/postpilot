@@ -16,7 +16,8 @@ window.addEventListener("unhandledrejection", (event) => {
 import type { CollectedPost } from "~learning/types"
 import { collectFromArticle } from "~learning/collector"
 import { detectUserHandle } from "~learning/user-detector"
-import { upsertCollectedPosts } from "~learning/storage"
+import { upsertCollectedPosts, loadLearnedInsights } from "~learning/storage"
+import { runLearningEngine } from "~learning/engine"
 
 export const config: PlasmoCSConfig = {
   matches: ["https://x.com/*", "https://twitter.com/*"],
@@ -37,6 +38,14 @@ const PROCESS_DEBOUNCE_MS = 2000
 
 /** Flush interval for writing to storage (ms). */
 const FLUSH_INTERVAL_MS = 5000
+
+/**
+ * Minimum time between learning-engine recalculations (ms). Previously
+ * insights only updated when the user manually clicked "Re-run Learning"
+ * in Options, so things like the best-time-to-post badge could sit
+ * unchanged for weeks even as new posts kept getting collected.
+ */
+const RECALC_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 /** Pending posts waiting to be flushed to storage. */
 let pendingPosts: CollectedPost[] = []
@@ -90,11 +99,29 @@ async function flushToStorage() {
   const batch = pendingPosts.splice(0)
   try {
     await upsertCollectedPosts(batch)
+    // Fire-and-forget: only new data could change the computed insights,
+    // so only bother checking staleness right after a successful flush.
+    maybeRecalculateInsights()
   } catch {
     // If context invalidated, just drop — don't re-queue endlessly
     if (isContextValid()) {
       pendingPosts.unshift(...batch)
     }
+  }
+}
+
+/** Re-run the learning engine if it's been a while since the last calculation. */
+async function maybeRecalculateInsights() {
+  if (!isContextValid()) return
+  try {
+    const insights = await loadLearnedInsights()
+    const staleOrMissing =
+      !insights || Date.now() - insights.generatedAt >= RECALC_INTERVAL_MS
+    if (staleOrMissing) {
+      await runLearningEngine()
+    }
+  } catch {
+    // Best-effort — never let this break post collection.
   }
 }
 
