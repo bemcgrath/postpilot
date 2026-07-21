@@ -4,12 +4,23 @@ import { initConfig } from "~config/config-storage"
 import { validateStoredLicense } from "~config/license"
 import { humanizeHookType } from "~scoring/hook-types"
 import { scorePost } from "~scoring/scoring-pipeline"
+import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
+import { loadLearnedInsights } from "~learning/storage"
+import type { VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 
 export const config: PlasmoCSConfig = {
   matches: ["https://x.com/*", "https://twitter.com/*"]
 }
 
 const BADGE_CLASS = "pp-viral-badge"
+
+// Loaded once at init. This feature is already gated to active Pro licenses
+// (see init() below), so feed badges should score with the same personalized
+// inputs as the compose panel — otherwise the same text scores differently
+// depending on which "PostPilot" badge is showing it, with no indication why.
+let fingerprint: VoiceFingerprint | null = null
+let overrides: VoiceOverrides | null = null
+let hookTypeBoosts: Record<string, number> | undefined = undefined
 
 function scoreColor(s: number): string {
   if (s >= 70) return "#00ba7c"
@@ -88,7 +99,7 @@ function processTweet(article: Element) {
   if (existing?.getAttribute("data-pp-text") === text) return
   existing?.remove()
 
-  const result = scorePost(text, null, undefined, null)
+  const result = scorePost(text, fingerprint, hookTypeBoosts, overrides)
   injectBadge(article, result.hookScore.totalScore, result.hookScore.hookType, text)
 }
 
@@ -112,6 +123,15 @@ async function init() {
 
   const status = await validateStoredLicense().catch(() => ({ isActive: false }))
   if (!status.isActive) return
+
+  const [fp, ov, insights] = await Promise.all([
+    loadFingerprint().catch(() => null),
+    loadVoiceOverrides().catch(() => null),
+    loadLearnedInsights().catch(() => null),
+  ])
+  fingerprint = fp
+  overrides = ov
+  hookTypeBoosts = insights?.isReady ? insights.hookTypeBoosts : undefined
 
   processAll()
 
