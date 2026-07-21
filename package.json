@@ -1,7 +1,7 @@
 {
   "name": "postpilot",
   "displayName": "PostPilot for X",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "description": "Score every X post as you type — AI rewrites, thread scoring, voice coaching, and a hook library that learns what works for you.",
   "author": "PostPilot",
   "scripts": {

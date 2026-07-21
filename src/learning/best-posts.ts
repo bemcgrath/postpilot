@@ -24,6 +24,13 @@ export interface BestPostCandidate {
  * fingerprint even when they happened to perform well. (Replies still count
  * toward the rest of the learning engine -- best-time, hook-type boosts --
  * this exclusion is specific to sample-post import.)
+ *
+ * Checks `isReply === false` rather than `!isReply`: posts collected before
+ * reply detection existed have no isReply field at all (undefined), and
+ * `!undefined` is true, which would silently let old replies back in. Until
+ * those posts are re-scraped (isReply gets backfilled automatically next
+ * time upsertCollectedPosts sees the same tweetId), treat "unknown" the
+ * same as "reply" -- excluded rather than wrongly suggested.
  */
 export function selectBestPostsForImport(
   posts: CollectedPost[],
@@ -37,7 +44,7 @@ export function selectBestPostsForImport(
   return posts
     .filter(
       (p) =>
-        !p.isReply &&
+        p.isReply === false &&
         !alreadyImportedTweetIds.has(p.tweetId) &&
         p.engagementRate > baseline
     )

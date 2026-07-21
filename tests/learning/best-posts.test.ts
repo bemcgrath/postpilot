@@ -89,6 +89,17 @@ describe("selectBestPostsForImport", () => {
     expect(result.map((c) => c.tweetId)).toEqual(["own-post"])
   })
 
+  it("excludes posts scraped before reply detection existed (isReply undefined)", () => {
+    const staleFromDisk = makePost({ tweetId: "pre-migration", engagementRate: 0.09 })
+    delete (staleFromDisk as Partial<CollectedPost>).isReply
+    const posts = [
+      ...Array.from({ length: 19 }, () => makePost({ engagementRate: 0.01 })),
+      staleFromDisk
+    ]
+    const result = selectBestPostsForImport(posts, new Set())
+    expect(result).toEqual([])
+  })
+
   it("carries the impressions count through for display", () => {
     const posts = [
       ...Array.from({ length: 19 }, () => makePost({ engagementRate: 0.02 })),
