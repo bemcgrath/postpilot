@@ -7,9 +7,50 @@
 
 const LS_LICENSE_KEY = "postpilot_license_key"
 const LS_INSTANCE_ID = "postpilot_instance_id"
+const LS_CACHE_ACTIVE = "postpilot_license_cache_active"
+const LS_CACHE_CHECKED_AT = "postpilot_license_cache_checked_at"
 
 const ACTIVATE_URL = "https://api.lemonsqueezy.com/v1/licenses/activate"
 const VALIDATE_URL  = "https://api.lemonsqueezy.com/v1/licenses/validate"
+
+// PostPilotPanel mounts a fresh instance for every compose box, so a naive
+// "validate on every mount" check can hit LemonSqueezy dozens of times per
+// session. Cache the result so real network validation only happens this
+// often; in between, trust the last known-good answer.
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000
+
+interface CacheEntry {
+  active: boolean
+  checkedAt: number
+}
+
+async function readCache(): Promise<CacheEntry | null> {
+  const storage = getStorage()
+  if (!storage) return null
+  return new Promise((resolve) => {
+    storage.get([LS_CACHE_ACTIVE, LS_CACHE_CHECKED_AT], (result) => {
+      const checkedAt = result[LS_CACHE_CHECKED_AT]
+      if (typeof checkedAt !== "number") { resolve(null); return }
+      resolve({ active: result[LS_CACHE_ACTIVE] === true, checkedAt })
+    })
+  })
+}
+
+async function writeCache(active: boolean): Promise<void> {
+  const storage = getStorage()
+  if (!storage) return
+  return new Promise((resolve) => {
+    storage.set({ [LS_CACHE_ACTIVE]: active, [LS_CACHE_CHECKED_AT]: Date.now() }, resolve)
+  })
+}
+
+async function clearCache(): Promise<void> {
+  const storage = getStorage()
+  if (!storage) return
+  return new Promise((resolve) => {
+    storage.remove([LS_CACHE_ACTIVE, LS_CACHE_CHECKED_AT], resolve)
+  })
+}
 
 export interface LicenseStatus {
   isActive: boolean
@@ -91,6 +132,14 @@ export async function validateStoredLicense(): Promise<LicenseStatus> {
     return { isActive: false, licenseKey: null, instanceId: null, error: null }
   }
 
+  // Trust a recent result instead of re-hitting the network on every mount —
+  // this is what makes a single transient failure survivable instead of
+  // something every compose box independently races against.
+  const cached = await readCache()
+  if (cached && Date.now() - cached.checkedAt < CACHE_TTL_MS) {
+    return { ...stored, isActive: cached.active }
+  }
+
   try {
     const res = await fetch(VALIDATE_URL, {
       method: "POST",
@@ -98,10 +147,22 @@ export async function validateStoredLicense(): Promise<LicenseStatus> {
       body: JSON.stringify({ license_key: stored.licenseKey, instance_id: stored.instanceId }),
     })
     const data = await res.json()
-    if (data.valid) return stored
-    // Key revoked — clear stored data
-    await storageRemove([LS_LICENSE_KEY, LS_INSTANCE_ID])
-    return { isActive: false, licenseKey: null, instanceId: null, error: "License no longer valid." }
+    if (data.valid) {
+      await writeCache(true)
+      return stored
+    }
+    // Don't destroy locally stored credentials on a single "invalid" response —
+    // a transient LemonSqueezy hiccup or instance-ID race would otherwise
+    // permanently downgrade a paying subscriber with no recovery path. Mark
+    // this window inactive; the license key stays in storage so the next
+    // check can self-heal if it really was just a blip.
+    await writeCache(false)
+    return {
+      isActive: false,
+      licenseKey: stored.licenseKey,
+      instanceId: stored.instanceId,
+      error: "License check failed — retrying automatically.",
+    }
   } catch {
     // Network failure — assume still active (don't lock out offline users)
     return stored
@@ -111,4 +172,5 @@ export async function validateStoredLicense(): Promise<LicenseStatus> {
 /** Remove stored license (deactivate locally). */
 export async function deactivateLicense(): Promise<void> {
   await storageRemove([LS_LICENSE_KEY, LS_INSTANCE_ID])
+  await clearCache()
 }
