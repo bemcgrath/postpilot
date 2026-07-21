@@ -10,6 +10,7 @@ export interface BestPostCandidate {
   text: string
   engagementRate: number
   boostMultiplier: number // engagementRate / baseline, for display (e.g. "2.1x baseline")
+  impressions: number
 }
 
 /**
@@ -39,6 +40,7 @@ export function selectBestPostsForImport(
       tweetId: p.tweetId,
       text: p.text,
       engagementRate: p.engagementRate,
-      boostMultiplier: p.engagementRate / baseline
+      boostMultiplier: p.engagementRate / baseline,
+      impressions: p.impressions
     }))
 }

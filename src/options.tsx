@@ -66,6 +66,7 @@ type TabId = "license" | "profile" | "posts" | "governor" | "hooks" | "analytics
 function Options() {
   const [posts, setPosts] = useState<SamplePost[]>([])
   const [bestPostCandidates, setBestPostCandidates] = useState<BestPostCandidate[]>([])
+  const [expandedCandidateIds, setExpandedCandidateIds] = useState<Set<string>>(new Set())
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
   const [overrides, setOverrides] = useState<VoiceOverrides>(emptyOverrides())
   const [inputText, setInputText] = useState("")
@@ -186,12 +187,26 @@ function Options() {
       setBestPostCandidates((prev) =>
         prev.filter((c) => !tweetIds.includes(c.tweetId))
       )
+      setExpandedCandidateIds((prev) => {
+        const next = new Set(prev)
+        for (const id of tweetIds) next.delete(id)
+        return next
+      })
       setStatus(
         `Imported ${newPosts.length} post${newPosts.length > 1 ? "s" : ""} from your best performers`
       )
     },
     [posts, bestPostCandidates]
   )
+
+  const toggleCandidateExpanded = useCallback((tweetId: string) => {
+    setExpandedCandidateIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(tweetId)) next.delete(tweetId)
+      else next.add(tweetId)
+      return next
+    })
+  }, [])
 
   const removePost = useCallback(
     (id: string) => {
@@ -477,22 +492,42 @@ function Options() {
                 style={styles.button}>
                 Add All {bestPostCandidates.length}
               </button>
-              {bestPostCandidates.map((c) => (
-                <div key={c.tweetId} style={styles.postCard}>
-                  <div style={styles.postText}>
-                    {c.text.length > 120 ? c.text.slice(0, 120) + "..." : c.text}
-                    <div style={styles.fpMuted}>
-                      {c.boostMultiplier.toFixed(1)}x your baseline engagement
+              {bestPostCandidates.map((c) => {
+                const isExpanded = expandedCandidateIds.has(c.tweetId)
+                const isLong = c.text.length > 120
+                return (
+                  <div key={c.tweetId} style={styles.postCard}>
+                    <div
+                      style={{
+                        ...styles.postText,
+                        cursor: isLong ? "pointer" : "default"
+                      }}
+                      onClick={() => isLong && toggleCandidateExpanded(c.tweetId)}
+                      title={
+                        isLong
+                          ? isExpanded
+                            ? "Click to collapse"
+                            : "Click to see full post"
+                          : undefined
+                      }>
+                      {isExpanded || !isLong
+                        ? c.text
+                        : c.text.slice(0, 120) + "..."}
+                      <div style={styles.fpMuted}>
+                        {c.boostMultiplier.toFixed(1)}x your baseline engagement
+                        {" · "}
+                        {c.impressions.toLocaleString()} views
+                      </div>
                     </div>
+                    <button
+                      onClick={() => importCandidates([c.tweetId])}
+                      style={styles.removeBtn}
+                      title="Add to sample posts">
+                      +
+                    </button>
                   </div>
-                  <button
-                    onClick={() => importCandidates([c.tweetId])}
-                    style={styles.removeBtn}
-                    title="Add to sample posts">
-                    +
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 

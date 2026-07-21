@@ -77,4 +77,13 @@ describe("selectBestPostsForImport", () => {
     expect(result).toHaveLength(1)
     expect(result[0].boostMultiplier).toBeCloseTo(3, 5) // 0.06 / 0.02
   })
+
+  it("carries the impressions count through for display", () => {
+    const posts = [
+      ...Array.from({ length: 19 }, () => makePost({ engagementRate: 0.02 })),
+      makePost({ tweetId: "star", engagementRate: 0.06, impressions: 45210 })
+    ]
+    const result = selectBestPostsForImport(posts, new Set())
+    expect(result[0].impressions).toBe(45210)
+  })
 })
