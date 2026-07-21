@@ -22,6 +22,7 @@ function makePost(
     hasImage,
     hasVideo: false,
     hasLink,
+    isReply: false,
     hookType: "data_reveal",
     hookScore: 70,
     topics: []

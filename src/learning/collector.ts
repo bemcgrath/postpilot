@@ -76,6 +76,48 @@ function extractPostedAt(article: Element): number | null {
 }
 
 /**
+ * Does this tweet visibly continue a thread beneath it? X renders a short
+ * vertical connector line below the avatar of a tweet that has a reply
+ * shown immediately after it, and omits the "Replying to @x" text on the
+ * reply itself in that case (verified live: profile "with_replies" tab
+ * shows parent -> reply as adjacent cells with only the parent carrying
+ * the connector, so checking "Replying to" text on the reply alone misses
+ * exactly the surface this feature cares about most).
+ */
+function hasOutgoingThreadConnector(article: Element): boolean {
+  const avatarEl = article.querySelector('[data-testid="Tweet-User-Avatar"]')
+  const gutter = avatarEl?.parentElement
+  if (!gutter) return false
+  return Array.from(gutter.children).some((el) => {
+    const rect = el.getBoundingClientRect()
+    if (rect.width === 0 || rect.width > 3) return false
+    const bg = window.getComputedStyle(el).backgroundColor
+    return bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent"
+  })
+}
+
+/**
+ * Is this tweet a reply? Two signals, since neither alone covers every
+ * surface: an explicit "Replying to @x" line (shown when the parent isn't
+ * rendered adjacently, e.g. home timeline out-of-context replies) or the
+ * immediately preceding tweet in the DOM carrying an outgoing thread
+ * connector (shown on profile/thread views where the parent IS rendered
+ * directly above).
+ */
+function isReplyArticle(article: Element): boolean {
+  const hasReplyingToText = Array.from(
+    article.querySelectorAll("div, span")
+  ).some((el) => el.textContent?.trim().startsWith("Replying to"))
+  if (hasReplyingToText) return true
+
+  const cell = article.closest('[data-testid="cellInnerDiv"]')
+  const prevArticle = cell?.previousElementSibling?.querySelector(
+    'article[data-testid="tweet"]'
+  )
+  return prevArticle ? hasOutgoingThreadConnector(prevArticle) : false
+}
+
+/**
  * Attempt to collect a post from a tweet article DOM element.
  * Returns null if the post shouldn't be collected (not own, too new, no impressions).
  */
@@ -143,6 +185,7 @@ export function collectFromArticle(
   const hasImage = article.querySelector('[data-testid="tweetPhoto"]') !== null
   const hasVideo = article.querySelector("video") !== null
   const hasLink = article.querySelector('[data-testid="card.wrapper"]') !== null
+  const isReply = isReplyArticle(article)
 
   // Hook analysis
   let hookType: HookTypeName | null = null
@@ -174,6 +217,7 @@ export function collectFromArticle(
     hasImage,
     hasVideo,
     hasLink,
+    isReply,
     hookType,
     hookScore,
     topics

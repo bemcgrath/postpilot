@@ -18,7 +18,12 @@ export interface BestPostCandidate {
  * Requires the same data volume the learning engine itself requires before
  * "best" means anything, and only surfaces posts genuinely above the user's
  * own baseline -- otherwise a thin or weak history would suggest its "best
- * of a bad bunch" as if it were a real signal.
+ * of a bad bunch" as if it were a real signal. Replies are excluded: they're
+ * reactive/contextual responses to someone else's post rather than the
+ * user's own standalone voice, so importing them risks skewing the
+ * fingerprint even when they happened to perform well. (Replies still count
+ * toward the rest of the learning engine -- best-time, hook-type boosts --
+ * this exclusion is specific to sample-post import.)
  */
 export function selectBestPostsForImport(
   posts: CollectedPost[],
@@ -32,7 +37,9 @@ export function selectBestPostsForImport(
   return posts
     .filter(
       (p) =>
-        !alreadyImportedTweetIds.has(p.tweetId) && p.engagementRate > baseline
+        !p.isReply &&
+        !alreadyImportedTweetIds.has(p.tweetId) &&
+        p.engagementRate > baseline
     )
     .sort((a, b) => b.engagementRate - a.engagementRate)
     .slice(0, MAX_IMPORT_SUGGESTIONS)

@@ -18,6 +18,7 @@ function makePost(overrides: Partial<CollectedPost> = {}): CollectedPost {
     hasImage: false,
     hasVideo: false,
     hasLink: false,
+    isReply: false,
     hookType: "data_reveal",
     hookScore: 70,
     topics: ["building", "agents"],
@@ -76,6 +77,16 @@ describe("selectBestPostsForImport", () => {
     const result = selectBestPostsForImport(posts, new Set())
     expect(result).toHaveLength(1)
     expect(result[0].boostMultiplier).toBeCloseTo(3, 5) // 0.06 / 0.02
+  })
+
+  it("excludes replies even when they outperform the baseline", () => {
+    const posts = [
+      ...Array.from({ length: 18 }, () => makePost({ engagementRate: 0.01 })),
+      makePost({ tweetId: "own-post", engagementRate: 0.09, isReply: false }),
+      makePost({ tweetId: "a-reply", engagementRate: 0.12, isReply: true })
+    ]
+    const result = selectBestPostsForImport(posts, new Set())
+    expect(result.map((c) => c.tweetId)).toEqual(["own-post"])
   })
 
   it("carries the impressions count through for display", () => {

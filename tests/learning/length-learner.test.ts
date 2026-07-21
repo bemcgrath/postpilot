@@ -18,6 +18,7 @@ function makePost(charCount: number, er: number): CollectedPost {
     hasImage: false,
     hasVideo: false,
     hasLink: false,
+    isReply: false,
     hookType: "data_reveal",
     hookScore: 70,
     topics: []

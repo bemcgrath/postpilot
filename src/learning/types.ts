@@ -16,6 +16,7 @@ export interface CollectedPost {
   hasImage: boolean
   hasVideo: boolean
   hasLink: boolean
+  isReply: boolean // was a reply to someone else's post, not a standalone post
   hookType: HookTypeName | null // classified via HookAnalyzer
   hookScore: number // 0-100
   topics: string[] // extracted keywords
