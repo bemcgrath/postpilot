@@ -93,14 +93,42 @@ export async function upsertCollectedPosts(
 
 // --- Learned Insights ---
 
+/**
+ * Fill in any fields missing from a stored insights object with safe
+ * defaults. The LearnedInsights shape has grown new fields several times
+ * during development (most recently weekday/weekend time splits); without
+ * this, insights cached by an older version crash every consumer that
+ * calls .length/.map on a field that simply didn't exist yet when that
+ * object was computed and persisted.
+ */
+export function normalizeInsights(raw: Partial<LearnedInsights>): LearnedInsights {
+  return {
+    generatedAt: raw.generatedAt ?? 0,
+    postsAnalyzed: raw.postsAnalyzed ?? 0,
+    baselineEngagementRate: raw.baselineEngagementRate ?? 0,
+    isReady: raw.isReady ?? false,
+    hookTypePerformance: raw.hookTypePerformance ?? [],
+    lengthPerformance: raw.lengthPerformance ?? [],
+    topicPerformance: raw.topicPerformance ?? [],
+    timePerformance: raw.timePerformance ?? [],
+    weekdayTimePerformance: raw.weekdayTimePerformance ?? [],
+    weekendTimePerformance: raw.weekendTimePerformance ?? [],
+    mediaPerformance: raw.mediaPerformance ?? null,
+    recommendations: raw.recommendations ?? [],
+    hookTypeBoosts: raw.hookTypeBoosts ?? {},
+    optimalLengthRange: raw.optimalLengthRange ?? null
+  }
+}
+
 export async function loadLearnedInsights(): Promise<LearnedInsights | null> {
   const storage = getStorage()
   if (!storage) return null
   return new Promise((resolve) => {
     storage.get(STORAGE_KEYS.LEARNED_INSIGHTS, (result) => {
-      resolve(
-        (result[STORAGE_KEYS.LEARNED_INSIGHTS] as LearnedInsights) ?? null
-      )
+      const raw = result[STORAGE_KEYS.LEARNED_INSIGHTS] as
+        | Partial<LearnedInsights>
+        | undefined
+      resolve(raw ? normalizeInsights(raw) : null)
     })
   })
 }
