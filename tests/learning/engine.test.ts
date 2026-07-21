@@ -109,4 +109,49 @@ describe("computeInsights", () => {
     expect(insights.postsAnalyzed).toBe(0)
     expect(insights.baselineEngagementRate).toBe(0)
   })
+
+  it("returns empty weekday/weekend arrays when not ready", () => {
+    const posts = Array.from({ length: 5 }, () => makePost())
+    const insights = computeInsights(posts, null)
+    expect(insights.weekdayTimePerformance).toEqual([])
+    expect(insights.weekendTimePerformance).toEqual([])
+  })
+
+  it("splits time performance by weekday vs weekend, not blended by hour alone", () => {
+    // Fixed reference points: a known Wednesday and a known Saturday, same hour.
+    const wednesday9am = new Date(2026, 6, 22, 9, 0, 0).getTime() // Jul 22 2026 is a Wednesday
+    const saturday9am = new Date(2026, 6, 25, 9, 0, 0).getTime() // Jul 25 2026 is a Saturday
+
+    const posts = [
+      // Weekday 9am posts: strong engagement
+      ...Array.from({ length: 4 }, () =>
+        makePost({ postedAt: wednesday9am, engagementRate: 0.05 })
+      ),
+      // Weekend 9am posts: weak engagement
+      ...Array.from({ length: 4 }, () =>
+        makePost({ postedAt: saturday9am, engagementRate: 0.005 })
+      ),
+      // Padding so isReady triggers (20+ posts total), spread across a
+      // neutral hour so they don't dominate either bucket.
+      ...Array.from({ length: 12 }, () =>
+        makePost({
+          postedAt: new Date(2026, 6, 23, 14, 0, 0).getTime(),
+          engagementRate: 0.02
+        })
+      )
+    ]
+
+    const insights = computeInsights(posts, null)
+    expect(insights.isReady).toBe(true)
+
+    const weekday9am = insights.weekdayTimePerformance.find((t) => t.hour === 9)
+    const weekend9am = insights.weekendTimePerformance.find((t) => t.hour === 9)
+
+    expect(weekday9am).toBeDefined()
+    expect(weekend9am).toBeDefined()
+    expect(weekday9am!.postCount).toBe(4)
+    expect(weekend9am!.postCount).toBe(4)
+    // The whole point: same hour, different day-type, genuinely different signal.
+    expect(weekday9am!.boostMultiplier).toBeGreaterThan(weekend9am!.boostMultiplier)
+  })
 })

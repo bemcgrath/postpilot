@@ -68,6 +68,23 @@ function getBestTimeLabel(
   return `${fmtHour(best.hour)}–${fmtHour(end)}`
 }
 
+/**
+ * Best-time varies between weekdays and weekends for most accounts, so
+ * blending all seven days into one figure hides that. Prefer whichever
+ * bucket matches today; if it doesn't have enough data yet, fall back to
+ * the all-days figure rather than showing nothing.
+ */
+function getBestTimeLabelForToday(insights: {
+  timePerformance: Array<{ hour: number; postCount: number; boostMultiplier: number }>
+  weekdayTimePerformance: Array<{ hour: number; postCount: number; boostMultiplier: number }>
+  weekendTimePerformance: Array<{ hour: number; postCount: number; boostMultiplier: number }>
+}): string | null {
+  const day = new Date().getDay()
+  const todaysPerformance =
+    day === 0 || day === 6 ? insights.weekendTimePerformance : insights.weekdayTimePerformance
+  return getBestTimeLabel(todaysPerformance) ?? getBestTimeLabel(insights.timePerformance)
+}
+
 function findNearestContentEditable(
   panelEl: HTMLElement | null
 ): HTMLElement | null {
@@ -514,7 +531,7 @@ export function PostPilotPanel() {
           </span>
         )}
         {isPro && insights?.isReady && (() => {
-          const label = getBestTimeLabel(insights.timePerformance)
+          const label = getBestTimeLabelForToday(insights)
           return label ? (
             <span className="postpilot-best-time">Best: {label}</span>
           ) : null

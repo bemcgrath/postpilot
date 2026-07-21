@@ -135,9 +135,53 @@ export function AnalyticsTab() {
           </InsightCard>
 
           {/* Best Posting Times */}
-          <InsightCard title="Best Posting Times">
-            {insights.timePerformance.length > 0 ? (
+          <InsightCard title="Best Posting Times — Weekdays">
+            {insights.weekdayTimePerformance.length > 0 ? (
               <div style={styles.timeList}>
+                {insights.weekdayTimePerformance.slice(0, 6).map((t) => (
+                  <div key={t.hour} style={styles.row}>
+                    <span>{formatHour(t.hour)}</span>
+                    <span style={{
+                      ...styles.value,
+                      color: t.boostMultiplier >= 1.3 ? "#00ba7c" : "#e7e9ea"
+                    }}>
+                      {t.boostMultiplier.toFixed(1)}x ({t.postCount} posts)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={styles.hint}>Not enough weekday data yet</div>
+            )}
+          </InsightCard>
+
+          <InsightCard title="Best Posting Times — Weekends">
+            {insights.weekendTimePerformance.length > 0 ? (
+              <div style={styles.timeList}>
+                {insights.weekendTimePerformance.slice(0, 6).map((t) => (
+                  <div key={t.hour} style={styles.row}>
+                    <span>{formatHour(t.hour)}</span>
+                    <span style={{
+                      ...styles.value,
+                      color: t.boostMultiplier >= 1.3 ? "#00ba7c" : "#e7e9ea"
+                    }}>
+                      {t.boostMultiplier.toFixed(1)}x ({t.postCount} posts)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={styles.hint}>Not enough weekend data yet</div>
+            )}
+          </InsightCard>
+
+          <InsightCard title="Best Posting Times — All Days Combined">
+            <div style={styles.hint}>
+              Used as a fallback when there isn't enough weekday-only or weekend-only
+              data yet. Blends every day of the week into one figure.
+            </div>
+            {insights.timePerformance.length > 0 ? (
+              <div style={{ ...styles.timeList, marginTop: 6 }}>
                 {insights.timePerformance.slice(0, 6).map((t) => (
                   <div key={t.hour} style={styles.row}>
                     <span>{formatHour(t.hour)}</span>

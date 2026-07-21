@@ -83,7 +83,9 @@ export interface LearnedInsights {
   hookTypePerformance: HookTypePerformance[]
   lengthPerformance: LengthPerformance[]
   topicPerformance: TopicPerformance[]
-  timePerformance: TimePerformance[]
+  timePerformance: TimePerformance[] // all days blended -- low-data fallback
+  weekdayTimePerformance: TimePerformance[] // Mon-Fri only
+  weekendTimePerformance: TimePerformance[] // Sat-Sun only
   mediaPerformance: MediaPerformance | null
 
   recommendations: Recommendation[]

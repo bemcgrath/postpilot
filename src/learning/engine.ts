@@ -54,6 +54,8 @@ export function computeInsights(
       lengthPerformance: [],
       topicPerformance: [],
       timePerformance: [],
+      weekdayTimePerformance: [],
+      weekendTimePerformance: [],
       mediaPerformance: null,
       recommendations: [],
       hookTypeBoosts: {},
@@ -72,8 +74,22 @@ export function computeInsights(
     posts,
     baselineEngagementRate
   )
+  // All-days blended (used as a low-data fallback -- see below).
   const timePerformance = analyzeTimePerformance(
     posts,
+    baselineEngagementRate
+  )
+  // Best-time-to-post genuinely differs between weekdays and weekends for
+  // most accounts, and blending all seven days into one figure hides that.
+  // Split first, then reuse the same per-hour analyzer on each subset.
+  const weekdayPosts = posts.filter((p) => !isWeekendPost(p.postedAt))
+  const weekendPosts = posts.filter((p) => isWeekendPost(p.postedAt))
+  const weekdayTimePerformance = analyzeTimePerformance(
+    weekdayPosts,
+    baselineEngagementRate
+  )
+  const weekendTimePerformance = analyzeTimePerformance(
+    weekendPosts,
     baselineEngagementRate
   )
   const mediaPerformance = analyzeMediaPerformance(posts)
@@ -106,11 +122,19 @@ export function computeInsights(
     lengthPerformance,
     topicPerformance,
     timePerformance,
+    weekdayTimePerformance,
+    weekendTimePerformance,
     mediaPerformance,
     recommendations,
     hookTypeBoosts,
     optimalLengthRange: optimalRange
   }
+}
+
+/** Saturday/Sunday by local time, matching how postedAt is grouped by hour elsewhere. */
+function isWeekendPost(postedAt: number): boolean {
+  const day = new Date(postedAt).getDay()
+  return day === 0 || day === 6
 }
 
 /** Compute baseline ER as median of all post engagement rates. */
