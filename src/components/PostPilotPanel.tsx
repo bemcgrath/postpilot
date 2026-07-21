@@ -117,9 +117,12 @@ function findNearestComposeBox(
     if (host) {
       let container = host.parentElement
       for (let i = 0; i < 5 && container; i++) {
+        // Read the whole compose box, not a nested `[data-text="true"]` run --
+        // Draft.js wraps each plain-text segment between mentions/links in
+        // its own such node, so querySelector (which only returns the first
+        // match) silently truncated the read at the first @mention or link,
+        // undercounting everything typed after it.
         const textarea = container.querySelector<HTMLElement>(
-          'div[data-testid="tweetTextarea_0"] [data-text="true"]'
-        ) ?? container.querySelector<HTMLElement>(
           'div[data-testid="tweetTextarea_0"]'
         )
         if (textarea) return textarea
@@ -136,8 +139,6 @@ function findNearestComposeBox(
 
   // Fallback: global search (only before the ref is attached on first render)
   return document.querySelector<HTMLElement>(
-    'div[data-testid="tweetTextarea_0"] [data-text="true"]'
-  ) ?? document.querySelector<HTMLElement>(
     'div[data-testid="tweetTextarea_0"]'
   )
 }
