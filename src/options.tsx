@@ -24,6 +24,8 @@ import {
 } from "~scoring/voice-storage"
 import { diagnoseFingerprint } from "~scoring/voice-diagnostics"
 import { humanizeHookType } from "~scoring/hook-types"
+import { loadCollectedPosts } from "~learning/storage"
+import { selectBestPostsForImport, type BestPostCandidate } from "~learning/best-posts"
 import { buildDefaults } from "~config/defaults"
 import { initConfig, saveConfig } from "~config/config-storage"
 import { activateLicense, deactivateLicense, loadLicenseStatus } from "~config/license"
@@ -63,6 +65,7 @@ type TabId = "license" | "profile" | "posts" | "governor" | "hooks" | "analytics
 
 function Options() {
   const [posts, setPosts] = useState<SamplePost[]>([])
+  const [bestPostCandidates, setBestPostCandidates] = useState<BestPostCandidate[]>([])
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
   const [overrides, setOverrides] = useState<VoiceOverrides>(emptyOverrides())
   const [inputText, setInputText] = useState("")
@@ -81,7 +84,19 @@ function Options() {
   const [apiKeySavedMsg, setApiKeySavedMsg] = useState("")
 
   useEffect(() => {
-    loadSamplePosts().then(setPosts)
+    Promise.all([loadSamplePosts(), loadCollectedPosts()]).then(
+      ([samplePosts, collected]) => {
+        setPosts(samplePosts)
+        const alreadyImported = new Set(
+          samplePosts
+            .map((p) => p.sourceTweetId)
+            .filter((id): id is string => !!id)
+        )
+        setBestPostCandidates(
+          selectBestPostsForImport(collected, alreadyImported)
+        )
+      }
+    )
     loadFingerprint().then(setFingerprint)
     loadVoiceOverrides().then(setOverrides)
     loadVoiceProfile().then(setProfileText)
@@ -150,6 +165,33 @@ function Options() {
     setInputText("")
     setStatus(`Added ${newPosts.length} post${newPosts.length > 1 ? "s" : ""}`)
   }, [inputText, posts])
+
+  const importCandidates = useCallback(
+    (tweetIds: string[]) => {
+      const toImport = bestPostCandidates.filter((c) =>
+        tweetIds.includes(c.tweetId)
+      )
+      if (toImport.length === 0) return
+
+      const newPosts: SamplePost[] = toImport.map((c) => ({
+        id: crypto.randomUUID(),
+        text: c.text,
+        addedAt: Date.now(),
+        sourceTweetId: c.tweetId
+      }))
+
+      const updated = [...posts, ...newPosts]
+      setPosts(updated)
+      saveSamplePosts(updated)
+      setBestPostCandidates((prev) =>
+        prev.filter((c) => !tweetIds.includes(c.tweetId))
+      )
+      setStatus(
+        `Imported ${newPosts.length} post${newPosts.length > 1 ? "s" : ""} from your best performers`
+      )
+    },
+    [posts, bestPostCandidates]
+  )
 
   const removePost = useCallback(
     (id: string) => {
@@ -417,6 +459,42 @@ function Options() {
               Add Post{inputText.includes(SEPARATOR) ? "s" : ""}
             </button>
           </div>
+
+          {bestPostCandidates.length > 0 && (
+            <div style={styles.section}>
+              <h2 style={styles.heading}>
+                Import From Your Best Posts ({bestPostCandidates.length})
+              </h2>
+              <p style={styles.hint}>
+                These are posts we've collected from your timeline that performed
+                well above your baseline engagement rate. Add the ones that sound
+                like you.
+              </p>
+              <button
+                onClick={() =>
+                  importCandidates(bestPostCandidates.map((c) => c.tweetId))
+                }
+                style={styles.button}>
+                Add All {bestPostCandidates.length}
+              </button>
+              {bestPostCandidates.map((c) => (
+                <div key={c.tweetId} style={styles.postCard}>
+                  <div style={styles.postText}>
+                    {c.text.length > 120 ? c.text.slice(0, 120) + "..." : c.text}
+                    <div style={styles.fpMuted}>
+                      {c.boostMultiplier.toFixed(1)}x your baseline engagement
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => importCandidates([c.tweetId])}
+                    style={styles.removeBtn}
+                    title="Add to sample posts">
+                    +
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={styles.section}>
             <h2 style={styles.heading}>

@@ -4,6 +4,7 @@ export interface SamplePost {
   id: string
   text: string
   addedAt: number
+  sourceTweetId?: string // set when imported from a collected post -- enables de-dup against re-import
 }
 
 export interface NumericProfile {

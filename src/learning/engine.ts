@@ -138,7 +138,7 @@ function isWeekendPost(postedAt: number): boolean {
 }
 
 /** Compute baseline ER as median of all post engagement rates. */
-function computeBaselineER(posts: CollectedPost[]): number {
+export function computeBaselineER(posts: CollectedPost[]): number {
   if (posts.length === 0) return 0
   const sorted = posts.map((p) => p.engagementRate).sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
