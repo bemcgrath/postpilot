@@ -108,6 +108,6 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 
 - [x] Add FAQ near pricing: "what happens if X changes its DOM," "can I cancel anytime"
 - [x] Reorder landing page so Pro features are visible before/alongside the install CTA, not buried mid-page
-- [ ] Annual pricing tier (already planned, see Comparable Tools section)
+- [x] Annual pricing tier — $50/yr (2 months free) added as a second LemonSqueezy variant on the existing PostPilot Pro product, toggle at checkout, defaults to Monthly. Landing page updated (Pro kicker, comparison table, JSON-LD offers).
 - [ ] Real social proof once numbers justify it (actual CWS install count or real tester quotes) — never a fabricated counter
 - [ ] Ongoing: DOM fragility is a standing risk, not a one-time fix. X's composer DOM has broken scoring twice already this launch week (mention-truncation, viral-analyzer personalization). Keep test coverage up rather than treating as solved.
