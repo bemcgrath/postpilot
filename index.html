@@ -84,6 +84,11 @@
     .brand strong { font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
     .brand span { font-family: var(--mono); font-size: .7rem; color: var(--green); border: 1px solid var(--green-dim); border-radius: 4px; padding: 2px 6px; }
     .top-cta { font-size: .85rem; font-weight: 600; color: var(--bg); background: var(--green); padding: 8px 16px; border-radius: 7px; text-decoration: none; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { color: var(--muted); font-size: .9rem; text-decoration: none; transition: color .15s ease; }
+    .nav-links a:hover { color: var(--text); }
+    section[id] { scroll-margin-top: 24px; }
+    @media (max-width: 640px) { .nav-links { display: none; } }
 
     /* hero */
     .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; padding: 56px 0 72px; }
@@ -240,6 +245,10 @@
         <strong>PostPilot</strong>
         <span>for X</span>
       </div>
+      <nav class="nav-links">
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </nav>
       <a class="top-cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome</a>
     </header>
 
@@ -309,7 +318,7 @@
       </div>
     </section>
 
-    <section class="reveal">
+    <section class="reveal" id="pricing">
       <p class="kicker">The math</p>
       <h2>A tenth of the price. The one feature none of them have.</h2>
       <div class="tablewrap">
@@ -326,7 +335,7 @@
       </div>
     </section>
 
-    <section class="reveal">
+    <section class="reveal" id="faq">
       <p class="kicker">FAQ</p>
       <h2>Before you ask.</h2>
       <div class="faq-list">
