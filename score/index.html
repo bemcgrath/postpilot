@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free X/Twitter Post Score Checker — PostPilot</title>
+  <meta name="description" content="Paste any X/Twitter post and get an instant score — hook strength, specificity, and engagement-killing patterns. No install, no account, nothing sent anywhere." />
+  <link rel="canonical" href="https://postpilotforx.com/score/" />
+  <meta property="og:title" content="Free X/Twitter Post Score Checker" />
+  <meta property="og:description" content="Paste your post, get an instant score. Same engine as the PostPilot Chrome extension — free, no install, nothing leaves your browser." />
+  <meta property="og:image" content="https://postpilotforx.com/assets/icon.png" />
+  <meta property="og:url" content="https://postpilotforx.com/score/" />
+  <link rel="icon" href="../assets/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0b0d;
+      --panel: #121417;
+      --panel-2: #16191d;
+      --line: #23272d;
+      --text: #e9ecef;
+      --muted: #8b939c;
+      --faint: #565e66;
+      --green: #4ade80;
+      --green-dim: #14532d;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --blue: #7dd3fc;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --display: "Bricolage Grotesque", sans-serif;
+      --body: "Instrument Sans", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--body);
+      line-height: 1.6; overflow-x: hidden;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: -2;
+      background:
+        radial-gradient(ellipse 60% 40% at 75% -5%, rgba(74, 222, 128, 0.07), transparent),
+        radial-gradient(ellipse 50% 35% at 10% 100%, rgba(125, 211, 252, 0.04), transparent);
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+
+    header { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .brand img { width: 34px; height: 34px; border-radius: 8px; }
+    .brand strong { font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; color: var(--text); }
+    .brand span { font-family: var(--mono); font-size: .7rem; color: var(--green); border: 1px solid var(--green-dim); border-radius: 4px; padding: 2px 6px; }
+    .top-cta { font-size: .85rem; font-weight: 600; color: var(--bg); background: var(--green); padding: 8px 16px; border-radius: 7px; text-decoration: none; }
+
+    .hero { padding: 32px 0 8px; text-align: center; }
+    h1 {
+      font-family: var(--display); font-weight: 800; letter-spacing: -0.03em;
+      font-size: clamp(1.8rem, 4vw, 2.5rem); line-height: 1.12; margin-bottom: 14px;
+    }
+    h1 em { font-style: normal; color: var(--green); }
+    .sub { color: var(--muted); font-size: 1rem; max-width: 46ch; margin: 0 auto 8px; }
+    .fine { font-family: var(--mono); font-size: .72rem; color: var(--faint); margin-bottom: 32px; }
+
+    .demo {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+      padding: 20px; box-shadow: 0 30px 80px rgba(0,0,0,.5); position: relative; margin-bottom: 20px;
+    }
+    .demo::before {
+      content: "x.com"; position: absolute; top: -11px; left: 18px;
+      font-family: var(--mono); font-size: .68rem; color: var(--faint);
+      background: var(--bg); padding: 0 8px;
+    }
+    textarea {
+      width: 100%; min-height: 120px; background: transparent; border: none; outline: none; resize: vertical;
+      font-family: var(--body); font-size: 1.02rem; line-height: 1.5; color: var(--text);
+    }
+    textarea::placeholder { color: var(--faint); }
+
+    .chip {
+      background: #101215; border: 1px solid var(--line); border-radius: 12px;
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      font-family: var(--mono); font-size: .78rem; flex-wrap: wrap;
+      transition: border-color .3s ease; margin-bottom: 20px;
+    }
+    .chip.green { border-color: rgba(74,222,128,.35); }
+    .chip.amber { border-color: rgba(251,191,36,.35); }
+    .chip.red { border-color: rgba(248,113,113,.35); }
+    .score {
+      width: 34px; height: 34px; border-radius: 50%; flex: none;
+      display: grid; place-items: center; font-weight: 600; font-size: .82rem; color: #04170b;
+      background: var(--amber); transition: background .3s ease;
+    }
+    .chip.green .score { background: var(--green); }
+    .chip.red .score { background: var(--red); color: #2a0a0a; }
+    .hook { color: var(--text); font-weight: 500; }
+    .chars { color: var(--faint); margin-left: auto; }
+
+    .issues { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+    .issue {
+      display: flex; gap: 8px; align-items: flex-start; font-size: .85rem;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
+    }
+    .issue .dot { flex: none; margin-top: 5px; width: 6px; height: 6px; border-radius: 50%; }
+    .issue.error .dot { background: var(--red); }
+    .issue.warning .dot { background: var(--amber); }
+    .issue .match { color: var(--faint); font-family: var(--mono); }
+    .empty-state { color: var(--faint); font-size: .85rem; text-align: center; padding: 8px 0 28px; }
+
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 16px; }
+    .cta {
+      background: var(--green); color: #04170b; font-weight: 600; font-size: .95rem;
+      padding: 13px 24px; border-radius: 9px; text-decoration: none; border: none; cursor: pointer;
+      box-shadow: 0 0 0 1px rgba(74,222,128,.4), 0 8px 30px rgba(74,222,128,.18);
+      transition: transform .15s ease, box-shadow .15s ease;
+      font-family: var(--body);
+    }
+    .cta:hover { transform: translateY(-1px); }
+    .cta:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .share {
+      color: var(--text); font-size: .95rem; text-decoration: none; border: 1px solid var(--line);
+      padding: 12px 22px; border-radius: 9px; background: transparent; cursor: pointer; font-family: var(--body);
+    }
+    .share:hover { border-color: var(--green); }
+    .share:disabled { opacity: .4; cursor: not-allowed; }
+
+    .note { text-align: center; color: var(--faint); font-family: var(--mono); font-size: .72rem; margin-bottom: 60px; }
+    .note a { color: var(--muted); }
+
+    footer { border-top: 1px solid var(--line); padding: 24px 0 40px; text-align: center; font-size: .8rem; color: var(--faint); }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--green); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="/">
+        <img src="../assets/icon.png" alt="" />
+        <strong>PostPilot</strong>
+        <span>for X</span>
+      </a>
+      <a class="top-cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome</a>
+    </header>
+
+    <div class="hero">
+      <h1>Score your post <em>before</em> you post it.</h1>
+      <p class="sub">Paste any X/Twitter post below. Same real-time scoring engine as the extension — free, no account, nothing ever leaves your browser.</p>
+      <p class="fine">NO INSTALL · NO ACCOUNT · 100% CLIENT-SIDE</p>
+    </div>
+
+    <div class="demo">
+      <textarea id="input" placeholder="Paste or type your post here…" maxlength="1000"></textarea>
+    </div>
+
+    <div class="chip" id="chip" style="visibility:hidden">
+      <span class="score" id="score">–</span>
+      <span class="hook" id="hook">–</span>
+      <span class="chars" id="chars">0</span>
+    </div>
+
+    <div class="issues" id="issues"></div>
+    <p class="empty-state" id="emptyState">Start typing to see your score.</p>
+
+    <div class="cta-row">
+      <button class="share" id="shareBtn" disabled>Share your score</button>
+      <a class="cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome — Free</a>
+    </div>
+    <p class="note">Want this live in your composer, plus voice-matched Pro scoring? <a href="/#pricing">See pricing →</a></p>
+
+    <footer>
+      <a href="/">postpilotforx.com</a>
+    </footer>
+  </div>
+
+  <script src="postpilot-score.bundle.js"></script>
+  <script>
+    const el = {
+      input: document.getElementById("input"),
+      chip: document.getElementById("chip"),
+      score: document.getElementById("score"),
+      hook: document.getElementById("hook"),
+      chars: document.getElementById("chars"),
+      issues: document.getElementById("issues"),
+      emptyState: document.getElementById("emptyState"),
+      shareBtn: document.getElementById("shareBtn")
+    };
+
+    let lastResult = null;
+    let debounceTimer = null;
+
+    function colorClass(score) {
+      if (score >= 70) return "green";
+      if (score >= 50) return "amber";
+      return "red";
+    }
+
+    function render(text) {
+      if (!text.trim()) {
+        el.chip.style.visibility = "hidden";
+        el.issues.innerHTML = "";
+        el.emptyState.hidden = false;
+        el.shareBtn.disabled = true;
+        lastResult = null;
+        return;
+      }
+
+      const result = window.PostPilotScore.score(text);
+      lastResult = result;
+      const score = result.hookScore.totalScore;
+      const hookLabel = result.hookScore.hookType
+        ? window.PostPilotScore.humanizeHookType(result.hookScore.hookType)
+        : "No hook detected";
+
+      el.emptyState.hidden = true;
+      el.chip.style.visibility = "visible";
+      el.chip.className = "chip " + colorClass(score);
+      el.score.textContent = score;
+      el.hook.textContent = hookLabel;
+      el.chars.textContent = result.charCount + " chars";
+      el.shareBtn.disabled = false;
+
+      el.issues.innerHTML = result.governor.issues
+        .map(
+          (issue) =>
+            `<div class="issue ${issue.severity}"><span class="dot"></span><span>${issue.message}${
+              issue.matchedText ? ` <span class="match">— "${issue.matchedText}"</span>` : ""
+            }</span></div>`
+        )
+        .join("");
+    }
+
+    el.input.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      const text = el.input.value;
+      debounceTimer = setTimeout(() => render(text), 150);
+    });
+
+    el.shareBtn.addEventListener("click", () => {
+      if (!lastResult) return;
+      const score = lastResult.hookScore.totalScore;
+      const tweet = `I scored ${score}/100 on my X post with PostPilot's free checker. Try yours: https://postpilotforx.com/score/`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`, "_blank", "noopener");
+    });
+  </script>
+</body>
+</html>

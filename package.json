@@ -8,6 +8,7 @@
     "dev": "plasmo dev",
     "build": "plasmo build",
     "package": "plasmo package",
+    "build:score": "node scripts/score-widget/build.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
