@@ -163,6 +163,27 @@ const FABRICATED_STATS_LABELS = [
   "Time-based percentage claim"
 ]
 
+// ---- All-caps allowlist (acronyms exempt from the SHOUTING check) ----
+const ALL_CAPS_ALLOWLIST = [
+  "API",
+  "CEO",
+  "CTO",
+  "GPT",
+  "LLM",
+  "URL",
+  "FAQ",
+  "ROI",
+  "SEO",
+  "CTA",
+  "DIY",
+  "NASA",
+  "RAG",
+  "HTTP",
+  "HTML",
+  "JSON",
+  "REST"
+]
+
 function buildGovernorDefaults(): GovernorConfig {
   return {
     bannedPhrases: phrasesFromPatterns("banned", BANNED_PHRASE_PATTERNS, BANNED_PHRASE_LABELS),
@@ -171,7 +192,12 @@ function buildGovernorDefaults(): GovernorConfig {
     fabricatedStatsPatterns: phrasesFromPatterns("fabstat", FABRICATED_STATS_PATTERNS, FABRICATED_STATS_LABELS),
     lengthErrorThreshold: 500,
     lengthWarningThreshold: 350,
-    emojiWarningEnabled: true
+    emojiWarningEnabled: true,
+    allCapsWarningEnabled: true,
+    allCapsAllowlist: ALL_CAPS_ALLOWLIST,
+    spammyPunctuationWarningEnabled: true,
+    hashtagWarningEnabled: true,
+    hashtagLimit: 2
   }
 }
 

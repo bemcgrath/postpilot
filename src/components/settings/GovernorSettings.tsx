@@ -50,6 +50,39 @@ export function GovernorSettings({ config, onChange }: GovernorSettingsProps) {
         }
       />
 
+      <ToggleSwitch
+        label="All-caps warning (SHOUTING)"
+        checked={config.allCapsWarningEnabled}
+        onChange={(v) =>
+          onChange({ ...config, allCapsWarningEnabled: v })
+        }
+      />
+
+      <ToggleSwitch
+        label="Spammy punctuation warning"
+        checked={config.spammyPunctuationWarningEnabled}
+        onChange={(v) =>
+          onChange({ ...config, spammyPunctuationWarningEnabled: v })
+        }
+      />
+
+      <ToggleSwitch
+        label="Hashtag limit warning"
+        checked={config.hashtagWarningEnabled}
+        onChange={(v) =>
+          onChange({ ...config, hashtagWarningEnabled: v })
+        }
+      />
+
+      <NumberInput
+        label="Hashtag limit"
+        value={config.hashtagLimit}
+        onChange={(v) => onChange({ ...config, hashtagLimit: v })}
+        min={0}
+        max={10}
+        hint="Warn when a post uses more hashtags than this"
+      />
+
       <div style={styles.divider} />
 
       <h2 style={styles.heading}>Phrase Lists</h2>

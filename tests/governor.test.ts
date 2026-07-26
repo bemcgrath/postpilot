@@ -11,6 +11,9 @@ describe("checkGovernor", () => {
     expect(result.hasWeakPhrases).toBe(false)
     expect(result.hasLengthWarning).toBe(false)
     expect(result.hasEmoji).toBe(false)
+    expect(result.hasAllCaps).toBe(false)
+    expect(result.hasSpammyPunctuation).toBe(false)
+    expect(result.hasExcessHashtags).toBe(false)
   })
 
   describe("banned phrases", () => {
@@ -128,6 +131,56 @@ describe("checkGovernor", () => {
     it("passes without emoji", () => {
       const result = checkGovernor("Great post with no special chars.")
       expect(result.hasEmoji).toBe(false)
+    })
+  })
+
+  describe("all-caps (SHOUTING) check", () => {
+    it("flags a shouted word", () => {
+      const result = checkGovernor("This is AMAZING and you need it now.")
+      expect(result.hasAllCaps).toBe(true)
+    })
+
+    it("does not flag common acronyms", () => {
+      const result = checkGovernor(
+        "The CEO said the API and GPT integration shipped via REST and JSON."
+      )
+      expect(result.hasAllCaps).toBe(false)
+    })
+
+    it("does not flag short acronyms like AI or CEO-length exceptions", () => {
+      const result = checkGovernor("AI is changing how CTO teams ship.")
+      expect(result.hasAllCaps).toBe(false)
+    })
+  })
+
+  describe("spammy punctuation check", () => {
+    it("flags repeated exclamation marks", () => {
+      const result = checkGovernor("This changes everything!!!")
+      expect(result.hasSpammyPunctuation).toBe(true)
+    })
+
+    it("flags repeated question marks", () => {
+      const result = checkGovernor("Wait, really??")
+      expect(result.hasSpammyPunctuation).toBe(true)
+    })
+
+    it("does not flag a single punctuation mark", () => {
+      const result = checkGovernor("This changes everything!")
+      expect(result.hasSpammyPunctuation).toBe(false)
+    })
+  })
+
+  describe("hashtag restraint check", () => {
+    it("does not flag a post within the limit", () => {
+      const result = checkGovernor("Shipping today. #buildinpublic #indiehackers")
+      expect(result.hasExcessHashtags).toBe(false)
+    })
+
+    it("flags a post over the limit", () => {
+      const result = checkGovernor(
+        "Shipping today. #buildinpublic #indiehackers #startup #saas"
+      )
+      expect(result.hasExcessHashtags).toBe(true)
     })
   })
 

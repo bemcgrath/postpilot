@@ -77,6 +77,20 @@ describe("buildDefaults", () => {
     it("has emoji warning enabled", () => {
       expect(config.governor.emojiWarningEnabled).toBe(true)
     })
+
+    it("has all-caps warning enabled with a default allowlist", () => {
+      expect(config.governor.allCapsWarningEnabled).toBe(true)
+      expect(config.governor.allCapsAllowlist).toContain("API")
+    })
+
+    it("has spammy punctuation warning enabled", () => {
+      expect(config.governor.spammyPunctuationWarningEnabled).toBe(true)
+    })
+
+    it("has hashtag warning enabled with limit 2", () => {
+      expect(config.governor.hashtagWarningEnabled).toBe(true)
+      expect(config.governor.hashtagLimit).toBe(2)
+    })
   })
 
   describe("hookAnalyzer", () => {

@@ -18,6 +18,11 @@ export interface GovernorConfig {
   lengthErrorThreshold: number // hard error above this (default 500)
   lengthWarningThreshold: number // soft warning above this (default 350)
   emojiWarningEnabled: boolean
+  allCapsWarningEnabled: boolean
+  allCapsAllowlist: string[] // acronyms exempt from the all-caps check
+  spammyPunctuationWarningEnabled: boolean
+  hashtagWarningEnabled: boolean
+  hashtagLimit: number // flag when hashtag count exceeds this (default 2)
 }
 
 /** Hook analyzer scoring thresholds. */

@@ -70,6 +70,9 @@ export interface GovernorResult {
   hasWeakPhrases: boolean
   hasLengthWarning: boolean
   hasEmoji: boolean
+  hasAllCaps: boolean
+  hasSpammyPunctuation: boolean
+  hasExcessHashtags: boolean
 }
 
 /** Combined result from the full scoring pipeline. */

@@ -7,6 +7,15 @@ import { getGovernorConfig } from "~config/config-storage"
 const EMOJI_PATTERN =
   /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2702}-\u{27B0}\u{24C2}-\u{1F251}]+/gu
 
+/** All-caps word (4+ letters) — candidate for the SHOUTING check. */
+const ALL_CAPS_WORD_PATTERN = /\b[A-Z]{4,}\b/g
+
+/** Two or more !/? in a row, e.g. "??", "!!!", "?!". */
+const SPAMMY_PUNCTUATION_PATTERN = /[!?]{2,}/
+
+/** Hashtag pattern. */
+const HASHTAG_PATTERN = /#\w+/g
+
 /** Safely compile a regex pattern string. Returns null on invalid patterns. */
 function safeRegex(pattern: string, flags: string = "i"): RegExp | null {
   try {
@@ -27,6 +36,9 @@ export function checkGovernor(
   let hasWeakPhrases = false
   let hasLengthWarning = false
   let hasEmoji = false
+  let hasAllCaps = false
+  let hasSpammyPunctuation = false
+  let hasExcessHashtags = false
 
   // Banned phrases (errors)
   for (const entry of cfg.bannedPhrases) {
@@ -104,6 +116,47 @@ export function checkGovernor(
     }
   }
 
+  // All-caps (SHOUTING) check
+  if (cfg.allCapsWarningEnabled) {
+    const capsWords = text.match(ALL_CAPS_WORD_PATTERN) ?? []
+    const shouting = capsWords.filter(
+      (w) => !cfg.allCapsAllowlist.includes(w)
+    )
+    if (shouting.length > 0) {
+      hasAllCaps = true
+      issues.push({
+        severity: "warning",
+        message: "All-caps word reads as shouting",
+        matchedText: shouting[0]
+      })
+    }
+  }
+
+  // Spammy punctuation check
+  if (cfg.spammyPunctuationWarningEnabled) {
+    const match = text.match(SPAMMY_PUNCTUATION_PATTERN)
+    if (match) {
+      hasSpammyPunctuation = true
+      issues.push({
+        severity: "warning",
+        message: "Spammy punctuation (repeated !/?)",
+        matchedText: match[0]
+      })
+    }
+  }
+
+  // Hashtag restraint check
+  if (cfg.hashtagWarningEnabled) {
+    const hashtags = text.match(HASHTAG_PATTERN) ?? []
+    if (hashtags.length > cfg.hashtagLimit) {
+      hasExcessHashtags = true
+      issues.push({
+        severity: "warning",
+        message: `Too many hashtags (${hashtags.length}, keep to ${cfg.hashtagLimit} or fewer)`
+      })
+    }
+  }
+
   // Length checks
   const charCount = text.length
   if (charCount > cfg.lengthErrorThreshold) {
@@ -125,6 +178,9 @@ export function checkGovernor(
     hasBannedPhrases,
     hasWeakPhrases,
     hasLengthWarning,
-    hasEmoji
+    hasEmoji,
+    hasAllCaps,
+    hasSpammyPunctuation,
+    hasExcessHashtags
   }
 }
