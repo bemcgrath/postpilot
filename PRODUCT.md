@@ -66,8 +66,13 @@ Chrome Extension (MV3)
 
 ## Store Listing
 
-**CWS short description (128 chars — manifest limit is 132):**  
-Score every X post as you type — AI rewrites, thread scoring, voice coaching, and a hook library that learns what works for you.
+**CWS title (from manifest name, v0.6.13):**  
+PostPilot for X — Twitter Post Score & Hook Checker
+
+**CWS short description (130 chars — manifest limit is 132):**  
+Score every Twitter/X post as you type — AI rewrites, thread scoring, voice coaching, and a hook library that learns what works.
+
+**CWS category:** Lifestyle > Social Networking (changed from Productivity > Tools, 2026-07-26 — better matches the actual competitive set: Typefully/Tweet Hunter/Buffer)
 
 **LemonSqueezy listing (name 50–60 chars, description 120–160 chars):**  
 Name (54 chars): PostPilot Pro — AI Post Scoring & Voice Coaching for X  
