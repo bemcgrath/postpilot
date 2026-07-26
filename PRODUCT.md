@@ -98,5 +98,16 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 | Taplio | $49/mo | Analytics + scheduling, no inline scoring |
 | Tweet Hunter | $49/mo | Inspiration + scheduling, no scoring |
 | Buffer/Hootsuite | $15–100/mo | Scheduling focused, no quality layer |
+| ClimbX | $29–39/mo | Growth automation: finds viral posts, auto-drafts/schedules replies and posts (10/day). Proactive content generation, not review. Cloud SaaS, connects your X account. |
 
-**PostPilot's moat:** Real-time quality scoring inside the compose box. No other tool does this.
+**PostPilot's moat:** Real-time quality scoring inside the compose box. No other tool does this. ClimbX in particular writes and schedules content for you (engagement-farming mechanics); PostPilot never touches your account or writes for you, it only scores what you already wrote, locally, before you send.
+
+---
+
+## Post-launch todo (landing page / positioning)
+
+- [ ] Add FAQ near pricing: "what happens if X changes its DOM," "can I cancel anytime"
+- [x] Reorder landing page so Pro features are visible before/alongside the install CTA, not buried mid-page
+- [ ] Annual pricing tier (already planned, see Comparable Tools section)
+- [ ] Real social proof once numbers justify it (actual CWS install count or real tester quotes) — never a fabricated counter
+- [ ] Ongoing: DOM fragility is a standing risk, not a one-time fix. X's composer DOM has broken scoring twice already this launch week (mention-truncation, viral-analyzer personalization). Keep test coverage up rather than treating as solved.
