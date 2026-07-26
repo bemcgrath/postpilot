@@ -106,7 +106,7 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 
 ## Post-launch todo (landing page / positioning)
 
-- [ ] Add FAQ near pricing: "what happens if X changes its DOM," "can I cancel anytime"
+- [x] Add FAQ near pricing: "what happens if X changes its DOM," "can I cancel anytime"
 - [x] Reorder landing page so Pro features are visible before/alongside the install CTA, not buried mid-page
 - [ ] Annual pricing tier (already planned, see Comparable Tools section)
 - [ ] Real social proof once numbers justify it (actual CWS install count or real tester quotes) — never a fabricated counter

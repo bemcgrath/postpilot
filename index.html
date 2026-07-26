@@ -188,6 +188,20 @@
     tr.me { background: linear-gradient(90deg, rgba(74,222,128,.08), transparent 70%); }
     tr.me td:first-child { color: var(--green); font-weight: 600; }
 
+    /* faq */
+    .faq-list { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .faq-item { border-bottom: 1px solid var(--line); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-item summary {
+      list-style: none; cursor: pointer; padding: 18px 22px; font-weight: 600; font-size: .96rem;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after { content: "+"; font-family: var(--mono); color: var(--faint); font-size: 1.1rem; flex-shrink: 0; }
+    .faq-item[open] summary::after { content: "\2212"; }
+    .faq-item[open] summary { background: var(--panel); }
+    .faq-item p { padding: 0 22px 20px; color: var(--muted); font-size: .9rem; max-width: 68ch; }
+
     /* privacy */
     .privacy { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
     .privacy ul { list-style: none; }
@@ -308,6 +322,21 @@
             <tr><td>Buffer / Hootsuite</td><td class="price">$15–100/mo</td><td><span class="no">✗</span></td><td>Multi-network scheduling</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <section class="reveal">
+      <p class="kicker">FAQ</p>
+      <h2>Before you ask.</h2>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Can I cancel anytime?</summary>
+          <p>Yes — Pro is a monthly subscription with no contract. Cancel from your LemonSqueezy customer portal whenever you want and you won't be billed again. The free tier (real-time scoring, hook analysis, governor warnings) stays installed and working either way.</p>
+        </details>
+        <details class="faq-item">
+          <summary>What happens if X changes its DOM?</summary>
+          <p>X's compose box has broken PostPilot's scoring twice already since launch — that's the honest tradeoff of living inside the page instead of calling an API. Each break has been caught and fixed same-day, and every fix ships with test coverage so it doesn't regress. There's no guarantee X won't break something again, but there is a track record of fixing it fast.</p>
+        </details>
       </div>
     </section>
 
