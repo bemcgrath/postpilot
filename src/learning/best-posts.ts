@@ -1,6 +1,7 @@
 import type { CollectedPost } from "./types"
 import { MIN_POSTS_FOR_LEARNING } from "./types"
 import { computeBaselineER } from "./engine"
+import { segmentOf } from "./segment"
 
 /** Cap on suggestions shown at once -- keeps the review list scannable. */
 export const MAX_IMPORT_SUGGESTIONS = 10
@@ -21,16 +22,17 @@ export interface BestPostCandidate {
  * of a bad bunch" as if it were a real signal. Replies are excluded: they're
  * reactive/contextual responses to someone else's post rather than the
  * user's own standalone voice, so importing them risks skewing the
- * fingerprint even when they happened to perform well. (Replies still count
- * toward the rest of the learning engine -- best-time, hook-type boosts --
- * this exclusion is specific to sample-post import.)
+ * fingerprint even when they happened to perform well. Replies still feed
+ * the rest of the learning engine -- best-time, hook-type boosts, and their
+ * own dedicated replyInsights -- this exclusion is specific to sample-post
+ * import.
  *
- * Checks `isReply === false` rather than `!isReply`: posts collected before
- * reply detection existed have no isReply field at all (undefined), and
- * `!undefined` is true, which would silently let old replies back in. Until
- * those posts are re-scraped (isReply gets backfilled automatically next
- * time upsertCollectedPosts sees the same tweetId), treat "unknown" the
- * same as "reply" -- excluded rather than wrongly suggested.
+ * Uses segmentOf() === "original" rather than !post.isReply: posts collected
+ * before reply detection existed have no isReply field at all (undefined),
+ * and `!undefined` is true, which would silently let old replies back in.
+ * segmentOf treats that case as "unknown", which is excluded here the same
+ * as a confirmed reply, until the post is re-scraped and isReply backfills
+ * automatically the next time upsertCollectedPosts sees the same tweetId.
  */
 export function selectBestPostsForImport(
   posts: CollectedPost[],
@@ -44,7 +46,7 @@ export function selectBestPostsForImport(
   return posts
     .filter(
       (p) =>
-        p.isReply === false &&
+        segmentOf(p) === "original" &&
         !alreadyImportedTweetIds.has(p.tweetId) &&
         p.engagementRate > baseline
     )

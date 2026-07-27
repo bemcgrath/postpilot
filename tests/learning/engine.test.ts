@@ -155,4 +155,135 @@ describe("computeInsights", () => {
     // The whole point: same hour, different day-type, genuinely different signal.
     expect(weekday9am!.boostMultiplier).toBeGreaterThan(weekend9am!.boostMultiplier)
   })
+
+  describe("reply/originals segmentation", () => {
+    it("segments once 12+ originals exist, and replyInsights is populated alongside", () => {
+      const originals = Array.from({ length: 20 }, () =>
+        makePost({ isReply: false })
+      )
+      const replies = Array.from({ length: 10 }, () =>
+        makePost({ isReply: true })
+      )
+      const insights = computeInsights([...originals, ...replies], null)
+      expect(insights.segmentation).toBe("segmented")
+      expect(insights.originalsAnalyzed).toBe(20)
+      expect(insights.repliesAnalyzed).toBe(10)
+      expect(insights.replyInsights).not.toBeNull()
+    })
+
+    it("computes hookTypeBoosts on the originals segment only, matching an originals-only run", () => {
+      const originals = Array.from({ length: 20 }, () =>
+        makePost({ isReply: false, hookType: "data_reveal", engagementRate: 0.02 })
+      )
+      const replies = Array.from({ length: 10 }, () =>
+        makePost({ isReply: true, hookType: "contrarian", engagementRate: 0.2 })
+      )
+      const mixed = computeInsights([...originals, ...replies], null)
+      const originalsOnly = computeInsights(originals, null)
+
+      expect(mixed.segmentation).toBe("segmented")
+      expect(mixed.hookTypeBoosts).toEqual(originalsOnly.hookTypeBoosts)
+    })
+
+    it("falls back to blended scoring below MIN_ORIGINALS_FOR_LEARNING with no regression", () => {
+      const originals = Array.from({ length: 5 }, (_, i) =>
+        makePost({ isReply: false, hookType: "data_reveal", engagementRate: 0.01 + i * 0.001 })
+      )
+      const replies = Array.from({ length: 15 }, (_, i) =>
+        makePost({ isReply: true, hookType: "contrarian", engagementRate: 0.01 + i * 0.001 })
+      )
+      const insights = computeInsights([...originals, ...replies], null)
+
+      expect(insights.segmentation).toBe("blended")
+      expect(insights.isReady).toBe(true)
+      expect(insights.hookTypePerformance.length).toBeGreaterThan(0)
+      expect(insights.replyInsights).not.toBeNull()
+    })
+
+    it("segments originals but withholds replyInsights below MIN_REPLIES_FOR_LEARNING", () => {
+      const originals = Array.from({ length: 18 }, () =>
+        makePost({ isReply: false })
+      )
+      const replies = Array.from({ length: 2 }, () =>
+        makePost({ isReply: true })
+      )
+      const insights = computeInsights([...originals, ...replies], null)
+
+      expect(insights.segmentation).toBe("segmented")
+      expect(insights.replyInsights).toBeNull()
+    })
+
+    it("defaults all new fields safely when not ready", () => {
+      const posts = Array.from({ length: 19 }, () => makePost({ isReply: false }))
+      const insights = computeInsights(posts, null)
+
+      expect(insights.isReady).toBe(false)
+      expect(insights.insightsVersion).toBe(2)
+      expect(insights.segmentation).toBe("blended")
+      expect(insights.replyInsights).toBeNull()
+      expect(insights.originalsAnalyzed).toBe(19)
+      expect(insights.repliesAnalyzed).toBe(0)
+      expect(insights.unknownSegmentCount).toBe(0)
+    })
+
+    it("excludes unknown-segment posts from both originals and replies counts", () => {
+      const originals = Array.from({ length: 12 }, () => makePost({ isReply: false }))
+      const replies = Array.from({ length: 8 }, () => makePost({ isReply: true }))
+      const unknown = Array.from({ length: 10 }, () => {
+        const p = makePost({ text: "no signal text here" })
+        delete (p as Partial<CollectedPost>).isReply
+        return p
+      })
+      const insights = computeInsights(
+        [...originals, ...replies, ...unknown],
+        null
+      )
+
+      expect(insights.postsAnalyzed).toBe(30)
+      expect(insights.unknownSegmentCount).toBe(10)
+      expect(insights.originalsAnalyzed).toBe(12)
+      expect(insights.repliesAnalyzed).toBe(8)
+    })
+
+    it("computes replyInsights.baselineEngagementRate from replies only, not the blended pool", () => {
+      const originals = Array.from({ length: 12 }, () =>
+        makePost({ isReply: false, engagementRate: 0.5 })
+      )
+      const replies = [
+        makePost({ isReply: true, engagementRate: 0.01 }),
+        makePost({ isReply: true, engagementRate: 0.1 }),
+        ...Array.from({ length: 6 }, () =>
+          makePost({ isReply: true, engagementRate: 0.02 })
+        )
+      ]
+      const insights = computeInsights([...originals, ...replies], null)
+
+      expect(insights.replyInsights).not.toBeNull()
+      expect(insights.replyInsights!.baselineEngagementRate).toBeCloseTo(0.02, 5)
+    })
+
+    it("smooths reply hookTypeBoosts against previous replyInsights, not against originals' boosts", () => {
+      const originals = Array.from({ length: 12 }, () =>
+        makePost({ isReply: false, hookType: "data_reveal", engagementRate: 0.02 })
+      )
+      const replies = Array.from({ length: 8 }, () =>
+        makePost({ isReply: true, hookType: "contrarian", engagementRate: 0.02 })
+      )
+      const previous = computeInsights([...originals, ...replies], null)
+      previous.hookTypeBoosts = { data_reveal: 1.0 }
+      previous.replyInsights = {
+        ...previous.replyInsights!,
+        hookTypeBoosts: { contrarian: 2.0 }
+      }
+
+      const insights = computeInsights([...originals, ...replies], previous)
+
+      expect(insights.replyInsights).not.toBeNull()
+      const smoothedContrarian = insights.replyInsights!.hookTypeBoosts.contrarian
+      expect(smoothedContrarian).toBeDefined()
+      // Pulled toward the previous *reply* value (2.0), not the unrelated
+      // previous *originals* value (1.0) -- 0.3*1.0(raw) + 0.7*2.0 = 1.7.
+      expect(smoothedContrarian!).toBeGreaterThan(1.3)
+    })
+  })
 })

@@ -13,10 +13,14 @@ const BUCKETS: Array<{ label: string; min: number; max: number }> = [
 /**
  * Analyze post performance by character length buckets.
  * Returns performance per bucket and optimal length range.
+ * `buckets` defaults to the originals' ranges above -- pass reply-specific
+ * buckets (see reply-craft-learner.ts) since replies rarely clear 100 chars
+ * and would otherwise all land in one undifferentiated bucket.
  */
 export function analyzeLengthPerformance(
   posts: CollectedPost[],
-  baselineER: number
+  baselineER: number,
+  buckets: Array<{ label: string; min: number; max: number }> = BUCKETS
 ): {
   buckets: LengthPerformance[]
   optimalRange: { min: number; max: number } | null
@@ -24,13 +28,13 @@ export function analyzeLengthPerformance(
   if (baselineER <= 0) return { buckets: [], optimalRange: null }
 
   const bucketPosts = new Map<string, CollectedPost[]>()
-  for (const bucket of BUCKETS) {
+  for (const bucket of buckets) {
     bucketPosts.set(bucket.label, [])
   }
 
   // Assign posts to buckets
   for (const post of posts) {
-    for (const bucket of BUCKETS) {
+    for (const bucket of buckets) {
       if (post.charCount >= bucket.min && post.charCount < bucket.max) {
         bucketPosts.get(bucket.label)!.push(post)
         break
@@ -41,7 +45,7 @@ export function analyzeLengthPerformance(
   const results: LengthPerformance[] = []
   let bestBucket: LengthPerformance | null = null
 
-  for (const bucket of BUCKETS) {
+  for (const bucket of buckets) {
     const bPosts = bucketPosts.get(bucket.label)!
     if (bPosts.length === 0) continue
 

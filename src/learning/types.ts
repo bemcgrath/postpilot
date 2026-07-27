@@ -74,14 +74,42 @@ export interface Recommendation {
   boostMultiplier: number
 }
 
+/** Reply-specific craft signals, computed with the same predicates scoreReplyCraft uses. */
+export interface ReplyCraftInsights {
+  repliesAnalyzed: number
+  baselineEngagementRate: number
+  optimalLengthRange: { min: number; max: number }
+  lengthPerformance: LengthPerformance[] // reply-specific buckets, not the originals' 0-100 first bucket
+  hookTypeBoosts: Partial<Record<HookTypeName, number>>
+  craftSignals: {
+    multiSentenceShare: number // share of top replies with 2+ sentences
+    mechanismShare: number // share of top replies with mechanism/constraint language
+    specificityShare: number // share of top replies with a number or named entity
+    praiseOnlyShareLow: number // share of bottom replies that are praise-only
+  }
+  topExamples: Array<{ tweetId: string; text: string; er: number }>
+  lowExamples: Array<{ tweetId: string; text: string; er: number }>
+  recommendation: string
+}
+
+/** How the originals side of an insights payload was computed. */
+export type InsightsSegmentation = "segmented" | "blended"
+
 /** Output of the learning engine — all personalized insights. */
 export interface LearnedInsights {
+  insightsVersion: number // 1 = pre-split (absent in stored data), 2 = segmented
+  segmentation: InsightsSegmentation // describes only the originals side
+  originalsAnalyzed: number
+  repliesAnalyzed: number
+  unknownSegmentCount: number
+  replyInsights: ReplyCraftInsights | null
+
   generatedAt: number
-  postsAnalyzed: number
-  baselineEngagementRate: number
+  postsAnalyzed: number // still ALL posts, including unknown
+  baselineEngagementRate: number // still median of ALL posts (displayed value)
   isReady: boolean // true when postsAnalyzed >= 20
 
-  hookTypePerformance: HookTypePerformance[]
+  hookTypePerformance: HookTypePerformance[] // originals when segmented, else blended
   lengthPerformance: LengthPerformance[]
   topicPerformance: TopicPerformance[]
   timePerformance: TimePerformance[] // all days blended -- low-data fallback
@@ -103,6 +131,12 @@ export const STORAGE_KEYS = {
 
 /** Minimum posts required before learning engine produces insights. */
 export const MIN_POSTS_FOR_LEARNING = 20
+
+/** Minimum originals required before the originals-side analyzers run segmented rather than blended. */
+export const MIN_ORIGINALS_FOR_LEARNING = 12
+
+/** Minimum replies required before replyInsights is computed (matches Atlas's validated threshold). */
+export const MIN_REPLIES_FOR_LEARNING = 8
 
 /** Maximum posts stored (oldest evicted). */
 export const MAX_STORED_POSTS = 500

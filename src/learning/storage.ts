@@ -103,6 +103,12 @@ export async function upsertCollectedPosts(
  */
 export function normalizeInsights(raw: Partial<LearnedInsights>): LearnedInsights {
   return {
+    insightsVersion: raw.insightsVersion ?? 1,
+    segmentation: raw.segmentation ?? "blended",
+    originalsAnalyzed: raw.originalsAnalyzed ?? 0,
+    repliesAnalyzed: raw.repliesAnalyzed ?? 0,
+    unknownSegmentCount: raw.unknownSegmentCount ?? 0,
+    replyInsights: raw.replyInsights ?? null,
     generatedAt: raw.generatedAt ?? 0,
     postsAnalyzed: raw.postsAnalyzed ?? 0,
     baselineEngagementRate: raw.baselineEngagementRate ?? 0,

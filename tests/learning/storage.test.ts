@@ -18,6 +18,42 @@ describe("normalizeInsights", () => {
     expect(result.postsAnalyzed).toBe(0)
     expect(result.baselineEngagementRate).toBe(0)
     expect(result.generatedAt).toBe(0)
+    expect(result.insightsVersion).toBe(1)
+    expect(result.segmentation).toBe("blended")
+    expect(result.originalsAnalyzed).toBe(0)
+    expect(result.repliesAnalyzed).toBe(0)
+    expect(result.unknownSegmentCount).toBe(0)
+    expect(result.replyInsights).toBeNull()
+  })
+
+  it("simulates a payload cached before the reply-craft split shipped", () => {
+    // Mirrors a real stored object from before insightsVersion/segmentation/
+    // replyInsights existed -- normalizeInsights must describe it truthfully
+    // as version 1 / blended, not silently claim it was ever segmented.
+    const staleFromDisk = {
+      generatedAt: 456,
+      postsAnalyzed: 22,
+      baselineEngagementRate: 0.03,
+      isReady: true,
+      hookTypePerformance: [],
+      lengthPerformance: [],
+      topicPerformance: [],
+      timePerformance: [],
+      weekdayTimePerformance: [],
+      weekendTimePerformance: [],
+      mediaPerformance: null,
+      recommendations: [],
+      hookTypeBoosts: {},
+      optimalLengthRange: null
+      // insightsVersion / segmentation / originalsAnalyzed / repliesAnalyzed /
+      // unknownSegmentCount / replyInsights intentionally absent
+    } as unknown as Partial<import("~learning/types").LearnedInsights>
+
+    const result = normalizeInsights(staleFromDisk)
+    expect(result.insightsVersion).toBe(1)
+    expect(result.segmentation).toBe("blended")
+    expect(result.replyInsights).toBeNull()
+    expect(result.postsAnalyzed).toBe(22)
   })
 
   it("simulates the exact bug: data cached before weekday/weekend fields existed", () => {
@@ -51,6 +87,12 @@ describe("normalizeInsights", () => {
 
   it("preserves a fully-populated object unchanged", () => {
     const full = {
+      insightsVersion: 2,
+      segmentation: "segmented" as const,
+      originalsAnalyzed: 18,
+      repliesAnalyzed: 10,
+      unknownSegmentCount: 2,
+      replyInsights: null,
       generatedAt: 1000,
       postsAnalyzed: 30,
       baselineEngagementRate: 0.05,
