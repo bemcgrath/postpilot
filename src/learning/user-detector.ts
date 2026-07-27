@@ -1,22 +1,37 @@
 import { loadUserHandle, saveUserHandle } from "./storage"
 
 /**
+ * Pure merge logic (unit-testable without a DOM): a fresh detection always
+ * wins over the cache, falling back to the cache only when detection itself
+ * failed (e.g. the page is still loading) -- the one scenario the cache
+ * actually exists for.
+ */
+export function resolveUserHandle(
+  detected: string | null,
+  cached: string | null
+): { handle: string | null; shouldUpdateCache: boolean } {
+  if (detected) {
+    return { handle: detected, shouldUpdateCache: detected !== cached }
+  }
+  return { handle: cached, shouldUpdateCache: false }
+}
+
+/**
  * Detect the current user's X handle.
- * Strategy:
- * 1. Check storage for cached handle
- * 2. Parse URL if on own profile page
- * 3. Read sidebar profile link
+ *
+ * Real bug found live: the cache was never re-validated against the DOM, so
+ * when a user renamed their X handle, every post's isOwnPost() check
+ * silently failed forever against the stale cached name -- freezing post
+ * collection entirely, for months, with no visible error anywhere.
  */
 export async function detectUserHandle(): Promise<string | null> {
-  // Check cache first
   const cached = await loadUserHandle()
-  if (cached) return cached
-
   const detected = detectFromDOM()
-  if (detected) {
+  const { handle, shouldUpdateCache } = resolveUserHandle(detected, cached)
+  if (shouldUpdateCache && detected) {
     await saveUserHandle(detected)
   }
-  return detected
+  return handle
 }
 
 /** Extract handle from DOM without async storage access. */
