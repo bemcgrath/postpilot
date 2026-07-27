@@ -5,6 +5,7 @@ export interface ComposerSignals {
   precededByTweetArticle: boolean // a rendered parent tweet above the composer
   inDialog: boolean // composer is inside [role="dialog"]
   pathname: string // location.pathname
+  hasReplyToParam: boolean // in_reply_to= present in location.search (X's own /intent/post reply URLs)
 }
 
 /**
@@ -15,6 +16,11 @@ export interface ComposerSignals {
  */
 export function classifyComposerSignals(signals: ComposerSignals): ComposerKind {
   if (signals.hasReplyingToText) return "reply"
+
+  // A URL-level signal, not DOM-dependent -- caught a real bug where a
+  // /intent/post?in_reply_to=... reply landed on neither of the two
+  // pathname patterns below and had to fall back entirely on DOM text.
+  if (signals.hasReplyToParam) return "reply"
 
   if (
     signals.pathname === "/compose/post" ||
@@ -30,6 +36,22 @@ export function classifyComposerSignals(signals: ComposerSignals): ComposerKind 
   return "unknown"
 }
 
+/**
+ * LIVE-VERIFIED 2026-07-26 on an actual x.com reply modal (open question O-3
+ * in the reply-learning spec, now resolved): findComposeContext's ancestor
+ * walk correctly finds the textarea's container early (3 levels up from the
+ * toolbar in the observed case), but "Replying to @x" and the parent tweet
+ * article only render 7+ levels up -- outside that narrow container, which
+ * stops climbing as soon as it finds the textarea. Widening to the enclosing
+ * [role="dialog"] (confirmed present and containing both signals) fixes this
+ * without loosening the scoping requirement below: .closest() still only
+ * walks *this* composer's own ancestors, so it can't cross into a different
+ * panel's dialog.
+ */
+function widenToDialog(container: HTMLElement): HTMLElement {
+  return (container.closest('[role="dialog"]') as HTMLElement | null) ?? container
+}
+
 function hasReplyingToTextNear(container: HTMLElement): boolean {
   return Array.from(container.querySelectorAll("div, span")).some((el) =>
     el.textContent?.trim().startsWith("Replying to")
@@ -38,11 +60,8 @@ function hasReplyingToTextNear(container: HTMLElement): boolean {
 
 /**
  * Structural analogue of collector.ts's isReplyArticle/hasOutgoingThreadConnector
- * fallback, for the composer surface rather than a rendered timeline tweet.
- * NOT LIVE-VERIFIED (open question O-3 in the reply-learning spec): confirm on
- * x.com, in both the reply modal and the status-page inline composer, whether
- * a parent tweet article actually renders immediately before the composer's
- * scoped container before relying on this signal.
+ * fallback, for the inline status-page composer (not the reply modal, which
+ * has no cellInnerDiv sibling at all -- see findArticleInDialog below).
  */
 function hasPrecedingTweetArticle(container: HTMLElement): boolean {
   const cell = container.closest('[data-testid="cellInnerDiv"]')
@@ -50,6 +69,16 @@ function hasPrecedingTweetArticle(container: HTMLElement): boolean {
     'article[data-testid="tweet"]'
   )
   return prevArticle != null
+}
+
+/**
+ * The reply modal renders its parent tweet directly inside the dialog, above
+ * the composer -- not as a cellInnerDiv sibling, so hasPrecedingTweetArticle
+ * alone misses it entirely. Confirmed live: the same dialog that contains
+ * "Replying to" text also contains this article.
+ */
+function findArticleInDialog(container: HTMLElement): Element | null {
+  return widenToDialog(container).querySelector('article[data-testid="tweet"]')
 }
 
 /**
@@ -61,10 +90,15 @@ function hasPrecedingTweetArticle(container: HTMLElement): boolean {
  */
 export function detectComposerKind(container: HTMLElement | null): ComposerKind {
   const signals: ComposerSignals = {
-    hasReplyingToText: container ? hasReplyingToTextNear(container) : false,
-    precededByTweetArticle: container ? hasPrecedingTweetArticle(container) : false,
+    hasReplyingToText: container ? hasReplyingToTextNear(widenToDialog(container)) : false,
+    precededByTweetArticle: container
+      ? hasPrecedingTweetArticle(container) || findArticleInDialog(container) != null
+      : false,
     inDialog: container ? container.closest('[role="dialog"]') != null : false,
-    pathname: typeof location !== "undefined" ? location.pathname : ""
+    pathname: typeof location !== "undefined" ? location.pathname : "",
+    hasReplyToParam:
+      typeof location !== "undefined" &&
+      new URLSearchParams(location.search).has("in_reply_to")
   }
   return classifyComposerSignals(signals)
 }
@@ -76,7 +110,8 @@ export function readParentTweetText(container: HTMLElement | null): string | nul
   const prevArticle = cell?.previousElementSibling?.querySelector(
     'article[data-testid="tweet"]'
   )
-  const textEl = prevArticle?.querySelector('[data-testid="tweetText"]')
+  const article = prevArticle ?? findArticleInDialog(container)
+  const textEl = article?.querySelector('[data-testid="tweetText"]')
   const text = textEl?.textContent?.trim()
   return text ? text : null
 }

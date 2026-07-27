@@ -9,6 +9,7 @@ function makeSignals(overrides: Partial<ComposerSignals> = {}): ComposerSignals 
     precededByTweetArticle: false,
     inDialog: false,
     pathname: "/home",
+    hasReplyToParam: false,
     ...overrides
   }
 }
@@ -44,5 +45,17 @@ describe("classifyComposerSignals", () => {
     expect(
       classifyComposerSignals(makeSignals({ pathname: "/some/other/page" }))
     ).toBe("unknown")
+  })
+
+  it("regression: an /intent/post?in_reply_to=... reply is a reply even with no DOM signals", () => {
+    // Real bug: this pathname matches neither the compose/post nor the
+    // status-page pattern, so without hasReplyToParam it fell through to
+    // "unknown" -- and from there scored as an original, applying the
+    // questionNoNumbers penalty to a genuine reply.
+    expect(
+      classifyComposerSignals(
+        makeSignals({ pathname: "/intent/post", hasReplyToParam: true })
+      )
+    ).toBe("reply")
   })
 })
