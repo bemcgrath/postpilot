@@ -149,5 +149,10 @@ describe("buildDefaults", () => {
       expect(config.pipeline.sweetSpotMin).toBe(280)
       expect(config.pipeline.sweetSpotMax).toBe(320)
     })
+
+    it("has reply sweet spot 60-160", () => {
+      expect(config.pipeline.replySweetSpotMin).toBe(60)
+      expect(config.pipeline.replySweetSpotMax).toBe(160)
+    })
   })
 })

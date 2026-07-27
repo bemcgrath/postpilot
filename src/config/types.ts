@@ -72,6 +72,8 @@ export interface HookTypesConfig {
 export interface PipelineConfig {
   sweetSpotMin: number
   sweetSpotMax: number
+  replySweetSpotMin: number // cold-start default; learned optimalLengthRange takes precedence once available
+  replySweetSpotMax: number
 }
 
 /** Top-level config object. */

@@ -242,7 +242,12 @@ function buildHookTypesDefaults(): HookTypesConfig {
 function buildPipelineDefaults(): PipelineConfig {
   return {
     sweetSpotMin: 280,
-    sweetSpotMax: 320
+    sweetSpotMax: 320,
+    // Brackets Atlas's measured 80-130 reply band with room on both sides --
+    // only a cold-start default, replaced by the learned optimalLengthRange
+    // once MIN_REPLIES_FOR_LEARNING is met.
+    replySweetSpotMin: 60,
+    replySweetSpotMax: 160
   }
 }
 

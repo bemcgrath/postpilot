@@ -40,6 +40,7 @@ export interface ScoreBreakdown {
   patternMatch: number
   penalties: number
   penaltyReasons: string[]
+  replyCraft?: number // present only when kind === "reply"
 }
 
 /** Result of hook analysis. */
@@ -80,6 +81,9 @@ export interface PostScore {
   hookScore: HookScore
   governor: GovernorResult
   charCount: number
-  inSweetSpot: boolean // 280-320 chars
+  inSweetSpot: boolean // within sweetSpotRange
   voiceMatch: import("./voice-types").VoiceMatchResult | null
+  kind: import("./reply-context").ComposerKind
+  sweetSpotRange: { min: number; max: number } // the band actually applied
+  replyCraft: import("./reply-craft").ReplyCraftScore | null
 }

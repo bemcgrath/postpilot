@@ -109,6 +109,16 @@ describe("classifyHookType", () => {
     expect(type).toBe("amplification")
   })
 
+  it("locks in the reply-learning spec's decision to leave amplification untouched", () => {
+    // Reply craft is scored on a separate axis (src/scoring/reply-craft.ts),
+    // not by repurposing this hook type -- amplification stays exactly what
+    // it was: a last-resort classifier label with baseWeight 1.0. A future
+    // refactor changing these patterns should have to update this test
+    // deliberately, not accidentally.
+    expect(HOOK_TYPES.amplification.patterns).toEqual(["^@\\w+\\s+\\w+"])
+    expect(HOOK_TYPES.amplification.baseWeight).toBe(1.0)
+  })
+
   it("each type matches at least one of its own examples", () => {
     for (const [name, hookType] of Object.entries(HOOK_TYPES)) {
       const matchedAny = hookType.examples.some(

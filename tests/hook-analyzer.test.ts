@@ -140,4 +140,31 @@ describe("HookAnalyzer.score", () => {
       expect(result.totalScore).toBeLessThanOrEqual(100)
     }
   })
+
+  describe("isReply", () => {
+    it("does not penalize a question without numbers when isReply is true", () => {
+      const text = "Why does this keep breaking in production?"
+      const asOriginal = analyzer.score(text, undefined, undefined, false)
+      const asReply = analyzer.score(text, undefined, undefined, true)
+      expect(asOriginal.breakdown.penalties).toBeLessThan(0)
+      expect(asReply.breakdown.penalties).toBe(0)
+      expect(asReply.totalScore).toBeGreaterThan(asOriginal.totalScore)
+    })
+
+    it("does not award the free @handle entity bonus when isReply is true", () => {
+      const text = "@alice interesting take on this"
+      const asOriginal = analyzer.score(text, undefined, undefined, false)
+      const asReply = analyzer.score(text, undefined, undefined, true)
+      expect(asReply.breakdown.specificity).toBeLessThan(
+        asOriginal.breakdown.specificity
+      )
+    })
+
+    it("defaults to isReply: false when the 4th argument is omitted", () => {
+      const text = "Why does this keep breaking in production?"
+      const omitted = analyzer.score(text)
+      const explicit = analyzer.score(text, undefined, undefined, false)
+      expect(omitted).toEqual(explicit)
+    })
+  })
 })

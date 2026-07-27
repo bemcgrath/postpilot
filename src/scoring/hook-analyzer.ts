@@ -57,7 +57,8 @@ export class HookAnalyzer {
   score(
     text: string,
     config?: HookAnalyzerConfig,
-    hookTypeBoosts?: Partial<Record<HookTypeName, number>>
+    hookTypeBoosts?: Partial<Record<HookTypeName, number>>,
+    isReply: boolean = false
   ): HookScore {
     const cfg = config ?? getHookAnalyzerConfig()
     const hookText = this.extractHook(text, cfg)
@@ -112,7 +113,7 @@ export class HookAnalyzer {
     }
 
     // 2. Specificity Score (+0-20)
-    const [specScore, specSuggestions] = this.scoreSpecificity(hookText, cfg)
+    const [specScore, specSuggestions] = this.scoreSpecificity(hookText, cfg, isReply)
     total += specScore
     breakdown.specificity = specScore
     suggestions.push(...specSuggestions)
@@ -137,7 +138,7 @@ export class HookAnalyzer {
 
     // 6. Penalties
     const [penalties, penaltySuggestions, penaltyReasons] =
-      this.calculatePenalties(hookText, cfg)
+      this.calculatePenalties(hookText, cfg, isReply)
     total += penalties
     breakdown.penalties = penalties
     breakdown.penaltyReasons = penaltyReasons
@@ -158,7 +159,8 @@ export class HookAnalyzer {
 
   private scoreSpecificity(
     text: string,
-    cfg: HookAnalyzerConfig
+    cfg: HookAnalyzerConfig,
+    isReply: boolean = false
   ): [number, string[]] {
     let score = 0
     const suggestions: string[] = []
@@ -184,9 +186,13 @@ export class HookAnalyzer {
       suggestions.push("Add a timeframe for urgency")
     }
 
-    // Named entities
+    // Named entities. @handle is excluded for replies: X's reply composer
+    // doesn't put the handle in the text, but when it does appear (a
+    // multi-participant thread reply), it's addressing, not specificity --
+    // a reply shouldn't get a free entity bonus just for mentioning who
+    // it's replying to.
     const entityPatterns = [
-      /@\w+/,
+      ...(isReply ? [] : [/@\w+/]),
       /(GPT|Claude|OpenAI|Anthropic|Google|Meta|Microsoft)/,
       /(CEO|CTO|founder|researcher)/,
       /[A-Z][a-z]+\s+[A-Z][a-z]+/
@@ -265,7 +271,8 @@ export class HookAnalyzer {
 
   private calculatePenalties(
     text: string,
-    cfg: HookAnalyzerConfig
+    cfg: HookAnalyzerConfig,
+    isReply: boolean = false
   ): [number, string[], string[]] {
     let penalties = 0
     const suggestions: string[] = []
@@ -311,8 +318,9 @@ export class HookAnalyzer {
       reasons.push(`Hook over ${cfg.hookMaxLength} chars (${cfg.penalties.tooLongHook})`)
     }
 
-    // Question without specificity
-    if (text.endsWith("?") && !/\d/.test(text)) {
+    // Question without specificity -- suppressed for replies, where a sharp
+    // question is one of the strongest moves, not a weakness to penalize.
+    if (!isReply && text.endsWith("?") && !/\d/.test(text)) {
       penalties += cfg.penalties.questionNoNumbers
       reasons.push(`Question without numbers (${cfg.penalties.questionNoNumbers})`)
       suggestions.push("Questions work better with specific numbers")
