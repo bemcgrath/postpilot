@@ -89,8 +89,16 @@ export function scorePost(
     effectiveFp = applyOverrides(effectiveFp, overrides)
   }
 
+  // Voice fingerprints are built from originals only (best-posts.ts excludes
+  // replies from the fingerprint corpus, to avoid a reactive response
+  // skewing the user's own voice) -- so every dimension here (avg length,
+  // vocabulary, tone) reflects originals, not replies. Scoring a reply
+  // against it isn't "a worse match," it's a wrong comparison: a live-tested
+  // reply landed a false 0/100 on Length simply for being shorter than the
+  // user's own post average, which was never a meaningful signal for a
+  // reply in the first place.
   const voiceMatch =
-    effectiveFp && text.length > 0
+    !isReply && effectiveFp && text.length > 0
       ? scoreVoiceMatch(text, effectiveFp)
       : null
 
