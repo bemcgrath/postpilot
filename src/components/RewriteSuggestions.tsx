@@ -3,6 +3,7 @@ import React, { useState } from "react"
 import type { PostScore } from "~scoring/types"
 import type { VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 import { scorePost } from "~scoring/scoring-pipeline"
+import type { ScoreContext } from "~scoring/scoring-pipeline"
 import { generateRewrites } from "~rewrite/rewrite-service"
 import type { RewriteSuggestion } from "~rewrite/rewrite-service"
 import { humanizeHookType } from "~scoring/hook-types"
@@ -19,6 +20,7 @@ interface Props {
   fingerprint: VoiceFingerprint | null
   overrides: VoiceOverrides | null
   hookTypeBoosts: Record<string, number> | undefined
+  context?: ScoreContext
   onReplace: (text: string) => void
 }
 
@@ -28,7 +30,7 @@ function scoreColor(s: number): string {
   return "#f4212e"
 }
 
-export function RewriteSuggestions({ originalText, score, isPro, fingerprint, overrides, hookTypeBoosts, onReplace }: Props) {
+export function RewriteSuggestions({ originalText, score, isPro, fingerprint, overrides, hookTypeBoosts, context, onReplace }: Props) {
   const [loading, setLoading] = useState(false)
   const [suggestions, setSuggestions] = useState<ScoredSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -51,9 +53,12 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
     setSuggestions(null)
     setUndoText(null)
     try {
-      const results = await generateRewrites(originalText, score, isPro)
+      const results = await generateRewrites(originalText, score, isPro, context)
       const scored: ScoredSuggestion[] = results.map((r) => {
-        const s = scorePost(r.text, fingerprint, hookTypeBoosts, overrides)
+        // Same context as the original score, or the delta below is
+        // meaningless -- a reply scored as an original would compare against
+        // the wrong length band and hook-type boosts.
+        const s = scorePost(r.text, fingerprint, hookTypeBoosts, overrides, context)
         return {
           ...r,
           computedScore: s.hookScore.totalScore,

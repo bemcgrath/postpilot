@@ -7,10 +7,31 @@ import { humanizeHookType } from "~scoring/hook-types"
 interface InsightsPanelProps {
   insights: LearnedInsights
   currentHookType: HookTypeName | null
+  isReply?: boolean
 }
 
-export function InsightsPanel({ insights, currentHookType }: InsightsPanelProps) {
+export function InsightsPanel({ insights, currentHookType, isReply = false }: InsightsPanelProps) {
   if (!insights.isReady) return null
+
+  // Replies have their own dedicated craft guidance -- show that instead of
+  // the originals-only hook/recommendation view, which doesn't apply to them.
+  if (isReply) {
+    if (!insights.replyInsights) return null
+    const reply = insights.replyInsights
+    return (
+      <div className="postpilot-details__section">
+        <div className="postpilot-details__heading">Your Reply Data</div>
+        <div className="postpilot-insights__recs">
+          <div className="postpilot-insights__rec">{reply.recommendation}</div>
+        </div>
+        <div className="postpilot-insights__meta">
+          Learned band: {reply.optimalLengthRange.min}-{reply.optimalLengthRange.max} chars
+          {" · "}
+          {reply.repliesAnalyzed} replies analyzed
+        </div>
+      </div>
+    )
+  }
 
   const currentBoost = currentHookType
     ? insights.hookTypeBoosts[currentHookType]

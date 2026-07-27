@@ -3,8 +3,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 import type { PostScore } from "~scoring/types"
 import type { VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 import type { LearnedInsights } from "~learning/types"
+import type { ComposerKind } from "~scoring/reply-context"
 
 import { scorePost } from "~scoring/scoring-pipeline"
+import type { ScoreContext } from "~scoring/scoring-pipeline"
+import { detectComposerKind, readParentTweetText } from "~scoring/reply-context"
 import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
 import { loadLearnedInsights } from "~learning/storage"
 import { initConfig, onConfigChanged } from "~config/config-storage"
@@ -115,45 +118,55 @@ function findNearestContentEditable(
   )
 }
 
+interface ComposeContext {
+  container: HTMLElement
+  textarea: HTMLElement
+}
+
 /**
- * Find the compose box associated with this panel instance.
- * The panel is injected inside a <plasmo-csui> shadow host, placed afterend
- * of a [data-testid="toolBar"]. Walk from the shadow host up to the nearest
- * container that holds both the toolbar and the textarea.
+ * Find the compose box associated with this panel instance, and the scoped
+ * ancestor container it was found in. The panel is injected inside a
+ * <plasmo-csui> shadow host, placed afterend of a [data-testid="toolBar"].
+ * Walk from the shadow host up to the nearest container that holds both the
+ * toolbar and the textarea. The container (not the textarea itself, which is
+ * too narrow) is what reply-detection signals must be read from.
  */
+function findComposeContext(panelEl: HTMLElement | null): ComposeContext | null {
+  if (!panelEl) return null
+  let host: Element | null = panelEl
+  const root = panelEl.getRootNode()
+  if (root instanceof ShadowRoot) {
+    host = root.host
+  }
+  if (host) {
+    let container = host.parentElement
+    for (let i = 0; i < 5 && container; i++) {
+      // Read the whole compose box, not a nested `[data-text="true"]` run --
+      // Draft.js wraps each plain-text segment between mentions/links in
+      // its own such node, so querySelector (which only returns the first
+      // match) silently truncated the read at the first @mention or link,
+      // undercounting everything typed after it.
+      const textarea = container.querySelector<HTMLElement>(
+        'div[data-testid="tweetTextarea_0"]'
+      )
+      if (textarea) return { container, textarea }
+      container = container.parentElement
+    }
+  }
+  // This panel's own compose box is gone. Never fall back to another
+  // compose box on the page: when a reply modal is open, the background
+  // panel would mirror the modal's text, and its mounting/unmounting
+  // shifts the whole timeline behind the dialog (~58px bounce). It also
+  // caused duplicate auto-saves of the same hook from multiple panels.
+  return null
+}
+
 function findNearestComposeBox(
   panelEl: HTMLElement | null
 ): HTMLElement | null {
-  // If we have a ref, try scoped search first (for reply compose boxes)
   if (panelEl) {
-    let host: Element | null = panelEl
-    const root = panelEl.getRootNode()
-    if (root instanceof ShadowRoot) {
-      host = root.host
-    }
-    if (host) {
-      let container = host.parentElement
-      for (let i = 0; i < 5 && container; i++) {
-        // Read the whole compose box, not a nested `[data-text="true"]` run --
-        // Draft.js wraps each plain-text segment between mentions/links in
-        // its own such node, so querySelector (which only returns the first
-        // match) silently truncated the read at the first @mention or link,
-        // undercounting everything typed after it.
-        const textarea = container.querySelector<HTMLElement>(
-          'div[data-testid="tweetTextarea_0"]'
-        )
-        if (textarea) return textarea
-        container = container.parentElement
-      }
-    }
-    // This panel's own compose box is gone. Never fall back to another
-    // compose box on the page: when a reply modal is open, the background
-    // panel would mirror the modal's text, and its mounting/unmounting
-    // shifts the whole timeline behind the dialog (~58px bounce). It also
-    // caused duplicate auto-saves of the same hook from multiple panels.
-    return null
+    return findComposeContext(panelEl)?.textarea ?? null
   }
-
   // Fallback: global search (only before the ref is attached on first render)
   return document.querySelector<HTMLElement>(
     'div[data-testid="tweetTextarea_0"]'
@@ -186,9 +199,21 @@ function injectText(panelEl: HTMLElement | null, newText: string) {
  * Polling is more reliable than MutationObserver on X.com's
  * Draft.js contenteditable which mutates deeply nested spans.
  * Scoped to the nearest compose box via the panel's DOM ref.
+ *
+ * Reply-context detection (kind/parentText) is recomputed on the same poll
+ * tick, alongside text, rather than once at mount -- the panel persists
+ * across modal open/close, so a mount-time-only read would go stale the
+ * moment a reply modal opens or closes under an already-mounted panel.
  */
-function useComposeText(panelRef: React.RefObject<HTMLElement | null>): [string, () => void] {
+function useComposeText(panelRef: React.RefObject<HTMLElement | null>): {
+  text: string
+  kind: ComposerKind
+  parentText: string | null
+  readNow: () => void
+} {
   const [text, setText] = useState("")
+  const [kind, setKind] = useState<ComposerKind>("original")
+  const [parentText, setParentText] = useState<string | null>(null)
   const lastTextRef = useRef("")
 
   const readNow = useCallback(() => {
@@ -198,6 +223,10 @@ function useComposeText(panelRef: React.RefObject<HTMLElement | null>): [string,
       lastTextRef.current = raw
       setText(raw)
     }
+
+    const ctx = findComposeContext(panelRef.current)
+    setKind(detectComposerKind(ctx?.container ?? null))
+    setParentText(readParentTweetText(ctx?.container ?? null))
   }, [panelRef])
 
   useEffect(() => {
@@ -206,12 +235,12 @@ function useComposeText(panelRef: React.RefObject<HTMLElement | null>): [string,
     return () => clearInterval(interval)
   }, [readNow])
 
-  return [text, readNow]
+  return { text, kind, parentText, readNow }
 }
 
 export function PostPilotPanel() {
   const panelRef = useRef<HTMLDivElement>(null)
-  const [text, readTextNow] = useComposeText(panelRef)
+  const { text, kind, parentText, readNow: readTextNow } = useComposeText(panelRef)
   const [expanded, setExpanded] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
@@ -462,7 +491,18 @@ export function PostPilotPanel() {
   const proFingerprint = isPro ? fingerprint : null
   const proOverrides = isPro ? overrides : null
   const hookTypeBoosts = isPro && insights?.isReady ? insights.hookTypeBoosts : undefined
-  const result: PostScore = scorePost(text, proFingerprint, hookTypeBoosts, proOverrides)
+  const scoreContext: ScoreContext = {
+    kind,
+    replyInsights: isPro && insights?.replyInsights ? insights.replyInsights : null,
+    parentText
+  }
+  const result: PostScore = scorePost(
+    text,
+    proFingerprint,
+    hookTypeBoosts,
+    proOverrides,
+    scoreContext
+  )
   lastScoreRef.current = result.hookScore.totalScore
 
   function handleSaveDraft() {
@@ -516,6 +556,7 @@ export function PostPilotPanel() {
         <CharacterCount
           count={result.charCount}
           inSweetSpot={result.inSweetSpot}
+          sweetSpotRange={result.sweetSpotRange}
         />
         {isPro && result.voiceMatch && (
           <VoiceMatchBadge voiceMatch={result.voiceMatch} />
@@ -577,6 +618,7 @@ export function PostPilotPanel() {
             fingerprint={proFingerprint}
             overrides={proOverrides}
             hookTypeBoosts={hookTypeBoosts}
+            context={scoreContext}
             onReplace={(newText) => {
               setTimeout(() => {
                 injectText(panelRef.current, newText)
@@ -592,6 +634,7 @@ export function PostPilotPanel() {
             <InsightsPanel
               insights={insights}
               currentHookType={result.hookScore.hookType}
+              isReply={result.kind === "reply"}
             />
           )}
           <DraftQueue

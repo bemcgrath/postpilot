@@ -1,4 +1,5 @@
 import type { PostScore } from "~scoring/types"
+import type { ScoreContext } from "~scoring/scoring-pipeline"
 import { humanizeHookType } from "~scoring/hook-types"
 import { getClaudeApiKey } from "./api-key-storage"
 import { BANNED_PHRASE_LABELS, WEAK_PHRASE_PATTERNS } from "~config/defaults"
@@ -12,8 +13,12 @@ export interface RewriteSuggestion {
 function buildPrompt(
   originalText: string,
   score: PostScore,
-  count: number
+  count: number,
+  context?: ScoreContext
 ): string {
+  const isReply = context?.kind === "reply"
+  const noun = isReply ? "reply" : "post"
+
   const governorLines = score.governor.issues
     .filter((i) => i.severity === "error" || i.severity === "warning")
     .map((i) => `- ${i.message} (matched: "${i.matchedText}")`)
@@ -27,9 +32,14 @@ function buildPrompt(
     ? score.hookScore.suggestions.map((s) => `- ${s}`).join("\n")
     : ""
 
-  return `You are helping improve an X (Twitter) post (current hook score ${score.hookScore.totalScore}/100).
+  const band = context?.replyInsights?.optimalLengthRange
+  const openingRule = isReply
+    ? `- Add something the parent post doesn't already say — a mechanism, a number, or a specific detail. Don't just agree or praise.${band ? ` Aim for roughly ${band.min}-${band.max} characters.` : ""}`
+    : `- Open with a stronger hook (claim/collision/number first; builder proof second). Act on the hook suggestions listed above when present`
 
-ORIGINAL POST:
+  return `You are helping improve an X (Twitter) ${noun} (current ${isReply ? "" : "hook "}score ${score.hookScore.totalScore}/100).
+
+ORIGINAL ${noun.toUpperCase()}:
 ${originalText}
 
 SCORING CONTEXT:
@@ -37,9 +47,9 @@ Hook: ${hookInfo}
 ${governorLines ? `Governor violations:\n${governorLines}` : "No governor violations."}
 ${suggestionLines ? `Hook suggestions:\n${suggestionLines}` : ""}
 
-Write ${count} improved version${count > 1 ? "s" : ""} of this post. Rules:
+Write ${count} improved version${count > 1 ? "s" : ""} of this ${noun}. Rules:
 - Fix any governor violations listed above (remove the flagged phrases)
-- Open with a stronger hook (claim/collision/number first; builder proof second). Act on the hook suggestions listed above when present
+${openingRule}
 - Keep the same core message and roughly the same length
 - Sound like a real person writing, not AI-generated
 ${count > 1 ? "- Each version should use a clearly different hook angle or framing" : ""}
@@ -70,12 +80,13 @@ function parseRewrites(data: unknown): RewriteSuggestion[] {
 export async function generateRewrites(
   originalText: string,
   score: PostScore,
-  isPro: boolean
+  isPro: boolean,
+  context?: ScoreContext
 ): Promise<RewriteSuggestion[]> {
   const apiKey = await getClaudeApiKey()
   if (!apiKey) throw new Error("NO_API_KEY")
 
-  const prompt = buildPrompt(originalText, score, isPro ? 3 : 1)
+  const prompt = buildPrompt(originalText, score, isPro ? 3 : 1, context)
 
   // Route through background service worker to avoid CORS restrictions
   return new Promise((resolve, reject) => {

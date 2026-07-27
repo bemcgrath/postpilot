@@ -104,7 +104,7 @@ function hasOutgoingThreadConnector(article: Element): boolean {
  * connector (shown on profile/thread views where the parent IS rendered
  * directly above).
  */
-function isReplyArticle(article: Element): boolean {
+export function isReplyArticle(article: Element): boolean {
   const hasReplyingToText = Array.from(
     article.querySelectorAll("div, span")
   ).some((el) => el.textContent?.trim().startsWith("Replying to"))

@@ -84,6 +84,24 @@ export function AnalyticsTab() {
                 {new Date(insights.generatedAt).toLocaleString()}
               </span>
             </div>
+            <div style={styles.row}>
+              <span>Originals / replies</span>
+              <span style={styles.valueMuted}>
+                {insights.originalsAnalyzed} originals, {insights.repliesAnalyzed}{" "}
+                replies
+                {insights.unknownSegmentCount > 0
+                  ? `, ${insights.unknownSegmentCount} unclassified`
+                  : ""}
+              </span>
+            </div>
+            <div style={styles.row}>
+              <span>Scoring mode</span>
+              <span style={styles.valueMuted}>
+                {insights.segmentation === "segmented"
+                  ? "Segmented (originals scored separately from replies)"
+                  : "Blended (not enough originals yet to split)"}
+              </span>
+            </div>
           </>
         )}
         {!insights && postCount >= 20 && (
@@ -241,6 +259,39 @@ export function AnalyticsTab() {
                   {insights.mediaPerformance.linkBoost.toFixed(1)}x
                 </span>
               </div>
+            </InsightCard>
+          )}
+
+          {/* Reply Craft */}
+          {insights.replyInsights && (
+            <InsightCard title="Reply Craft">
+              <div style={styles.hint}>{insights.replyInsights.recommendation}</div>
+              <div style={{ ...styles.row, marginTop: 8 }}>
+                <span>Learned length band</span>
+                <span style={styles.value}>
+                  {insights.replyInsights.optimalLengthRange.min}-
+                  {insights.replyInsights.optimalLengthRange.max} chars
+                </span>
+              </div>
+              <div style={styles.row}>
+                <span>Replies analyzed</span>
+                <span style={styles.value}>
+                  {insights.replyInsights.repliesAnalyzed}
+                </span>
+              </div>
+              {insights.replyInsights.topExamples.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={styles.valueMuted}>Top replies</div>
+                  {insights.replyInsights.topExamples.slice(0, 3).map((ex, i) => (
+                    <div key={i} style={styles.rec}>
+                      <span style={styles.recBadge}>
+                        {(ex.er * 100).toFixed(1)}%
+                      </span>
+                      {ex.text}
+                    </div>
+                  ))}
+                </div>
+              )}
             </InsightCard>
           )}
 

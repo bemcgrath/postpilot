@@ -4,8 +4,11 @@ import { initConfig } from "~config/config-storage"
 import { validateStoredLicense } from "~config/license"
 import { humanizeHookType } from "~scoring/hook-types"
 import { scorePost } from "~scoring/scoring-pipeline"
+import type { ScoreContext } from "~scoring/scoring-pipeline"
 import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
 import { loadLearnedInsights } from "~learning/storage"
+import { isReplyArticle } from "~learning/collector"
+import type { ReplyCraftInsights } from "~learning/types"
 import type { VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 
 export const config: PlasmoCSConfig = {
@@ -21,6 +24,7 @@ const BADGE_CLASS = "pp-viral-badge"
 let fingerprint: VoiceFingerprint | null = null
 let overrides: VoiceOverrides | null = null
 let hookTypeBoosts: Record<string, number> | undefined = undefined
+let replyInsights: ReplyCraftInsights | null = null
 
 function scoreColor(s: number): string {
   if (s >= 70) return "#00ba7c"
@@ -99,7 +103,11 @@ function processTweet(article: Element) {
   if (existing?.getAttribute("data-pp-text") === text) return
   existing?.remove()
 
-  const result = scorePost(text, fingerprint, hookTypeBoosts, overrides)
+  const context: ScoreContext = {
+    kind: isReplyArticle(article) ? "reply" : "original",
+    replyInsights
+  }
+  const result = scorePost(text, fingerprint, hookTypeBoosts, overrides, context)
   injectBadge(article, result.hookScore.totalScore, result.hookScore.hookType, text)
 }
 
@@ -132,6 +140,7 @@ async function init() {
   fingerprint = fp
   overrides = ov
   hookTypeBoosts = insights?.isReady ? insights.hookTypeBoosts : undefined
+  replyInsights = insights?.replyInsights ?? null
 
   processAll()
 
