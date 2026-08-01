@@ -16,8 +16,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 })
 
 async function fetchRewrites(apiKey: string, prompt: string): Promise<unknown> {
-  console.log("[PostPilot] Calling Anthropic API, key prefix:", apiKey.slice(0, 14) + "...")
-
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
