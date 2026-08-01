@@ -100,19 +100,6 @@ function extractNicheKeywords(text: string): VocabEntry[] {
     }
   }
 
-  // Also grab domain-specific terms from section headers and bold text
-  const domainTerms = [
-    "ai agents", "agentic", "agent workflow", "llm", "claude", "mcp",
-    "inference", "longevity", "aging", "healthspan", "nad", "glucose",
-    "biomarkers", "bitcoin", "mining", "asic", "hashrate", "settlement",
-    "stablecoin", "autonomous", "tool use", "codex", "gpt", "openai",
-    "anthropic", "metabolic", "systems thinking", "mental models"
-  ]
-  const textLower = text.toLowerCase()
-  for (const term of domainTerms) {
-    if (textLower.includes(term)) keywords.add(term)
-  }
-
   return Array.from(keywords).map((term) => ({
     term,
     count: 1,

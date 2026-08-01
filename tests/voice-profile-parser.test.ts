@@ -12,8 +12,8 @@ import { extractFingerprint } from "../src/scoring/voice-fingerprint"
 // Loads real profile files from the author's local machine for testing.
 // These aren't checked into the repo (they're personal voice data), so this
 // suite skips itself on any other clone instead of failing the whole run.
-const VOICE_PROFILE_PATH = join("C:", "Projects", "SocialMediaAssistant", "memory", "voice_profile.md")
-const NICHE_SPEC_PATH = join("C:", "Projects", "SocialMediaAssistant", "memory", "niche_spec.md")
+const VOICE_PROFILE_PATH = join("C:", "Users", "brian_tbcxf8g", "Projects", "SocialMediaAssistant", "memory", "voice_profile.md")
+const NICHE_SPEC_PATH = join("C:", "Users", "brian_tbcxf8g", "Projects", "SocialMediaAssistant", "memory", "niche_spec.md")
 const fixturesAvailable = existsSync(VOICE_PROFILE_PATH) && existsSync(NICHE_SPEC_PATH)
 
 const VOICE_PROFILE = fixturesAvailable ? readFileSync(VOICE_PROFILE_PATH, "utf-8") : ""
@@ -26,8 +26,17 @@ describe.skipIf(!fixturesAvailable)("parseVoiceProfile", () => {
     expect(profile.nicheKeywords.length).toBeGreaterThan(5)
     const terms = profile.nicheKeywords.map((k) => k.term)
     expect(terms).toContain("agentic")
-    expect(terms).toContain("longevity")
-    expect(terms).toContain("healthspan")
+    expect(terms).toContain("mcp")
+  })
+
+  it("does not extract terms from out-of-scope/hard-block sections as niche keywords", () => {
+    // The profile explicitly lists longevity/aging/health content as
+    // out of scope for X — extracting these as niche keywords would make
+    // the scorer reward exactly the content the user told it to avoid.
+    const terms = profile.nicheKeywords.map((k) => k.term)
+    expect(terms).not.toContain("longevity")
+    expect(terms).not.toContain("healthspan")
+    expect(terms).not.toContain("aging")
   })
 
   it("extracts hook type rankings", () => {
@@ -133,7 +142,7 @@ describe.skipIf(!fixturesAvailable)("mergeProfileIntoFingerprint", () => {
     const terms = merged.nicheKeywords.map((k) => k.term)
     // Profile keywords should be first
     expect(terms).toContain("agentic")
-    expect(terms).toContain("longevity")
+    expect(terms).toContain("mcp")
   })
 
   it("uses profile hook rankings", () => {
