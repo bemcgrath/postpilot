@@ -425,6 +425,40 @@ export function PostPilotPanel() {
     }
   }, [commitClearSave])
 
+  // Capture the score the moment the Post/Reply button is clicked, instead of
+  // relying solely on the compose box going empty afterward. A reply modal
+  // can unmount the instant the reply succeeds -- before the next 200ms poll
+  // tick ever observes the box as empty -- so the clear-detection above never
+  // schedules a pending save, leaving nothing for the unmount-flush to catch.
+  useEffect(() => {
+    const ctx = findComposeContext(panelRef.current)
+    if (!ctx) return
+
+    const handleClick = (e: MouseEvent) => {
+      const button = (e.target as HTMLElement).closest<HTMLElement>(
+        '[data-testid="tweetButton"], [data-testid="tweetButtonInline"]'
+      )
+      if (!button) return
+
+      const score = lastScoreRef.current
+      const currentText = findNearestComposeBox(panelRef.current)?.textContent ?? ""
+      if (
+        currentText.length >= 20 &&
+        score > 0 &&
+        Date.now() - lastSavedAtRef.current > 30_000
+      ) {
+        if (pendingClearRef.current) {
+          window.clearTimeout(pendingClearRef.current.timer)
+          pendingClearRef.current = null
+        }
+        commitClearSave(currentText, score, isProRef.current)
+      }
+    }
+
+    ctx.container.addEventListener("click", handleClick, true)
+    return () => ctx.container.removeEventListener("click", handleClick, true)
+  }, [commitClearSave])
+
   // While expanded, lift the containing timeline cell above its siblings.
   // X's virtualized cells are transform-positioned siblings — each one is its
   // own stacking context, painted in DOM order — so the details dropdown
