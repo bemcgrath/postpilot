@@ -382,6 +382,27 @@ function Options() {
                 />
                 <span style={{ fontSize: "13px", color: "#999" }}>Enable Pro features without a license (dev only)</span>
               </label>
+              <div style={{ marginTop: "12px" }}>
+                <button
+                  onClick={() => {
+                    chrome.storage.local.get(null, (data) => {
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement("a")
+                      a.href = url
+                      a.download = `postpilot-backup-${new Date().toISOString().slice(0, 10)}.json`
+                      a.click()
+                      URL.revokeObjectURL(url)
+                    })
+                  }}
+                  style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555" }}>
+                  Export all data (backup)
+                </button>
+                <p style={{ fontSize: "11px", color: "#999", margin: "6px 0 0" }}>
+                  Downloads everything in local storage (posts, scores, voice profile, license, API key) as JSON — a
+                  safety net before testing an unpacked build against your real data.
+                </p>
+              </div>
             </div>
           )}
         </div>
