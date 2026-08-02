@@ -91,7 +91,8 @@ export class HookAnalyzer {
       length: 0,
       curiosityGap: 0,
       patternMatch: 0,
-      penalties: 0
+      penalties: 0,
+      penaltyReasons: []
     }
     const suggestions: string[] = []
     let total = cfg.baseScore

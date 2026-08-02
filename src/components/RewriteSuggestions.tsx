@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-import type { PostScore } from "~scoring/types"
+import type { GovernorIssue, PostScore } from "~scoring/types"
 import type { VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 import { scorePost } from "~scoring/scoring-pipeline"
 import type { ScoreContext } from "~scoring/scoring-pipeline"
@@ -10,7 +10,7 @@ import { humanizeHookType } from "~scoring/hook-types"
 
 interface ScoredSuggestion extends RewriteSuggestion {
   computedScore: number
-  governorIssues: Array<{ severity: string; matchedText: string }>
+  governorIssues: Array<Pick<GovernorIssue, "severity" | "matchedText" | "message">>
 }
 
 interface Props {
@@ -62,7 +62,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
         return {
           ...r,
           computedScore: s.hookScore.totalScore,
-          governorIssues: s.governor.issues.map((i) => ({ severity: i.severity, matchedText: i.matchedText })),
+          governorIssues: s.governor.issues.map((i) => ({ severity: i.severity, matchedText: i.matchedText, message: i.message })),
         }
       })
       setSuggestions(scored)
@@ -156,7 +156,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
                       <span
                         key={j}
                         className={`postpilot-rewrites__gov-issue postpilot-rewrites__gov-issue--${issue.severity}`}>
-                        {issue.matchedText}
+                        {issue.matchedText ?? issue.message}
                       </span>
                     ))}
                   </div>

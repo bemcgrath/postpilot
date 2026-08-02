@@ -43,7 +43,7 @@ export function ThreadSummaryPanel() {
   const [scores, setScores] = useState<TweetScore[]>([])
   const [isPro, setIsPro] = useState(false)
   const fingerprintRef = useRef<Awaited<ReturnType<typeof loadFingerprint>>>(null)
-  const overridesRef = useRef<Awaited<ReturnType<typeof loadVoiceOverrides>>>(null)
+  const overridesRef = useRef<Awaited<ReturnType<typeof loadVoiceOverrides>> | null>(null)
 
   useEffect(() => {
     try { initConfig() } catch {}
