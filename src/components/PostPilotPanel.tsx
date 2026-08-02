@@ -283,7 +283,7 @@ export function PostPilotPanel() {
       storage.get("postpilot_dev_pro", (r) => {
         if (r.postpilot_dev_pro === true) setIsPro(true)
       })
-    }).catch(() => {})
+    }).catch((err) => console.error("[PostPilot]", err))
   }, [])
 
   // Read enabled state from storage (safely — may not be available in CSUI)
@@ -296,7 +296,7 @@ export function PostPilotPanel() {
         if (result && result.postpilot_enabled === false) {
           setEnabled(false)
         }
-      } catch {}
+      } catch (err) { console.error("[PostPilot]", err) }
     })
 
     const listener = (changes: Record<string, { newValue?: unknown }>) => {
@@ -304,7 +304,7 @@ export function PostPilotPanel() {
         if ("postpilot_enabled" in changes) {
           setEnabled(changes.postpilot_enabled.newValue !== false)
         }
-      } catch {}
+      } catch (err) { console.error("[PostPilot]", err) }
     }
     storage.onChanged.addListener(listener)
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
@@ -312,7 +312,7 @@ export function PostPilotPanel() {
 
   // Load voice fingerprint from storage
   useEffect(() => {
-    loadFingerprint().then(setFingerprint).catch(() => {})
+    loadFingerprint().then(setFingerprint).catch((err) => console.error("[PostPilot]", err))
 
     const storage = getStorage()
     if (!storage) return
@@ -324,7 +324,7 @@ export function PostPilotPanel() {
             (changes.postpilot_voice_fingerprint.newValue as VoiceFingerprint) ?? null
           )
         }
-      } catch {}
+      } catch (err) { console.error("[PostPilot]", err) }
     }
     storage.onChanged.addListener(listener)
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
@@ -332,7 +332,7 @@ export function PostPilotPanel() {
 
   // Load voice overrides from storage
   useEffect(() => {
-    loadVoiceOverrides().then(setOverrides).catch(() => {})
+    loadVoiceOverrides().then(setOverrides).catch((err) => console.error("[PostPilot]", err))
 
     const storage = getStorage()
     if (!storage) return
@@ -344,7 +344,7 @@ export function PostPilotPanel() {
             (changes.postpilot_voice_overrides.newValue as VoiceOverrides) ?? null
           )
         }
-      } catch {}
+      } catch (err) { console.error("[PostPilot]", err) }
     }
     storage.onChanged.addListener(listener)
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
@@ -352,7 +352,7 @@ export function PostPilotPanel() {
 
   // Load learned insights from storage
   useEffect(() => {
-    loadLearnedInsights().then(setInsights).catch(() => {})
+    loadLearnedInsights().then(setInsights).catch((err) => console.error("[PostPilot]", err))
 
     const storage = getStorage()
     if (!storage) return
@@ -364,7 +364,7 @@ export function PostPilotPanel() {
             (changes.postpilot_learned_insights.newValue as LearnedInsights) ?? null
           )
         }
-      } catch {}
+      } catch (err) { console.error("[PostPilot]", err) }
     }
     storage.onChanged.addListener(listener)
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
@@ -373,17 +373,17 @@ export function PostPilotPanel() {
   const commitClearSave = useCallback((prev: string, score: number, pro: boolean) => {
     lastSavedAtRef.current = Date.now()
     saveScoreEntry(score).then(() => {
-      getWeekStats().then(setWeekStats).catch(() => {})
-    }).catch(() => {})
+      getWeekStats().then(setWeekStats).catch((err) => console.error("[PostPilot]", err))
+    }).catch((err) => console.error("[PostPilot]", err))
     if (score >= 70) {
       recordHighScorePost().then((show) => {
         if (show) setReviewPromptVisible(true)
-      }).catch(() => {})
+      }).catch((err) => console.error("[PostPilot]", err))
     }
     if (pro && score >= 70) {
       saveHook(prev, null, score, "auto").then((entry) => {
         setHooks((h) => [entry, ...h.filter((x) => x.id !== entry.id)].slice(0, 50))
-      }).catch(() => {})
+      }).catch((err) => console.error("[PostPilot]", err))
     }
   }, [])
 
@@ -452,17 +452,17 @@ export function PostPilotPanel() {
 
   // Load week stats, drafts, and hooks on mount; keep in sync with storage changes
   useEffect(() => {
-    getWeekStats().then(setWeekStats).catch(() => {})
-    loadDrafts().then(setDrafts).catch(() => {})
-    loadHooks().then(setHooks).catch(() => {})
-    shouldShowPrompt().then(setReviewPromptVisible).catch(() => {})
+    getWeekStats().then(setWeekStats).catch((err) => console.error("[PostPilot]", err))
+    loadDrafts().then(setDrafts).catch((err) => console.error("[PostPilot]", err))
+    loadHooks().then(setHooks).catch((err) => console.error("[PostPilot]", err))
+    shouldShowPrompt().then(setReviewPromptVisible).catch((err) => console.error("[PostPilot]", err))
 
     const storage = getStorage()
     if (!storage) return
     const listener = (changes: Record<string, { newValue?: unknown }>) => {
       try {
         if ("postpilot_score_history" in changes) {
-          getWeekStats().then(setWeekStats).catch(() => {})
+          getWeekStats().then(setWeekStats).catch((err) => console.error("[PostPilot]", err))
         }
         if ("postpilot_drafts" in changes) {
           setDrafts((changes.postpilot_drafts.newValue as DraftEntry[]) ?? [])
@@ -470,7 +470,7 @@ export function PostPilotPanel() {
         if ("postpilot_hook_library" in changes) {
           setHooks((changes.postpilot_hook_library.newValue as HookEntry[]) ?? [])
         }
-      } catch {}
+      } catch (err) { console.error("[PostPilot]", err) }
     }
     storage.onChanged.addListener(listener)
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
@@ -512,7 +512,7 @@ export function PostPilotPanel() {
         setSavedMsg(true)
         setTimeout(() => setSavedMsg(false), 1500)
       })
-      .catch(() => {})
+      .catch((err) => console.error("[PostPilot]", err))
   }
 
   function handleSaveHook() {
@@ -522,7 +522,7 @@ export function PostPilotPanel() {
         setHookSavedMsg(true)
         setTimeout(() => setHookSavedMsg(false), 1500)
       })
-      .catch(() => {})
+      .catch((err) => console.error("[PostPilot]", err))
   }
 
   function handleRestoreDraft(draft: DraftEntry) {
@@ -532,7 +532,7 @@ export function PostPilotPanel() {
   function handleDeleteDraft(id: string) {
     deleteDraft(id).then(() => {
       setDrafts((prev) => prev.filter((d) => d.id !== id))
-    }).catch(() => {})
+    }).catch((err) => console.error("[PostPilot]", err))
   }
 
   const errorCount = result.governor.issues.filter(
@@ -647,7 +647,7 @@ export function PostPilotPanel() {
               hooks={hooks}
               onUse={(entry) => setTimeout(() => injectText(panelRef.current, entry.fullText), 10)}
               onDelete={(id) => {
-                deleteHook(id).then(() => setHooks((prev) => prev.filter((h) => h.id !== id))).catch(() => {})
+                deleteHook(id).then(() => setHooks((prev) => prev.filter((h) => h.id !== id))).catch((err) => console.error("[PostPilot]", err))
               }}
             />
           )}

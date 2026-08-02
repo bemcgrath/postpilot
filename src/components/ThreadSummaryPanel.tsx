@@ -46,10 +46,10 @@ export function ThreadSummaryPanel() {
   const overridesRef = useRef<Awaited<ReturnType<typeof loadVoiceOverrides>> | null>(null)
 
   useEffect(() => {
-    try { initConfig() } catch {}
-    validateStoredLicense().then(s => setIsPro(s.isActive)).catch(() => {})
-    loadFingerprint().then(fp => { fingerprintRef.current = fp }).catch(() => {})
-    loadVoiceOverrides().then(ov => { overridesRef.current = ov }).catch(() => {})
+    initConfig().catch((err) => console.error("[PostPilot]", err))
+    validateStoredLicense().then(s => setIsPro(s.isActive)).catch((err) => console.error("[PostPilot]", err))
+    loadFingerprint().then(fp => { fingerprintRef.current = fp }).catch((err) => console.error("[PostPilot]", err))
+    loadVoiceOverrides().then(ov => { overridesRef.current = ov }).catch((err) => console.error("[PostPilot]", err))
   }, [])
 
   useEffect(() => {

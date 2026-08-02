@@ -7,7 +7,7 @@ interface Props {
 
 export function ReviewPrompt({ onDone }: Props) {
   function retire() {
-    markPromptDone().catch(() => {})
+    markPromptDone().catch((err) => console.error("[PostPilot]", err))
     onDone()
   }
 
