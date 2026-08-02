@@ -272,6 +272,7 @@ function Options() {
 
   const isVoiceTab = activeTab === "profile" || activeTab === "posts"
   const isConfigTab = activeTab === "governor" || activeTab === "hooks"
+  const isPro = license.isActive || devPro
 
   return (
     <div style={styles.container}>
@@ -764,7 +765,7 @@ function Options() {
       {/* Analytics tab */}
       {activeTab === "analytics" && (
         <div style={styles.section}>
-          <AnalyticsTab />
+          <AnalyticsTab isPro={isPro} />
         </div>
       )}
 

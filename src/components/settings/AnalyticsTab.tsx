@@ -4,23 +4,34 @@ import type { LearnedInsights } from "~learning/types"
 import { loadCollectedPosts, loadLearnedInsights, clearAllLearningData } from "~learning/storage"
 import { runLearningEngine } from "~learning/engine"
 import { humanizeHookType } from "~scoring/hook-types"
+import { getWeekStats, type WeekStats } from "~history/score-history-storage"
 
 import { InsightCard } from "./InsightCard"
 import { PerformanceChart } from "./PerformanceChart"
 
-export function AnalyticsTab() {
+const UPGRADE_URL =
+  "https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0"
+
+interface AnalyticsTabProps {
+  isPro: boolean
+}
+
+export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
   const [insights, setInsights] = useState<LearnedInsights | null>(null)
   const [postCount, setPostCount] = useState(0)
+  const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState("")
 
   const loadData = useCallback(async () => {
-    const [ins, posts] = await Promise.all([
+    const [ins, posts, week] = await Promise.all([
       loadLearnedInsights(),
-      loadCollectedPosts()
+      loadCollectedPosts(),
+      getWeekStats()
     ])
     setInsights(ins)
     setPostCount(posts.length)
+    setWeekStats(week)
   }, [])
 
   useEffect(() => {
@@ -111,7 +122,64 @@ export function AnalyticsTab() {
         )}
       </InsightCard>
 
-      {insights?.isReady && (
+      {/* Score Trends — free tier, mirrors the compose-panel's 7-day average */}
+      {weekStats && weekStats.thisWeekCount > 0 && (
+        <InsightCard title="Score Trends">
+          <div style={styles.row}>
+            <span>This week's average</span>
+            <span style={{
+              ...styles.value,
+              color: weekStats.thisWeekAvg! >= 70 ? "#00ba7c" : weekStats.thisWeekAvg! >= 50 ? "#f7b731" : "#f4212e"
+            }}>
+              {weekStats.thisWeekAvg}
+            </span>
+          </div>
+          <div style={styles.row}>
+            <span>From</span>
+            <span style={styles.valueMuted}>
+              {weekStats.thisWeekCount} post{weekStats.thisWeekCount !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {weekStats.lastWeekAvg !== null && (
+            <div style={styles.row}>
+              <span>vs. last week</span>
+              <span style={{
+                ...styles.value,
+                color:
+                  weekStats.thisWeekAvg! - weekStats.lastWeekAvg > 2
+                    ? "#00ba7c"
+                    : weekStats.thisWeekAvg! - weekStats.lastWeekAvg < -2
+                      ? "#f4212e"
+                      : "#71767b"
+              }}>
+                {weekStats.thisWeekAvg! - weekStats.lastWeekAvg > 0 ? "+" : ""}
+                {weekStats.thisWeekAvg! - weekStats.lastWeekAvg}
+              </span>
+            </div>
+          )}
+        </InsightCard>
+      )}
+
+      {/* Full breakdown teaser — shown to free users once there's enough data to unlock */}
+      {!isPro && insights?.isReady && (
+        <InsightCard title="Full Breakdown">
+          <div style={styles.hint}>
+            Hook performance, best posting times, media & topic impact, and
+            reply craft — unlocked with Pro.
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <a
+              href={UPGRADE_URL}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#1d9bf0", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+              Upgrade to Pro →
+            </a>
+          </div>
+        </InsightCard>
+      )}
+
+      {isPro && insights?.isReady && (
         <>
           {/* Hook Type Performance */}
           <InsightCard title="Hook Type Performance">
