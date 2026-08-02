@@ -388,7 +388,12 @@ function Options() {
                   onChange={(e) => {
                     const val = e.target.checked
                     setDevPro(val)
-                    chrome.storage.local.set({ postpilot_dev_pro: val })
+                    chrome.storage.local.set({ postpilot_dev_pro: val }, () => {
+                      // Claude key visibility depends on this flag on dev builds
+                      // (see api-key-storage.ts) -- refetch so the AI Rewrites
+                      // tab reflects it immediately instead of on next reload.
+                      getClaudeApiKey().then(setClaudeApiKeyState)
+                    })
                   }}
                 />
                 <span style={{ fontSize: "13px", color: "#999" }}>Enable Pro features without a license (dev only)</span>
