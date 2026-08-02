@@ -128,6 +128,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
         <div className="postpilot-rewrites__results">
           {suggestions.map((s, i) => {
             const delta = s.computedScore - originalScore
+            const hasBlockingIssue = s.governorIssues.some((issue) => issue.severity === "error")
             return (
               <div key={i} className="postpilot-rewrites__card">
                 <div className="postpilot-rewrites__card-header">
@@ -165,13 +166,15 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
                   <span className="postpilot-rewrites__rationale">{s.rationale}</span>
                   <button
                     className={`postpilot-rewrites__copy postpilot-rewrites__replace${replacedIdx === i ? " postpilot-rewrites__copy--copied" : ""}`}
+                    disabled={hasBlockingIssue}
+                    title={hasBlockingIssue ? "Fix the flagged issue above before using this rewrite" : undefined}
                     onClick={() => {
                       setUndoText(originalText)
                       onReplace(s.text)
                       setReplacedIdx(i)
                       setTimeout(() => setReplacedIdx(null), 1500)
                     }}>
-                    {replacedIdx === i ? "Done!" : "Use this"}
+                    {replacedIdx === i ? "Done!" : hasBlockingIssue ? "Fix issue first" : "Use this"}
                   </button>
                 </div>
               </div>

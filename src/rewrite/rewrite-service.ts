@@ -37,6 +37,12 @@ function buildPrompt(
     ? `- Add something the parent post doesn't already say — a mechanism, a number, or a specific detail. Don't just agree or praise.${band ? ` Aim for roughly ${band.min}-${band.max} characters.` : ""}`
     : `- Open with a stronger hook (claim/collision/number first; builder proof second). Act on the hook suggestions listed above when present`
 
+  // Em-dash rules read as cryptic labels ("em-dash (—it's)") when flattened into
+  // the same bulleted list as literal phrases like "game-changer" -- easy for the
+  // model to skim past, and em-dashes are the single most common AI tell it
+  // reaches for by default. Pulled into their own plain-language rule instead.
+  const literalBannedLabels = BANNED_PHRASE_LABELS.filter((l) => !l.startsWith("em-dash"))
+
   return `You are helping improve an X (Twitter) ${noun} (current ${isReply ? "" : "hook "}score ${score.hookScore.totalScore}/100).
 
 ORIGINAL ${noun.toUpperCase()}:
@@ -54,11 +60,15 @@ ${openingRule}
 - Sound like a real person writing, not AI-generated
 ${count > 1 ? "- Each version should use a clearly different hook angle or framing" : ""}
 
-BANNED — never use these in your rewrites:
-${BANNED_PHRASE_LABELS.map((l) => `- ${l}`).join("\n")}
+BANNED PHRASES — never use these words or phrases, in any form:
+${literalBannedLabels.map((l) => `- ${l}`).join("\n")}
+
+BANNED STYLE — no em-dashes. Do not write a word directly joined to another by "—" (e.g. "word—word"), and do not open a clause with "—it's", "—and", "—but", or "—that's". Use a period or comma instead. This is the single most common AI tell — treat it as a hard rule, not a style preference.
 
 WEAK — avoid these generic phrases too:
 ${WEAK_PHRASE_PATTERNS.slice(0, 20).map((p) => `- ${p}`).join("\n")}
+
+Before you respond, re-read each rewrite against every rule above — banned phrases, em-dashes, and weak phrases. If any rewrite still violates one, rewrite that line again until it's clean.
 
 Respond with valid JSON only, no other text:
 {
