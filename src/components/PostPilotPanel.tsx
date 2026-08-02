@@ -30,6 +30,15 @@ function getStorage(): typeof chrome.storage.local | null {
   return null
 }
 
+/** True on unpacked/dev-loaded builds (no update_url in the runtime manifest). */
+function isDevBuild(): boolean {
+  try {
+    return !("update_url" in chrome.runtime.getManifest())
+  } catch {
+    return false
+  }
+}
+
 import { CharacterCount } from "./CharacterCount"
 import { GovernorWarnings } from "./GovernorWarnings"
 import { HookTypeLabel } from "./HookTypeLabel"
@@ -274,10 +283,14 @@ export function PostPilotPanel() {
     return unsubscribe
   }, [])
 
-  // Check Pro license status on mount (dev bypass: set postpilot_dev_pro=true in storage)
+  // Check Pro license status on mount (dev bypass, dev builds only: set
+  // postpilot_dev_pro=true in storage). devPro must never be honored on a
+  // real Web Store build -- that storage key is writable by anyone via
+  // devtools, so trusting it there would unlock Pro for free.
   useEffect(() => {
     validateStoredLicense().then((status) => {
       if (status.isActive) { setIsPro(true); return }
+      if (!isDevBuild()) return
       const storage = getStorage()
       if (!storage) return
       storage.get("postpilot_dev_pro", (r) => {

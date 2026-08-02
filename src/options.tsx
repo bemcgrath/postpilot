@@ -277,7 +277,10 @@ function Options() {
   // In dev/unpacked builds, the devPro toggle is the sole authority — this lets
   // testing flip between free/Pro views even when a real license is active in
   // shared storage (see the extension-ID-sharing setup used for local testing).
-  const isPro = isDev ? devPro : license.isActive || devPro
+  // devPro must never be consulted outside isDev: it's read from
+  // chrome.storage.local, which any user can write via devtools, so honoring
+  // it on a real Web Store build would unlock every Pro feature for free.
+  const isPro = isDev ? devPro : license.isActive
 
   return (
     <div style={styles.container}>

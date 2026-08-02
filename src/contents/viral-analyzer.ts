@@ -142,14 +142,25 @@ function getStorage(): typeof chrome.storage.local | null {
   return null
 }
 
+/** True on unpacked/dev-loaded builds (no update_url in the runtime manifest). */
+function isDevBuild(): boolean {
+  try {
+    return !("update_url" in chrome.runtime.getManifest())
+  } catch {
+    return false
+  }
+}
+
 async function isProUser(): Promise<boolean> {
   const status = await validateStoredLicense().catch((err) => {
     console.error("[PostPilot]", err)
     return { isActive: false }
   })
   if (status.isActive) return true
+  if (!isDevBuild()) return false
 
-  // Dev bypass: set postpilot_dev_pro=true in storage (mirrors PostPilotPanel.tsx)
+  // Dev bypass, dev builds only (mirrors PostPilotPanel.tsx) -- devPro must
+  // never be honored on a real Web Store build.
   const storage = getStorage()
   if (!storage) return false
   return new Promise((resolve) => {
