@@ -127,9 +127,12 @@ function scheduleProcess() {
 }
 
 async function init() {
-  try { initConfig() } catch {}
+  initConfig().catch((err) => console.error("[PostPilot]", err))
 
-  const status = await validateStoredLicense().catch(() => ({ isActive: false }))
+  const status = await validateStoredLicense().catch((err) => {
+    console.error("[PostPilot]", err)
+    return { isActive: false }
+  })
   if (!status.isActive) return
 
   const [fp, ov, insights] = await Promise.all([
