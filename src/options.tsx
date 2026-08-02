@@ -272,7 +272,6 @@ function Options() {
   const accuracyColor =
     posts.length >= 15 ? "#00ba7c" : posts.length >= 10 ? "#f7b731" : "#71767b"
 
-  const isVoiceTab = activeTab === "profile" || activeTab === "posts"
   const isConfigTab = activeTab === "governor" || activeTab === "hooks"
   // In dev/unpacked builds, the devPro toggle is the sole authority — this lets
   // testing flip between free/Pro views even when a real license is active in
@@ -645,8 +644,8 @@ function Options() {
         </>
       )}
 
-      {/* Analyze button (voice tabs only) */}
-      {isVoiceTab && (
+      {/* Analyze button — usable from either input tab, since both feed the same fingerprint */}
+      {(activeTab === "profile" || activeTab === "posts") && (
         <>
           <div style={styles.section}>
             <button
@@ -673,8 +672,12 @@ function Options() {
           </div>
 
           {status && <p style={styles.status}>{status}</p>}
+        </>
+      )}
 
-          {/* Fingerprint display */}
+      {/* Fingerprint display + Voice Coach — Voice tab only, not duplicated under Posts */}
+      {activeTab === "profile" && (
+        <>
           {fingerprint && (
             <div style={styles.section}>
               <h2 style={styles.heading}>Your Voice Fingerprint</h2>
