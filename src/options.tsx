@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import type { SamplePost, VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 import type { PostPilotConfig } from "~config/types"
@@ -81,6 +81,8 @@ function Options() {
   const [claudeApiKey, setClaudeApiKeyState] = useState<string | null>(null)
   const [claudeApiKeyInput, setClaudeApiKeyInput] = useState("")
   const [devPro, setDevPro] = useState(false)
+  const [importStatus, setImportStatus] = useState("")
+  const importInputRef = useRef<HTMLInputElement>(null)
   const [isDev, setIsDev] = useState(false)
   const [apiKeySavedMsg, setApiKeySavedMsg] = useState("")
 
@@ -272,7 +274,10 @@ function Options() {
 
   const isVoiceTab = activeTab === "profile" || activeTab === "posts"
   const isConfigTab = activeTab === "governor" || activeTab === "hooks"
-  const isPro = license.isActive || devPro
+  // In dev/unpacked builds, the devPro toggle is the sole authority — this lets
+  // testing flip between free/Pro views even when a real license is active in
+  // shared storage (see the extension-ID-sharing setup used for local testing).
+  const isPro = isDev ? devPro : license.isActive || devPro
 
   return (
     <div style={styles.container}>
@@ -382,6 +387,11 @@ function Options() {
                 />
                 <span style={{ fontSize: "13px", color: "#999" }}>Enable Pro features without a license (dev only)</span>
               </label>
+              <p style={{ fontSize: "11px", color: "#999", margin: "4px 0 0" }}>
+                On unpacked builds this toggle is the only thing controlling Pro — a real active license (e.g. if
+                you're sharing storage with your live install) is ignored here, so free/Pro views stay independently
+                testable.
+              </p>
               <div style={{ marginTop: "12px" }}>
                 <button
                   onClick={() => {
@@ -398,10 +408,47 @@ function Options() {
                   style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555" }}>
                   Export all data (backup)
                 </button>
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555", marginLeft: "8px" }}>
+                  Import backup
+                </button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    e.target.value = ""
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = () => {
+                      try {
+                        const data = JSON.parse(reader.result as string)
+                        chrome.storage.local.clear(() => {
+                          chrome.storage.local.set(data, () => {
+                            setImportStatus("Restored — reloading…")
+                            setTimeout(() => window.location.reload(), 500)
+                          })
+                        })
+                      } catch {
+                        setImportStatus("Import failed — file isn't valid JSON")
+                      }
+                    }
+                    reader.readAsText(file)
+                  }}
+                />
                 <p style={{ fontSize: "11px", color: "#999", margin: "6px 0 0" }}>
-                  Downloads everything in local storage (posts, scores, voice profile, license, API key) as JSON — a
-                  safety net before testing an unpacked build against your real data.
+                  Export downloads everything in local storage (posts, scores, voice profile, license, API key) as
+                  JSON — a safety net before testing an unpacked build against your real data. Import replaces
+                  current storage entirely with a chosen backup file and reloads the page.
                 </p>
+                {importStatus && (
+                  <p style={{ fontSize: "12px", color: importStatus.startsWith("Restored") ? "#00ba7c" : "#e0245e", margin: "6px 0 0" }}>
+                    {importStatus}
+                  </p>
+                )}
               </div>
             </div>
           )}
