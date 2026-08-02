@@ -324,6 +324,12 @@ function Options() {
               <p style={{ color: "#555", fontSize: "13px", marginBottom: "20px" }}>
                 Voice fingerprinting and the learning engine are unlocked.
               </p>
+              {isDev && !devPro && (
+                <p style={{ color: "#f7b731", fontSize: "12px", marginBottom: "20px" }}>
+                  On this unpacked build, Pro features actually follow the dev toggle below, not this license — and
+                  it's currently off, so Pro is off despite the license being active.
+                </p>
+              )}
               <button
                 onClick={async () => {
                   await deactivateLicense()
