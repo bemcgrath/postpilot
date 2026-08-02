@@ -126,14 +126,42 @@ function scheduleProcess() {
   })
 }
 
-async function init() {
-  initConfig().catch((err) => console.error("[PostPilot]", err))
+function getStorage(): typeof chrome.storage.local | null {
+  try {
+    if (
+      typeof chrome !== "undefined" &&
+      chrome.runtime?.id &&
+      typeof chrome.storage !== "undefined" &&
+      typeof chrome.storage.local !== "undefined"
+    ) {
+      return chrome.storage.local
+    }
+  } catch {
+    // Extension context invalidated or not available
+  }
+  return null
+}
 
+async function isProUser(): Promise<boolean> {
   const status = await validateStoredLicense().catch((err) => {
     console.error("[PostPilot]", err)
     return { isActive: false }
   })
-  if (!status.isActive) return
+  if (status.isActive) return true
+
+  // Dev bypass: set postpilot_dev_pro=true in storage (mirrors PostPilotPanel.tsx)
+  const storage = getStorage()
+  if (!storage) return false
+  return new Promise((resolve) => {
+    storage.get("postpilot_dev_pro", (r) => resolve(r.postpilot_dev_pro === true))
+  })
+}
+
+async function init() {
+  initConfig().catch((err) => console.error("[PostPilot]", err))
+
+  const isPro = await isProUser()
+  if (!isPro) return
 
   const [fp, ov, insights] = await Promise.all([
     loadFingerprint().catch(() => null),
