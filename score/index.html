@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Free X/Twitter Post Score Checker — PostPilot</title>
-  <meta name="description" content="Paste any X/Twitter post and get an instant score — hook strength, specificity, and engagement-killing patterns. No install, no account, nothing sent anywhere." />
+  <title>Free X/Twitter Post Score Checker: PostPilot</title>
+  <meta name="description" content="Paste any X/Twitter post and get an instant score: hook strength, specificity, and engagement-killing patterns. No install, no account, nothing sent anywhere." />
   <link rel="canonical" href="https://postpilotforx.com/score/" />
   <meta property="og:title" content="Free X/Twitter Post Score Checker" />
-  <meta property="og:description" content="Paste your post, get an instant score. Same engine as the PostPilot Chrome extension — free, no install, nothing leaves your browser." />
+  <meta property="og:description" content="Paste your post, get an instant score. Same engine as the PostPilot Chrome extension. Free, no install, nothing leaves your browser." />
   <meta property="og:image" content="https://postpilotforx.com/assets/icon.png" />
   <meta property="og:url" content="https://postpilotforx.com/score/" />
   <link rel="icon" href="../assets/icon.png" />
@@ -144,7 +144,7 @@
 
     <div class="hero">
       <h1>Score your post <em>before</em> you post it.</h1>
-      <p class="sub">Paste any X/Twitter post below. Same real-time scoring engine as the extension — free, no account, nothing ever leaves your browser.</p>
+      <p class="sub">Paste any X/Twitter post below. Same real-time scoring engine as the extension. Free, no account, nothing ever leaves your browser.</p>
       <p class="fine">NO INSTALL · NO ACCOUNT · 100% CLIENT-SIDE</p>
     </div>
 
@@ -163,7 +163,7 @@
 
     <div class="cta-row">
       <button class="share" id="shareBtn" disabled>Share your score</button>
-      <a class="cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome — Free</a>
+      <a class="cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome (Free)</a>
     </div>
     <p class="note">Want this live in your composer, plus voice-matched Pro scoring? <a href="/#pricing">See pricing →</a></p>
 
@@ -223,7 +223,7 @@
         .map(
           (issue) =>
             `<div class="issue ${issue.severity}"><span class="dot"></span><span>${issue.message}${
-              issue.matchedText ? ` <span class="match">— "${issue.matchedText}"</span>` : ""
+              issue.matchedText ? ` <span class="match">: "${issue.matchedText}"</span>` : ""
             }</span></div>`
         )
         .join("");
