@@ -175,6 +175,7 @@
 
     /* features */
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .card--wide { grid-column: 1 / -1; }
     .card {
       background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
       transition: border-color .2s ease, transform .2s ease;
@@ -305,7 +306,7 @@
         <div class="card"><h3>Specificity scoring</h3><p>Vague claims get called out. Numbers and concrete details get rewarded.</p></div>
         <div class="card"><h3>AI rewrite</h3><p>One-click improved version via Claude, using your own API key and your own data.</p></div>
         <div class="card"><h3>Score history &amp; drafts</h3><p>Track published-post scores with a 7-day rolling average. Queue drafts with scores attached.</p></div>
-        <div class="card"><h3>Score Trends</h3><p>See your own scoring trend over time, built entirely from data already on your device, never from a connected account.</p></div>
+        <div class="card card--wide"><h3>Score Trends</h3><p>See your own scoring trend over time, built entirely from data already on your device, never from a connected account.</p></div>
       </div>
     </section>
 
@@ -320,7 +321,7 @@
         <div class="card"><h3>Thread scorer <span class="tag">PRO</span></h3><p>Every tweet in a thread scored individually, and the weakest link gets flagged.</p></div>
         <div class="card"><h3>Hook Library <span class="tag">PRO</span></h3><p>Your best-performing openers, saved automatically and remixable when you're stuck.</p></div>
         <div class="card"><h3>Learning engine <span class="tag">PRO</span></h3><p>Analyzes your past performance to find what your audience actually responds to.</p></div>
-        <div class="card"><h3>Full Breakdown <span class="tag">PRO</span></h3><p>Hook performance, best posting times, topic and media impact, and reply craft: the complete picture behind every score, still without handing over your account.</p></div>
+        <div class="card card--wide"><h3>Full Breakdown <span class="tag">PRO</span></h3><p>Hook performance, best posting times, topic and media impact, and reply craft: the complete picture behind every score, still without handing over your account.</p></div>
       </div>
     </section>
 
