@@ -14,11 +14,30 @@ function getStorage(): typeof chrome.storage.local | null {
   return null
 }
 
+/** True on unpacked/dev-loaded builds (no update_url in the runtime manifest). */
+function isDevBuild(): boolean {
+  try {
+    return !("update_url" in chrome.runtime.getManifest())
+  } catch {
+    return false
+  }
+}
+
+/**
+ * On dev/unpacked builds sharing storage with a real install (see the
+ * extension-ID-matching setup used for local testing), the key stays hidden
+ * unless the dev-Pro toggle is on -- so testing "free" doesn't silently ride
+ * on a real paid key. Real (Web Store) builds are unaffected.
+ */
 export async function getClaudeApiKey(): Promise<string | null> {
   const storage = getStorage()
   if (!storage) return null
   return new Promise((resolve) => {
-    storage.get(API_KEY_STORAGE_KEY, (result) => {
+    storage.get([API_KEY_STORAGE_KEY, "postpilot_dev_pro"], (result) => {
+      if (isDevBuild() && result.postpilot_dev_pro !== true) {
+        resolve(null)
+        return
+      }
       resolve((result[API_KEY_STORAGE_KEY] as string) || null)
     })
   })

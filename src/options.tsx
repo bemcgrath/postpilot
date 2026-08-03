@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import type { SamplePost, VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
 import type { PostPilotConfig } from "~config/types"
@@ -81,6 +81,8 @@ function Options() {
   const [claudeApiKey, setClaudeApiKeyState] = useState<string | null>(null)
   const [claudeApiKeyInput, setClaudeApiKeyInput] = useState("")
   const [devPro, setDevPro] = useState(false)
+  const [importStatus, setImportStatus] = useState("")
+  const importInputRef = useRef<HTMLInputElement>(null)
   const [isDev, setIsDev] = useState(false)
   const [apiKeySavedMsg, setApiKeySavedMsg] = useState("")
 
@@ -270,8 +272,14 @@ function Options() {
   const accuracyColor =
     posts.length >= 15 ? "#00ba7c" : posts.length >= 10 ? "#f7b731" : "#71767b"
 
-  const isVoiceTab = activeTab === "profile" || activeTab === "posts"
   const isConfigTab = activeTab === "governor" || activeTab === "hooks"
+  // In dev/unpacked builds, the devPro toggle is the sole authority — this lets
+  // testing flip between free/Pro views even when a real license is active in
+  // shared storage (see the extension-ID-sharing setup used for local testing).
+  // devPro must never be consulted outside isDev: it's read from
+  // chrome.storage.local, which any user can write via devtools, so honoring
+  // it on a real Web Store build would unlock every Pro feature for free.
+  const isPro = isDev ? devPro : license.isActive
 
   return (
     <div style={styles.container}>
@@ -318,6 +326,12 @@ function Options() {
               <p style={{ color: "#555", fontSize: "13px", marginBottom: "20px" }}>
                 Voice fingerprinting and the learning engine are unlocked.
               </p>
+              {isDev && !devPro && (
+                <p style={{ color: "#f7b731", fontSize: "12px", marginBottom: "20px" }}>
+                  On this unpacked build, Pro features actually follow the dev toggle below, not this license — and
+                  it's currently off, so Pro is off despite the license being active.
+                </p>
+              )}
               <button
                 onClick={async () => {
                   await deactivateLicense()
@@ -376,11 +390,79 @@ function Options() {
                   onChange={(e) => {
                     const val = e.target.checked
                     setDevPro(val)
-                    chrome.storage.local.set({ postpilot_dev_pro: val })
+                    chrome.storage.local.set({ postpilot_dev_pro: val }, () => {
+                      // Claude key visibility depends on this flag on dev builds
+                      // (see api-key-storage.ts) -- refetch so the AI Rewrites
+                      // tab reflects it immediately instead of on next reload.
+                      getClaudeApiKey().then(setClaudeApiKeyState)
+                    })
                   }}
                 />
                 <span style={{ fontSize: "13px", color: "#999" }}>Enable Pro features without a license (dev only)</span>
               </label>
+              <p style={{ fontSize: "11px", color: "#999", margin: "4px 0 0" }}>
+                On unpacked builds this toggle is the only thing controlling Pro — a real active license (e.g. if
+                you're sharing storage with your live install) is ignored here, so free/Pro views stay independently
+                testable.
+              </p>
+              <div style={{ marginTop: "12px" }}>
+                <button
+                  onClick={() => {
+                    chrome.storage.local.get(null, (data) => {
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement("a")
+                      a.href = url
+                      a.download = `postpilot-backup-${new Date().toISOString().slice(0, 10)}.json`
+                      a.click()
+                      URL.revokeObjectURL(url)
+                    })
+                  }}
+                  style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555" }}>
+                  Export all data (backup)
+                </button>
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555", marginLeft: "8px" }}>
+                  Import backup
+                </button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    e.target.value = ""
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = () => {
+                      try {
+                        const data = JSON.parse(reader.result as string)
+                        chrome.storage.local.clear(() => {
+                          chrome.storage.local.set(data, () => {
+                            setImportStatus("Restored — reloading…")
+                            setTimeout(() => window.location.reload(), 500)
+                          })
+                        })
+                      } catch {
+                        setImportStatus("Import failed — file isn't valid JSON")
+                      }
+                    }
+                    reader.readAsText(file)
+                  }}
+                />
+                <p style={{ fontSize: "11px", color: "#999", margin: "6px 0 0" }}>
+                  Export downloads everything in local storage (posts, scores, voice profile, license, API key) as
+                  JSON — a safety net before testing an unpacked build against your real data. Import replaces
+                  current storage entirely with a chosen backup file and reloads the page.
+                </p>
+                {importStatus && (
+                  <p style={{ fontSize: "12px", color: importStatus.startsWith("Restored") ? "#00ba7c" : "#e0245e", margin: "6px 0 0" }}>
+                    {importStatus}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -562,8 +644,8 @@ function Options() {
         </>
       )}
 
-      {/* Analyze button (voice tabs only) */}
-      {isVoiceTab && (
+      {/* Analyze button — usable from either input tab, since both feed the same fingerprint */}
+      {(activeTab === "profile" || activeTab === "posts") && (
         <>
           <div style={styles.section}>
             <button
@@ -590,8 +672,12 @@ function Options() {
           </div>
 
           {status && <p style={styles.status}>{status}</p>}
+        </>
+      )}
 
-          {/* Fingerprint display */}
+      {/* Fingerprint display + Voice Coach — Voice tab only, not duplicated under Posts */}
+      {activeTab === "profile" && (
+        <>
           {fingerprint && (
             <div style={styles.section}>
               <h2 style={styles.heading}>Your Voice Fingerprint</h2>
@@ -764,7 +850,7 @@ function Options() {
       {/* Analytics tab */}
       {activeTab === "analytics" && (
         <div style={styles.section}>
-          <AnalyticsTab />
+          <AnalyticsTab isPro={isPro} />
         </div>
       )}
 

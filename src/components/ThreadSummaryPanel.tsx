@@ -33,6 +33,31 @@ function findThreadTexts(): string[] {
   })
 }
 
+function getStorage(): typeof chrome.storage.local | null {
+  try {
+    if (
+      typeof chrome !== "undefined" &&
+      chrome.runtime?.id &&
+      typeof chrome.storage !== "undefined" &&
+      typeof chrome.storage.local !== "undefined"
+    ) {
+      return chrome.storage.local
+    }
+  } catch {
+    // Extension context invalidated or not available
+  }
+  return null
+}
+
+/** True on unpacked/dev-loaded builds (no update_url in the runtime manifest). */
+function isDevBuild(): boolean {
+  try {
+    return !("update_url" in chrome.runtime.getManifest())
+  } catch {
+    return false
+  }
+}
+
 function scoreColor(score: number): string {
   if (score >= 70) return "#00ba7c"
   if (score >= 50) return "#f7b731"
@@ -47,7 +72,17 @@ export function ThreadSummaryPanel() {
 
   useEffect(() => {
     initConfig().catch((err) => console.error("[PostPilot]", err))
-    validateStoredLicense().then(s => setIsPro(s.isActive)).catch((err) => console.error("[PostPilot]", err))
+    // Dev bypass, dev builds only (mirrors PostPilotPanel.tsx) -- devPro must
+    // never be honored on a real Web Store build.
+    validateStoredLicense().then((status) => {
+      if (status.isActive) { setIsPro(true); return }
+      if (!isDevBuild()) return
+      const storage = getStorage()
+      if (!storage) return
+      storage.get("postpilot_dev_pro", (r) => {
+        if (r.postpilot_dev_pro === true) setIsPro(true)
+      })
+    }).catch((err) => console.error("[PostPilot]", err))
     loadFingerprint().then(fp => { fingerprintRef.current = fp }).catch((err) => console.error("[PostPilot]", err))
     loadVoiceOverrides().then(ov => { overridesRef.current = ov }).catch((err) => console.error("[PostPilot]", err))
   }, [])
