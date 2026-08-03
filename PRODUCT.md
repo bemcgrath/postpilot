@@ -111,7 +111,7 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 
 | Store | Status |
 |-------|--------|
-| Chrome Web Store | v0.6.16 approved and live; v0.6.17 submitted 2026-08-02 (closes a real Pro-unlock bypass — see Pro-gating discipline note above — plus the Analytics tab gating split) |
+| Chrome Web Store | v0.6.17 approved and live (2026-08-03) — closes a real Pro-unlock bypass (see Pro-gating discipline note above) plus the Analytics tab gating split |
 | LemonSqueezy | Live — store activated, product published 2026-07-16 ($5/mo, license keys on, activation limit 5) |
 
 ---
