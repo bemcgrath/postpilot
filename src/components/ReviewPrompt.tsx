@@ -14,7 +14,7 @@ export function ReviewPrompt({ onDone }: Props) {
   return (
     <div className="postpilot-review">
       <span className="postpilot-review__text">
-        3 posts scored 70+ — PostPilot working for you? A Chrome Web Store
+        3 posts scored 70+. PostPilot working for you? A Chrome Web Store
         review helps a lot.
       </span>
       <a
