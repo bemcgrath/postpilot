@@ -34,6 +34,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
   const [loading, setLoading] = useState(false)
   const [suggestions, setSuggestions] = useState<ScoredSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [quotaResetsAt, setQuotaResetsAt] = useState<string | null>(null)
   const [replacedIdx, setReplacedIdx] = useState<number | null>(null)
   const [undoText, setUndoText] = useState<string | null>(null)
 
@@ -50,6 +51,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
   async function handleGenerate() {
     setLoading(true)
     setError(null)
+    setQuotaResetsAt(null)
     setSuggestions(null)
     setUndoText(null)
     try {
@@ -68,17 +70,25 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
       setSuggestions(scored)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ""
-      if (msg === "NO_API_KEY") {
-        setError("NO_API_KEY")
-      } else if (msg === "INVALID_API_KEY") {
-        setError("Invalid API key — check the AI Rewrites tab in PostPilot settings.")
+      const resetsAt = e instanceof Error ? (e as Error & { resetsAt?: string }).resetsAt : undefined
+      if (msg === "QUOTA_EXCEEDED") {
+        setError("QUOTA_EXCEEDED")
+        setQuotaResetsAt(resetsAt ?? null)
       } else if (msg === "PARSE_ERROR") {
-        setError("Unexpected response from Claude. Try again.")
+        setError("Unexpected response. Try again.")
       } else {
-        setError("Failed to generate rewrites. Check your API key and try again.")
+        setError("Failed to generate rewrites. Try again in a moment.")
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  function formatResetTime(iso: string): string {
+    try {
+      return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    } catch {
+      return "midnight UTC"
     }
   }
 
@@ -107,18 +117,23 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
         </div>
       )}
 
-      {error === "NO_API_KEY" ? (
+      {error === "QUOTA_EXCEEDED" ? (
         <div className="postpilot-rewrites__error">
-          Add your Claude API key to use this.{" "}
-          <button
-            className="postpilot-rewrites__settings-link"
-            onClick={() => {
-              chrome.storage.local.set({ postpilot_options_tab: "aiRewrites" }, () => {
-                chrome.runtime.openOptionsPage()
-              })
-            }}>
-            Open settings
-          </button>
+          You've used today's included rewrites.{" "}
+          {quotaResetsAt ? `Resets at ${formatResetTime(quotaResetsAt)}.` : "Resets at midnight UTC."}
+          {!isPro && (
+            <>
+              {" "}
+              <a
+                href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0"
+                target="_blank"
+                rel="noreferrer"
+                className="postpilot-rewrites__pro-link">
+                Pro gets more rewrites/day
+              </a>
+              .
+            </>
+          )}
         </div>
       ) : error ? (
         <div className="postpilot-rewrites__error">{error}</div>

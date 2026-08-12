@@ -30,7 +30,6 @@ import { buildDefaults } from "~config/defaults"
 import { initConfig, saveConfig } from "~config/config-storage"
 import { activateLicense, deactivateLicense, loadLicenseStatus } from "~config/license"
 import type { LicenseStatus } from "~config/license"
-import { getClaudeApiKey, setClaudeApiKey, clearClaudeApiKey } from "~rewrite/api-key-storage"
 
 import { GovernorSettings } from "~components/settings/GovernorSettings"
 import { HookScoringSettings } from "~components/settings/HookScoringSettings"
@@ -78,13 +77,10 @@ function Options() {
   const [license, setLicense] = useState<LicenseStatus>({ isActive: false, licenseKey: null, instanceId: null, error: null })
   const [licenseInput, setLicenseInput] = useState("")
   const [licenseLoading, setLicenseLoading] = useState(false)
-  const [claudeApiKey, setClaudeApiKeyState] = useState<string | null>(null)
-  const [claudeApiKeyInput, setClaudeApiKeyInput] = useState("")
   const [devPro, setDevPro] = useState(false)
   const [importStatus, setImportStatus] = useState("")
   const importInputRef = useRef<HTMLInputElement>(null)
   const [isDev, setIsDev] = useState(false)
-  const [apiKeySavedMsg, setApiKeySavedMsg] = useState("")
 
   useEffect(() => {
     Promise.all([loadSamplePosts(), loadCollectedPosts()]).then(
@@ -106,7 +102,6 @@ function Options() {
     loadNicheSpec().then(setNicheText)
     initConfig().then(setConfig)
     loadLicenseStatus().then(setLicense)
-    getClaudeApiKey().then(setClaudeApiKeyState)
     chrome.storage.local.get("postpilot_dev_pro", (r) => {
       if (r.postpilot_dev_pro === true) setDevPro(true)
     })
@@ -297,7 +292,7 @@ function Options() {
           { id: "governor" as TabId, label: "Governor", indicator: "" },
           { id: "hooks" as TabId, label: "Hooks", indicator: "" },
           { id: "analytics" as TabId, label: "Analytics", indicator: "" },
-          { id: "aiRewrites" as TabId, label: "AI Rewrites", indicator: claudeApiKey ? " ✓" : "" }
+          { id: "aiRewrites" as TabId, label: "AI Rewrites", indicator: "" }
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -380,6 +375,79 @@ function Options() {
               )}
             </div>
           )}
+          <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #eee" }}>
+            <p style={{ fontSize: "12px", color: "#999", margin: "0 0 8px" }}>Backup & Restore</p>
+            <div>
+              <button
+                onClick={() => {
+                  chrome.storage.local.get(null, (data) => {
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url
+                    a.download = `postpilot-backup-${new Date().toISOString().slice(0, 10)}.json`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  })
+                }}
+                style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555" }}>
+                Export all data (backup)
+              </button>
+              <button
+                onClick={() => importInputRef.current?.click()}
+                style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555", marginLeft: "8px" }}>
+                Import backup
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  e.target.value = ""
+                  if (!file) return
+                  // Import wipes storage, so make the destructive part explicit --
+                  // this is user-facing now, not a dev-only footgun.
+                  if (
+                    !window.confirm(
+                      "Restoring replaces everything currently stored (sample posts, scores, voice profile, license) with the contents of this file. Continue?"
+                    )
+                  ) {
+                    return
+                  }
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    try {
+                      const data = JSON.parse(reader.result as string)
+                      chrome.storage.local.clear(() => {
+                        chrome.storage.local.set(data, () => {
+                          setImportStatus("Restored — reloading…")
+                          setTimeout(() => window.location.reload(), 500)
+                        })
+                      })
+                    } catch {
+                      setImportStatus("Import failed — file isn't valid JSON")
+                    }
+                  }
+                  reader.readAsText(file)
+                }}
+              />
+              <p style={{ fontSize: "11px", color: "#999", margin: "6px 0 0" }}>
+                Export downloads everything stored on this device (sample posts, score history, voice profile, niche
+                spec, license) as a single JSON file — use it to move your setup to another browser or machine, or
+                as a safety net before a reinstall. Import replaces current storage entirely and reloads.
+              </p>
+              <p style={{ fontSize: "11px", color: "#999", margin: "4px 0 0" }}>
+                Keep the file somewhere private — it contains your license key in plain text.
+              </p>
+              {importStatus && (
+                <p style={{ fontSize: "12px", color: importStatus.startsWith("Restored") ? "#00ba7c" : "#e0245e", margin: "6px 0 0" }}>
+                  {importStatus}
+                </p>
+              )}
+            </div>
+          </div>
           {isDev && (
             <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #eee" }}>
               <p style={{ fontSize: "12px", color: "#999", margin: "0 0 8px" }}>Developer</p>
@@ -390,12 +458,7 @@ function Options() {
                   onChange={(e) => {
                     const val = e.target.checked
                     setDevPro(val)
-                    chrome.storage.local.set({ postpilot_dev_pro: val }, () => {
-                      // Claude key visibility depends on this flag on dev builds
-                      // (see api-key-storage.ts) -- refetch so the AI Rewrites
-                      // tab reflects it immediately instead of on next reload.
-                      getClaudeApiKey().then(setClaudeApiKeyState)
-                    })
+                    chrome.storage.local.set({ postpilot_dev_pro: val })
                   }}
                 />
                 <span style={{ fontSize: "13px", color: "#999" }}>Enable Pro features without a license (dev only)</span>
@@ -405,64 +468,6 @@ function Options() {
                 you're sharing storage with your live install) is ignored here, so free/Pro views stay independently
                 testable.
               </p>
-              <div style={{ marginTop: "12px" }}>
-                <button
-                  onClick={() => {
-                    chrome.storage.local.get(null, (data) => {
-                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement("a")
-                      a.href = url
-                      a.download = `postpilot-backup-${new Date().toISOString().slice(0, 10)}.json`
-                      a.click()
-                      URL.revokeObjectURL(url)
-                    })
-                  }}
-                  style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555" }}>
-                  Export all data (backup)
-                </button>
-                <button
-                  onClick={() => importInputRef.current?.click()}
-                  style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555", marginLeft: "8px" }}>
-                  Import backup
-                </button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept="application/json"
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    e.target.value = ""
-                    if (!file) return
-                    const reader = new FileReader()
-                    reader.onload = () => {
-                      try {
-                        const data = JSON.parse(reader.result as string)
-                        chrome.storage.local.clear(() => {
-                          chrome.storage.local.set(data, () => {
-                            setImportStatus("Restored — reloading…")
-                            setTimeout(() => window.location.reload(), 500)
-                          })
-                        })
-                      } catch {
-                        setImportStatus("Import failed — file isn't valid JSON")
-                      }
-                    }
-                    reader.readAsText(file)
-                  }}
-                />
-                <p style={{ fontSize: "11px", color: "#999", margin: "6px 0 0" }}>
-                  Export downloads everything in local storage (posts, scores, voice profile, license, API key) as
-                  JSON — a safety net before testing an unpacked build against your real data. Import replaces
-                  current storage entirely with a chosen backup file and reloads the page.
-                </p>
-                {importStatus && (
-                  <p style={{ fontSize: "12px", color: importStatus.startsWith("Restored") ? "#00ba7c" : "#e0245e", margin: "6px 0 0" }}>
-                    {importStatus}
-                  </p>
-                )}
-              </div>
             </div>
           )}
         </div>
@@ -859,68 +864,21 @@ function Options() {
         <div style={{ padding: "24px 0" }}>
           <h3 style={{ margin: "0 0 8px", fontSize: "15px" }}>AI Rewrite Suggestions</h3>
           <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.5 }}>
-            PostPilot can suggest stronger rewrites using Claude (always available; especially useful under 65).
-            Your API key is stored locally — it never leaves your browser.
+            PostPilot can suggest stronger rewrites (always available; especially useful under 65). Generations are
+            included — there's no API key to manage.
           </p>
           <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.5 }}>
-            Free users get 1 suggestion. Pro users get 3 variants with different hook types.
-            Get a key at{" "}
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
-              console.anthropic.com
-            </a>.
+            Free gets 3 rewrites/day, 1 variant each. Pro gets 40/day, 3 variants each, and rewrites are calibrated
+            to your Voice Match profile when one exists. Limits reset at midnight UTC.
           </p>
           <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 20px", lineHeight: 1.5 }}>
-            Rewrites use Claude Haiku — Anthropic's fastest, most economical model.
-            Typical usage costs well under $1/month, billed to your key.
+            Your post text (and, for Pro, a compact summary of your writing style) is sent to PostPilot's rewrite
+            service to generate suggestions — see the{" "}
+            <a href="https://postpilotforx.com/privacy-policy.html" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
+              privacy policy
+            </a>{" "}
+            for exactly what that covers.
           </p>
-
-          {claudeApiKey ? (
-            <div style={{ marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                <span style={{ fontSize: "14px", color: "#00ba7c" }}>✓</span>
-                <span style={{ fontSize: "13px", color: "#e7e9ea" }}>
-                  API key saved: sk-ant-…{claudeApiKey.slice(-6)}
-                </span>
-              </div>
-              <button
-                onClick={async () => {
-                  await clearClaudeApiKey()
-                  setClaudeApiKeyState(null)
-                  setClaudeApiKeyInput("")
-                  setApiKeySavedMsg("")
-                }}
-                style={{ fontSize: "12px", color: "#71767b", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                Remove key
-              </button>
-            </div>
-          ) : null}
-
-          <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-            <input
-              type="password"
-              value={claudeApiKeyInput}
-              onChange={(e) => setClaudeApiKeyInput(e.target.value)}
-              placeholder="sk-ant-api03-..."
-              style={{ flex: 1, padding: "8px 10px", fontSize: "13px", background: "#1e2024", border: "1px solid #2f3336", borderRadius: "6px", color: "#e7e9ea", fontFamily: "monospace" }}
-            />
-            <button
-              disabled={!claudeApiKeyInput.trim()}
-              onClick={async () => {
-                const key = claudeApiKeyInput.trim()
-                await setClaudeApiKey(key)
-                setClaudeApiKeyState(key)
-                setClaudeApiKeyInput("")
-                setApiKeySavedMsg("API key saved")
-                setTimeout(() => setApiKeySavedMsg(""), 2000)
-              }}
-              style={{ padding: "8px 16px", fontSize: "13px", background: "#1d9bf0", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", opacity: claudeApiKeyInput.trim() ? 1 : 0.5 }}>
-              Save
-            </button>
-          </div>
-          {apiKeySavedMsg && (
-            <p style={{ color: "#00ba7c", fontSize: "13px", margin: 0 }}>{apiKeySavedMsg}</p>
-          )}
-
         </div>
       )}
 

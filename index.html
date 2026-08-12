@@ -264,7 +264,7 @@
           <a class="cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome (Free)</a>
           <a class="pro" href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f" target="_blank" rel="noopener">Go Pro ($5/mo)</a>
         </div>
-        <p class="fine">No account. No servers. <b>Everything stays on your device.</b></p>
+        <p class="fine">No account required. <b>Scoring and drafts stay on your device.</b></p>
         <p class="fine" style="margin-top:6px"><a href="/score/" class="try-free-link">Not ready to install? Try it free, no signup →</a></p>
         <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:18px">
           <a class="ph-badge" style="margin-top:0" href="https://www.producthunt.com/posts/postpilot-for-x?utm_source=badge" target="_blank" rel="noopener"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1200186&amp;theme=dark" alt="PostPilot for X on Product Hunt" width="250" height="54" /></a>
@@ -307,7 +307,7 @@
         <div class="card"><h3>Hook analysis</h3><p>Detects which of 20 hook types you're using (curiosity gap, data reveal, contrarian) and how strong it lands.</p></div>
         <div class="card"><h3>Governor warnings</h3><p>79 patterns that suppress engagement, flagged with severity before you post them.</p></div>
         <div class="card"><h3>Specificity scoring</h3><p>Vague claims get called out. Numbers and concrete details get rewarded.</p></div>
-        <div class="card"><h3>AI rewrite</h3><p>One-click improved version via Claude, using your own API key and your own data.</p></div>
+        <div class="card"><h3>AI rewrite</h3><p>One-click improved version via Claude — included, no API key needed. Pro rewrites are calibrated to your voice profile.</p></div>
         <div class="card"><h3>Score history &amp; drafts</h3><p>Track published-post scores with a 7-day rolling average. Queue drafts with scores attached.</p></div>
         <div class="card card--wide"><h3>Score Trends</h3><p>See your own scoring trend over time, built entirely from data already on your device, never from a connected account.</p></div>
       </div>
@@ -355,7 +355,7 @@
         </details>
         <details class="faq-item">
           <summary>Does the AI rewrite cost extra?</summary>
-          <p>The AI rewrite feature uses your own Claude API key. Anthropic bills you directly for what you use, and PostPilot never sees or marks up that cost. Don't have a key yet? <a class="try-free-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Grab one from the Anthropic Console</a>.</p>
+          <p>No — it's included, with no API key to set up. Free gets 3 rewrites/day, Pro gets 40/day with 3 variants each, calibrated to your voice profile. Limits reset daily; see the <a class="try-free-link" href="privacy-policy.html">privacy policy</a> for what's sent to generate a rewrite.</p>
         </details>
         <details class="faq-item">
           <summary>Does PostPilot post or schedule anything for me?</summary>
@@ -368,12 +368,12 @@
       <p class="kicker">Privacy</p>
       <div class="privacy">
         <div>
-          <h2>No servers.<br />Nothing to leak.</h2>
+          <h2>Scoring stays local.<br />Nothing to leak.</h2>
         </div>
         <ul>
-          <li>All data lives in <span style="font-family:var(--mono);font-size:.85em">chrome.storage.local</span>: scores, drafts, voice fingerprint, everything.</li>
-          <li>Exactly two network calls: license validation and optional AI rewrites with <em>your</em> Claude API key.</li>
-          <li>Uninstall and it's all gone. There is no PostPilot database to be breached.</li>
+          <li>All scoring, drafts, and your voice fingerprint live in <span style="font-family:var(--mono);font-size:.85em">chrome.storage.local</span> — never sent anywhere.</li>
+          <li>Two things leave your device: license validation, and — only when you ask for a rewrite — your post text goes to PostPilot's rewrite service to generate suggestions.</li>
+          <li>Uninstall and it's all gone. There is no PostPilot database of your posts to be breached.</li>
         </ul>
       </div>
     </section>

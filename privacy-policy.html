@@ -24,7 +24,7 @@
 <body>
 
 <h1>PostPilot Privacy Policy</h1>
-<p class="updated">Last updated: May 23, 2026</p>
+<p class="updated">Last updated: August 11, 2026</p>
 
 <p>PostPilot is a Chrome extension that scores your X/Twitter posts in real time. This policy explains what data the extension accesses, what it stores, and what it sends over the network.</p>
 
@@ -46,7 +46,8 @@
 
 <h2>What data PostPilot transmits</h2>
 <p>PostPilot Pro sends your license key and instance ID to <a href="https://www.lemonsqueezy.com" target="_blank">LemonSqueezy</a> solely to verify that your license is valid. No post content, engagement data, or personal information is included in these requests. LemonSqueezy's privacy policy applies to that interaction.</p>
-<p>PostPilot does not operate any servers of its own and does not transmit data to any other third party.</p>
+<p>PostPilot operates one minimal server, used only to generate AI Rewrite suggestions. When you request a rewrite, the following is sent to that server, which forwards the request to <a href="https://www.anthropic.com" target="_blank">Anthropic</a> and returns the result: the text of the post you're rewriting, either an anonymous device identifier (Free) or your license key (Pro), and — for Pro users who've built a Voice Match profile — a compact summary of your writing style (typical sentence length, common vocabulary, and similar signals; never the raw text of your past posts). This server also tracks how many rewrites each device or license has requested that day, solely to enforce daily usage limits — it does not log or retain post content or voice-style data beyond what's needed to generate the response. Scoring, analytics, and voice-profile storage all remain entirely on your device; only an explicit rewrite request reaches this server.</p>
+<p>Outside of LemonSqueezy license validation and the AI Rewrite server above, PostPilot does not transmit data to any other third party.</p>
 
 <h2>Permissions</h2>
 <p>PostPilot requests the following Chrome permissions:</p>
@@ -54,6 +55,7 @@
   <li><strong>storage</strong>: to save your settings and local post dataset.</li>
   <li><strong>host permission for x.com and twitter.com</strong>: to inject the scoring overlay into the post composer and read your own post metrics.</li>
   <li><strong>host permission for api.lemonsqueezy.com</strong>: to validate your Pro license key.</li>
+  <li><strong>host permission for postpilot-rewrite-worker.brianemcgrath.workers.dev</strong>: to generate AI Rewrite suggestions, as described above. (This will move to a postpilotforx.com subdomain in a future update.)</li>
 </ul>
 
 <h2>Data retention and deletion</h2>

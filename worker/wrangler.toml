@@ -1,0 +1,31 @@
+name = "postpilot-rewrite-worker"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# Deployed (2026-08-12) on the free workers.dev subdomain:
+#   https://postpilot-rewrite-worker.brianemcgrath.workers.dev
+# Custom domain (api.postpilotforx.com) is pending -- postpilotforx.com's DNS
+# isn't on Cloudflare yet. Once it is, add a route or custom domain binding
+# in the dashboard (Workers & Pages -> this worker -> Settings -> Domains &
+# Routes), then update the endpoint in src/background.ts, host_permissions
+# in package.json, and privacy-policy.html together. Not set here so this
+# file stays portable between dev/staging/prod without DNS-coupled values.
+
+[vars]
+# Which Claude model powers rewrites. Change this + `wrangler deploy` to
+# switch models -- no extension update, no Chrome Web Store review needed.
+MODEL_ID = "claude-sonnet-5"
+
+# Daily generation caps, per identity (device id for Free, license key for Pro).
+# Back-of-envelope cost math for these defaults lives in the plan doc --
+# re-derive with real token counts before raising them.
+FREE_DAILY_CAP = "3"
+PRO_DAILY_CAP = "40"
+
+# Secrets (set via `wrangler secret put <NAME>`, never committed):
+#   ANTHROPIC_API_KEY  -- PostPilot's own Anthropic key, used for every rewrite call.
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "02d9547983ce4188b0eac0f32dc4dd00"
+preview_id = "b2b12f9fb7294421bcf967a11d6a1802"

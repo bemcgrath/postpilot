@@ -1,10 +1,18 @@
 export {}
 
+// Interim endpoint on Cloudflare's free workers.dev subdomain -- move to
+// api.postpilotforx.com once DNS for that domain is on Cloudflare (see
+// worker/wrangler.toml). Update this, the manifest host_permissions in
+// package.json, and privacy-policy.html together when that happens.
+const REWRITE_ENDPOINT = "https://postpilot-rewrite-worker.brianemcgrath.workers.dev/v1/rewrite"
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "GENERATE_REWRITES") {
-    fetchRewrites(message.apiKey, message.prompt)
+    fetchRewrites(message.body)
       .then((data) => sendResponse({ ok: true, data }))
-      .catch((err: Error) => sendResponse({ ok: false, error: err.message }))
+      .catch((err: Error & { resetsAt?: string }) =>
+        sendResponse({ ok: false, error: err.message, resetsAt: err.resetsAt })
+      )
     return true // keep channel open for async response
   }
 
@@ -15,26 +23,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 })
 
-async function fetchRewrites(apiKey: string, prompt: string): Promise<unknown> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+async function fetchRewrites(body: unknown): Promise<unknown> {
+  const response = await fetch(REWRITE_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
     },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
-    const body = await response.text()
-    console.error("[PostPilot] Anthropic error", response.status, body)
-    if (response.status === 401) throw new Error("INVALID_API_KEY")
+    if (response.status === 429) {
+      const data = await response.json().catch(() => ({}) as { resetsAt?: string })
+      const err = new Error("QUOTA_EXCEEDED") as Error & { resetsAt?: string }
+      err.resetsAt = data.resetsAt
+      throw err
+    }
+    const bodyText = await response.text()
+    console.error("[PostPilot] Rewrite backend error", response.status, bodyText)
     throw new Error(`API_ERROR:${response.status}`)
   }
 

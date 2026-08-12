@@ -1,8 +1,9 @@
 import type { PostScore } from "~scoring/types"
 import type { ScoreContext } from "~scoring/scoring-pipeline"
 import { humanizeHookType } from "~scoring/hook-types"
-import { getClaudeApiKey } from "./api-key-storage"
-import { BANNED_PHRASE_LABELS, WEAK_PHRASE_PATTERNS } from "~config/defaults"
+import { loadLicenseStatus } from "~config/license"
+import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
+import { getOrCreateDeviceId } from "./device-id-storage"
 
 export interface RewriteSuggestion {
   text: string
@@ -10,14 +11,77 @@ export interface RewriteSuggestion {
   rationale: string
 }
 
-function buildPrompt(
+interface Identity {
+  type: "license" | "device"
+  licenseKey?: string
+  instanceId?: string
+  deviceId?: string
+}
+
+interface VoiceDigest {
+  distinctiveTerms: string[]
+  sentenceLengthTarget: number
+  firstPersonRatio: number
+  secondPersonRatio: number
+  topHookTypes: string[]
+  signatureWords?: string[]
+}
+
+interface RewriteRequestBody {
+  identity: Identity
+  originalText: string
+  isReply: boolean
+  hookInfo: string
+  governorLines: string
+  suggestionLines: string
+  band?: { min: number; max: number }
+  count: 1 | 3
+  voiceDigest?: VoiceDigest
+}
+
+/**
+ * Derives the identity to send with a rewrite request. The worker
+ * independently re-validates any license against LemonSqueezy -- this is
+ * just "who's asking", not a trust claim. Falls back to the anonymous
+ * per-install device id when no license is stored locally.
+ */
+async function resolveIdentity(): Promise<Identity> {
+  const license = await loadLicenseStatus()
+  if (license.licenseKey && license.instanceId) {
+    return { type: "license", licenseKey: license.licenseKey, instanceId: license.instanceId }
+  }
+  return { type: "device", deviceId: await getOrCreateDeviceId() }
+}
+
+/**
+ * Compact style digest from the user's Voice Fingerprint, if one exists.
+ * Sent regardless of tier -- the worker is the enforcement boundary and
+ * strips this for Free callers, so there's no need to duplicate that gating
+ * here (see plan doc Part 1b).
+ */
+async function buildVoiceDigest(): Promise<VoiceDigest | undefined> {
+  const fingerprint = await loadFingerprint()
+  if (!fingerprint) return undefined
+  const overrides = await loadVoiceOverrides()
+  return {
+    distinctiveTerms: fingerprint.distinctiveTerms.slice(0, 10).map((t) => t.term),
+    sentenceLengthTarget: fingerprint.sentenceLength.mean,
+    firstPersonRatio: fingerprint.firstPersonRatio,
+    secondPersonRatio: fingerprint.secondPersonRatio,
+    topHookTypes: fingerprint.topHookTypes.map(humanizeHookType),
+    signatureWords: overrides.addSignatureWords.length ? overrides.addSignatureWords : undefined,
+  }
+}
+
+function buildRequestBody(
   originalText: string,
   score: PostScore,
-  count: number,
+  identity: Identity,
+  count: 1 | 3,
+  voiceDigest: VoiceDigest | undefined,
   context?: ScoreContext
-): string {
+): RewriteRequestBody {
   const isReply = context?.kind === "reply"
-  const noun = isReply ? "reply" : "post"
 
   const governorLines = score.governor.issues
     .filter((i) => i.severity === "error" || i.severity === "warning")
@@ -33,58 +97,23 @@ function buildPrompt(
     : ""
 
   const band = context?.replyInsights?.optimalLengthRange
-  const openingRule = isReply
-    ? `- Add something the parent post doesn't already say — a mechanism, a number, or a specific detail. Don't just agree or praise.${band ? ` Aim for roughly ${band.min}-${band.max} characters.` : ""}`
-    : `- Open with a stronger hook (claim/collision/number first; builder proof second). Act on the hook suggestions listed above when present`
 
-  // Em-dash rules read as cryptic labels ("em-dash (—it's)") when flattened into
-  // the same bulleted list as literal phrases like "game-changer" -- easy for the
-  // model to skim past, and em-dashes are the single most common AI tell it
-  // reaches for by default. Pulled into their own plain-language rule instead.
-  const literalBannedLabels = BANNED_PHRASE_LABELS.filter((l) => !l.startsWith("em-dash"))
-
-  return `You are helping improve an X (Twitter) ${noun} (current ${isReply ? "" : "hook "}score ${score.hookScore.totalScore}/100).
-
-ORIGINAL ${noun.toUpperCase()}:
-${originalText}
-
-SCORING CONTEXT:
-Hook: ${hookInfo}
-${governorLines ? `Governor violations:\n${governorLines}` : "No governor violations."}
-${suggestionLines ? `Hook suggestions:\n${suggestionLines}` : ""}
-
-Write ${count} improved version${count > 1 ? "s" : ""} of this ${noun}. Rules:
-- Fix any governor violations listed above (remove the flagged phrases)
-${openingRule}
-- Keep the same core message and roughly the same length
-- Sound like a real person writing, not AI-generated
-${count > 1 ? "- Each version should use a clearly different hook angle or framing" : ""}
-
-BANNED PHRASES — never use these words or phrases, in any form:
-${literalBannedLabels.map((l) => `- ${l}`).join("\n")}
-
-BANNED STYLE — no em-dashes. Do not write a word directly joined to another by "—" (e.g. "word—word"), and do not open a clause with "—it's", "—and", "—but", or "—that's". Use a period or comma instead. This is the single most common AI tell — treat it as a hard rule, not a style preference.
-
-WEAK — avoid these generic phrases too:
-${WEAK_PHRASE_PATTERNS.slice(0, 20).map((p) => `- ${p}`).join("\n")}
-
-Before you respond, re-read each rewrite against every rule above — banned phrases, em-dashes, and weak phrases. If any rewrite still violates one, rewrite that line again until it's clean.
-
-Respond with valid JSON only, no other text:
-{
-  "rewrites": [
-    { "text": "...", "hookType": "one of: data_reveal|contrarian|curiosity_gap|stakes_urgency|personal_failure|question|pattern_recognition|shocking_stat|prediction|before_after|declarative_claim|direct_challenge|binary_frame", "rationale": "one sentence on why this is stronger" }
-  ]
-}`
+  return {
+    identity,
+    originalText,
+    isReply,
+    hookInfo,
+    governorLines,
+    suggestionLines,
+    band,
+    count,
+    voiceDigest,
+  }
 }
 
 function parseRewrites(data: unknown): RewriteSuggestion[] {
-  const d = data as { content?: Array<{ type: string; text: string }> }
-  const content = d.content?.find((c) => c.type === "text")?.text ?? ""
-  const jsonMatch = content.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error("PARSE_ERROR")
-  const parsed = JSON.parse(jsonMatch[0]) as { rewrites?: RewriteSuggestion[] }
-  return parsed.rewrites ?? []
+  const d = data as { rewrites?: RewriteSuggestion[] }
+  return d.rewrites ?? []
 }
 
 export async function generateRewrites(
@@ -93,22 +122,24 @@ export async function generateRewrites(
   isPro: boolean,
   context?: ScoreContext
 ): Promise<RewriteSuggestion[]> {
-  const apiKey = await getClaudeApiKey()
-  if (!apiKey) throw new Error("NO_API_KEY")
+  const [identity, voiceDigest] = await Promise.all([resolveIdentity(), buildVoiceDigest()])
+  const body = buildRequestBody(originalText, score, identity, isPro ? 3 : 1, voiceDigest, context)
 
-  const prompt = buildPrompt(originalText, score, isPro ? 3 : 1, context)
-
-  // Route through background service worker to avoid CORS restrictions
+  // Route through background service worker -- consistent with the rest of
+  // the extension's network calls, and keeps this module ignorant of
+  // whether it's running in a content script or the options page.
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
-      { type: "GENERATE_REWRITES", apiKey, prompt },
-      (response: { ok: boolean; data?: unknown; error?: string }) => {
+      { type: "GENERATE_REWRITES", body },
+      (response: { ok: boolean; data?: unknown; error?: string; resetsAt?: string }) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message))
           return
         }
         if (!response.ok) {
-          reject(new Error(response.error ?? "API_ERROR"))
+          const err = new Error(response.error ?? "API_ERROR") as Error & { resetsAt?: string }
+          if (response.resetsAt) err.resetsAt = response.resetsAt
+          reject(err)
           return
         }
         try {

@@ -23,7 +23,7 @@ PostPilot is a Chrome extension that scores X/Twitter posts in real time as you 
 | Length optimization | Guides toward character ranges that perform best |
 | Curiosity gap detection | Flags whether the post earns the click |
 | Governor warnings | 79 patterns that suppress engagement — flagged with severity |
-| 1 AI rewrite suggestion | One-click improved version using Claude API (user provides key) |
+| 1 AI rewrite suggestion | One-click improved version using Claude — included, no API key needed. 3/day, resets midnight UTC. |
 | Score history | Tracks scores of published posts, shows 7-day rolling average |
 | Draft queue | Save posts with scores, restore to compose box |
 | Score Trends (Settings → Analytics) | This week's average score, post count, trend vs. last week — a local, passive view of the score history above; teaser for the Pro breakdown below |
@@ -35,7 +35,7 @@ PostPilot is a Chrome extension that scores X/Twitter posts in real time as you 
 | Learning engine | Analyzes your own past-post performance (collected passively from the X DOM as you browse, never via API) to identify what works for your audience |
 | Full Analytics Breakdown (Settings → Analytics) | Hook type performance, length sweet spot, topic performance, best posting times (weekday/weekend/combined), media impact (images/links), reply craft, and prioritized recommendations — all derived locally from your own collected posts |
 | Reply Craft scoring | Grades replies on their own rubric (mechanism/constraint vocabulary, learned length band), separate from original-post scoring |
-| 3 AI rewrite variants | Each targets a different hook type |
+| 3 AI rewrite variants | Each targets a different hook type; calibrated to your Voice Match profile when one exists. 40/day, resets midnight UTC. |
 | Thread scorer | Scores each tweet in a thread individually, flags weakest link |
 | Viral Post Analyzer | Scores any post on X feed — every viral post becomes a lesson |
 | Hook Library | Save best-performing openers, remix when stuck |
@@ -56,11 +56,12 @@ Chrome Extension (MV3)
 │   └── analytics-collector.ts  — Passively reads your own tweets' engagement
 │                                  stats off the X DOM as you browse; feeds
 │                                  the learning engine. No API, no server.
-├── Options Page (options.tsx)  — Settings: license, API key, voice, AI
-│                                  rewrites, Analytics (Score Trends free /
-│                                  Full Breakdown Pro), dev-only export/import
-│                                  backup + dev-Pro toggle
-├── Background Service Worker   — License validation
+├── Options Page (options.tsx)  — Settings: license, voice, AI rewrites
+│                                  (quota info, no API key), Analytics (Score
+│                                  Trends free / Full Breakdown Pro), dev-only
+│                                  export/import backup + dev-Pro toggle
+├── Background Service Worker   — License validation, proxies AI rewrite
+│                                  requests to the Cloudflare Worker below
 └── Scoring Engine
     ├── scoring-pipeline.ts     — scorePost() pure function
     ├── hook-types.ts           — 20 hook type patterns
@@ -69,6 +70,19 @@ Chrome Extension (MV3)
     ├── voice-storage.ts        — Fingerprint + overrides persistence
     └── learning/               — Insight engine (hook boosts, time/media/
                                    topic performance, reply-craft learner)
+
+worker/ (postpilot-rewrite-worker, Cloudflare Worker — separate deploy)
+├── src/entitlement.ts   — Re-validates license against LemonSqueezy
+│                          server-side; never trusts a client-claimed tier
+│                          (the same bug class as the 0.6.17 bypass below)
+├── src/rateLimit.ts     — KV daily-cap counters, keyed by license or
+│                          anonymous device id, reset at UTC midnight
+├── src/prompt.ts        — Builds the Anthropic request (cacheable system
+│                          block + per-post user content, optional voice
+│                          digest for Pro)
+├── src/anthropic.ts     — Calls Anthropic with PostPilot's own key
+└── wrangler.toml        — MODEL_ID, FREE_DAILY_CAP, PRO_DAILY_CAP — change
+                            and redeploy, no extension update needed
 ```
 
 **Pro-gating discipline (as of 0.6.17):** every read of the local dev-Pro
@@ -79,9 +93,9 @@ Store install — that guard was missing in several places before 0.6.17 and
 was a real, live monetization bypass (any user could unlock Pro via
 devtools). See git history on `master` around commit `e5e49c2` for the fix.
 
-**Storage:** All data local via `chrome.storage.local` — no PostPilot servers  
+**Storage:** Scoring, drafts, voice profile, and analytics all local via `chrome.storage.local` — never transmitted  
 **Payments:** LemonSqueezy (license key validation only)  
-**AI:** Claude API — user provides own key, called from content script  
+**AI:** Claude API, called from PostPilot's own Cloudflare Worker (`worker/`) — PostPilot pays, not the user; no API key to manage. Post text, an identity (device id or license key), and — for Pro with a voice profile — a compact style digest are sent to that Worker to generate rewrites. See `privacy-policy.html` for the exact data-handling language.  
 
 ---
 
@@ -103,7 +117,7 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 **Permissions:**
 - `storage` — saves scores, drafts, hooks, fingerprint, settings
 
-**Host permissions:** x.com, twitter.com, api.lemonsqueezy.com, api.anthropic.com
+**Host permissions:** x.com, twitter.com, api.lemonsqueezy.com, postpilot-rewrite-worker.brianemcgrath.workers.dev (interim -- moves to a postpilotforx.com subdomain once that domain's DNS is on Cloudflare)
 
 ---
 
@@ -132,7 +146,7 @@ Real competitive set, per market research 2026-08-02 (`RESEARCH/POSTPILOT_MARKET
 | CapGo AI (new, 2026) | — | "Vibe Check" — single-flag voice-consistency check against your historical voice; hit #1 Product of the Day. Closest thing to a scoring/voice-check competitor. PostPilot's Voice Match (13-dimension fingerprinting) is more sophisticated but was, until this positioning pass, buried as an internal Pro sub-feature rather than a headline capability — see naming note above. |
 | Manipulator (Chrome ext.) | — | Scores *others'* tweets 0–10 for clickbait, on-device/local, no server. Different job (reader-side judgment) but validates real demand for local-only scoring tools — directly supports PostPilot's "never touches your account" positioning as a trust point, not just an implementation detail. |
 
-**PostPilot's moat:** Real-time quality scoring inside the compose box, entirely local — no PostPilot servers, no account access. No other tool in this set does this. ClimbX in particular writes and schedules content for you (engagement-farming mechanics); PostPilot never touches your account or writes for you, it only scores what you already wrote, locally, before you send. Scheduling is the single highest-demand feature this category has that PostPilot doesn't — and building it would collapse this exact moat, so it's deliberately off-thesis, not a roadmap gap.
+**PostPilot's moat:** Real-time quality scoring inside the compose box, entirely local and with no account access — scoring, drafts, and your voice profile never leave the device (the only exceptions are license validation and, when you ask for one, an AI rewrite request). No other tool in this set does this. ClimbX in particular writes and schedules content for you (engagement-farming mechanics); PostPilot never touches your account or writes for you, it only scores what you already wrote, locally, before you send. Scheduling is the single highest-demand feature this category has that PostPilot doesn't — and building it would collapse this exact moat, so it's deliberately off-thesis, not a roadmap gap.
 
 ---
 
@@ -142,6 +156,11 @@ Real competitive set, per market research 2026-08-02 (`RESEARCH/POSTPILOT_MARKET
 - [x] Reorder landing page so Pro features are visible before/alongside the install CTA, not buried mid-page
 - [x] Annual pricing tier — $50/yr (2 months free) added as a second LemonSqueezy variant on the existing PostPilot Pro product, toggle at checkout, defaults to Monthly. Landing page updated (Pro kicker, comparison table, JSON-LD offers).
 - [x] Ship the Analytics free/Pro gating split (0.6.17) — prerequisite for the landing-page copy below, since advertising Pro-only analytics while the build leaked it free would've been a credibility problem.
-- [ ] **Landing page copy pass (next up):** rewrite `index.html`'s analytics framing around the local/privacy wedge instead of competing on dashboard completeness (currently the page pitches PostPilot as explicitly *not* doing analytics — l.300 area — which is now stale); rename the Voice Fingerprinting section headline to **Voice Match**. See the naming note in Feature Set above for exact positioning. Owner: April (positioning), implementation once Brian approves copy.
+- [x] Landing page copy pass — `index.html` analytics framing reworked around the local/privacy wedge (Score Trends / Full Breakdown language) and Voice Fingerprinting section renamed to **Voice Match** (commit `4b67246`).
+- [x] AI Rewrites moved off BYOK onto a PostPilot-run backend (`worker/`, Cloudflare Worker) — no more "paste your Claude API key," rewrites are now included and capped per day (Free 3/day, Pro 40/day). Voice Match now actually informs rewrites, which it didn't before. Landing page, privacy policy, and this doc's "no servers" language updated to match — see `privacy-policy.html`'s "What data PostPilot transmits" section for the exact claim.
+- [x] Worker deployed (2026-08-12) — live at `postpilot-rewrite-worker.brianemcgrath.workers.dev`, KV namespaces created, `ANTHROPIC_API_KEY` set as a secret, end-to-end smoke test confirmed a real rewrite comes back through the full chain (device quota → Anthropic → JSON parse).
+- [ ] **Custom domain still pending.** Running on the free workers.dev subdomain because postpilotforx.com's DNS isn't on Cloudflare yet. Once it is: add an `api.postpilotforx.com` route/custom domain in the Cloudflare dashboard, then update the endpoint in `src/background.ts`, `host_permissions` in `package.json`, and the permission bullet in `privacy-policy.html` together (all three currently point at the workers.dev URL).
+- [ ] Re-derive the Free/Pro daily caps (currently 3 / 40) from real `count_tokens` numbers against `claude-sonnet-5` before raising them — the current values are back-of-envelope, see plan history.
+- [ ] Pending: Pro price increase to $24–$39/mo to fund the included AI rewrites (this was the business rationale for dropping BYOK) — not yet reflected in `index.html` pricing, the LemonSqueezy checkout variant, or the pricing table in this doc. Coordinate that pass separately once a number is picked.
 - [ ] Real social proof once numbers justify it (actual CWS install count or real tester quotes) — never a fabricated counter
 - [ ] Ongoing: DOM fragility is a standing risk, not a one-time fix. X's composer DOM has broken scoring twice already this launch week (mention-truncation, viral-analyzer personalization). Keep test coverage up rather than treating as solved.

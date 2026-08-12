@@ -34,7 +34,7 @@
       "https://x.com/*",
       "https://twitter.com/*",
       "https://api.lemonsqueezy.com/*",
-      "https://api.anthropic.com/*"
+      "https://postpilot-rewrite-worker.brianemcgrath.workers.dev/*"
     ]
   }
 }
