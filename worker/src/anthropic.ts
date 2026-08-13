@@ -19,6 +19,11 @@ export async function callAnthropic(env: Env, system: string, userContent: strin
     body: JSON.stringify({
       model: env.MODEL_ID,
       max_tokens: 1024,
+      // Rewrites are a short creative task, but banned/weak-phrase
+      // self-checking in the system prompt benefits from some reasoning --
+      // medium trims the default's thinking spend without dropping it to
+      // zero the way "low" did in testing.
+      output_config: { effort: "medium" },
       system: [
         {
           type: "text",
@@ -38,6 +43,15 @@ export async function callAnthropic(env: Env, system: string, userContent: strin
 
   const data = (await response.json()) as {
     content?: Array<{ type: string; text?: string }>
+    usage?: {
+      input_tokens: number
+      output_tokens: number
+      cache_creation_input_tokens?: number
+      cache_read_input_tokens?: number
+    }
+  }
+  if (data.usage) {
+    console.log("[postpilot-rewrite-worker] usage", JSON.stringify(data.usage))
   }
   const textBlock = data.content?.find((c) => c.type === "text")?.text
   if (!textBlock) throw new Error("EMPTY_RESPONSE")

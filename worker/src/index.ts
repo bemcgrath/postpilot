@@ -65,7 +65,10 @@ export async function handleRewrite(request: Request, env: Env): Promise<Respons
     const system = buildSystemPrompt(count)
     const userContent = buildUserContent({ ...body, count, voiceDigest })
     const responseText = await callAnthropic(env, system, userContent)
-    const rewrites = parseRewrites(responseText)
+    // The prompt asks Claude for exactly `count` rewrites, but nothing
+    // guarantees it obeys that -- truncate defensively so callers can rely
+    // on the contract rather than the model's compliance.
+    const rewrites = parseRewrites(responseText).slice(0, count)
     return json({ rewrites })
   } catch (err) {
     console.error("[postpilot-rewrite-worker] generation failed", err)

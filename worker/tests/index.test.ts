@@ -164,4 +164,37 @@ describe("handleRewrite orchestration", () => {
     const data = (await res.json()) as { rewrites: Array<{ text: string }> }
     expect(data.rewrites[0].text).toBe("rewritten")
   })
+
+  it("truncates to the requested count when the model over-generates", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("pro")
+    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: true, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(callAnthropic).mockResolvedValue(
+      JSON.stringify({
+        rewrites: [
+          { text: "one", rationale: "a" },
+          { text: "two", rationale: "b" },
+          { text: "three", rationale: "c" },
+          { text: "four", rationale: "d" },
+        ],
+      })
+    )
+
+    const res = await handleRewrite(makeRequest({ ...validBody, count: 3 }), makeEnv())
+    expect(res.status).toBe(200)
+    const data = (await res.json()) as { rewrites: Array<{ text: string }> }
+    expect(data.rewrites).toHaveLength(3)
+    expect(data.rewrites.map((r) => r.text)).toEqual(["one", "two", "three"])
+  })
+
+  it("passes through fewer rewrites than requested without padding", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("pro")
+    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: true, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(callAnthropic).mockResolvedValue(
+      JSON.stringify({ rewrites: [{ text: "only-one", rationale: "a" }] })
+    )
+
+    const res = await handleRewrite(makeRequest({ ...validBody, count: 3 }), makeEnv())
+    const data = (await res.json()) as { rewrites: Array<{ text: string }> }
+    expect(data.rewrites).toHaveLength(1)
+  })
 })
