@@ -346,7 +346,7 @@ function Options() {
               <p style={{ color: "#555", fontSize: "13px", margin: "0 0 20px" }}>
                 Don't have a license?{" "}
                 <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
-                  Get PostPilot Pro for $5/mo
+                  Get PostPilot Pro for $24/mo
                 </a>
               </p>
               <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>

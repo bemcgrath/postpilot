@@ -4,11 +4,11 @@
 
 PostPilot is a Chrome extension that scores X/Twitter posts in real time as you type. It overlays a score panel on the X compose box, giving instant feedback on hook strength, specificity, governor violations, and more — before you hit send.
 
-**Tagline:** Score every X post as you type. Pro learns your voice and your audience — AI rewrites, thread scoring, and a self-building hook library. $5/mo.
+**Tagline:** Score every X post as you type. Pro learns your voice and your audience — AI rewrites, thread scoring, and a self-building hook library. $24/mo.
 
 **Version:** 0.6.18  
 **Framework:** Plasmo (React/TypeScript, Chrome MV3)  
-**Pricing:** Free tier + Pro at $5/mo via LemonSqueezy
+**Pricing:** Free tier + Pro at $24/mo via LemonSqueezy
 
 ---
 
@@ -28,7 +28,7 @@ PostPilot is a Chrome extension that scores X/Twitter posts in real time as you 
 | Draft queue | Save posts with scores, restore to compose box |
 | Score Trends (Settings → Analytics) | This week's average score, post count, trend vs. last week — a local, passive view of the score history above; teaser for the Pro breakdown below |
 
-### Pro Tier ($5/mo)
+### Pro Tier ($24/mo)
 | Feature | Description |
 |--------|-------------|
 | Voice Match | Learns writing style across 13 dimensions (voice fingerprinting under the hood), personalizes scoring and AI rewrites to sound like you |
@@ -111,7 +111,7 @@ Score every Twitter/X post as you type — AI rewrites, thread scoring, voice co
 
 **LemonSqueezy listing (name 50–60 chars, description 120–160 chars):**  
 Name (54 chars): PostPilot Pro — AI Post Scoring & Voice Coaching for X  
-Description (143 chars): Score every X post as you type. Pro learns your voice and your audience — AI rewrites, thread scoring, and a self-building hook library. $5/mo.  
+Description (144 chars): Score every X post as you type. Pro learns your voice and your audience — AI rewrites, thread scoring, and a self-building hook library. $24/mo.  
 Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f
 
 **Permissions:**
@@ -161,6 +161,7 @@ Real competitive set, per market research 2026-08-02 (`RESEARCH/POSTPILOT_MARKET
 - [x] Worker deployed (2026-08-12) — live at `postpilot-rewrite-worker.brianemcgrath.workers.dev`, KV namespaces created, `ANTHROPIC_API_KEY` set as a secret, end-to-end smoke test confirmed a real rewrite comes back through the full chain (device quota → Anthropic → JSON parse).
 - [ ] **Custom domain still pending.** Running on the free workers.dev subdomain because postpilotforx.com's DNS isn't on Cloudflare yet. Once it is: add an `api.postpilotforx.com` route/custom domain in the Cloudflare dashboard, then update the endpoint in `src/background.ts`, `host_permissions` in `package.json`, and the permission bullet in `privacy-policy.html` together (all three currently point at the workers.dev URL).
 - [ ] Re-derive the Free/Pro daily caps (currently 3 / 40) from real `count_tokens` numbers against `claude-sonnet-5` before raising them — the current values are back-of-envelope, see plan history.
-- [ ] Pending: Pro price increase to $24–$39/mo to fund the included AI rewrites (this was the business rationale for dropping BYOK) — not yet reflected in `index.html` pricing, the LemonSqueezy checkout variant, or the pricing table in this doc. Coordinate that pass separately once a number is picked.
+- [x] Pro price increase to $24/mo (from $5/mo), $240/yr (from $50/yr) — funds the included AI rewrites now that BYOK is gone; picked from the $24–39 range based on real worst-case cost math (40/day cap × Sonnet 5 pricing ≈ $10–15/mo per maxed-out Pro user at intro vs. standard API pricing). `index.html` (JSON-LD offers, hero CTA, pricing kicker, comparison table headline/row), `src/options.tsx` ("Get PostPilot Pro" link), and this doc's tagline/pricing lines all updated.
+- [ ] **LemonSqueezy price itself still needs a manual update.** The checkout variant (`40669ef5-0219-4b06-ac42-0d9cbdf7885f`) still charges $5/mo / $50/yr until updated in the LemonSqueezy dashboard (Products → PostPilot Pro → edit the Monthly and Yearly variant prices to $24.00 / $240.00) — no API credential for this in the repo, so it can't be scripted. Do this before merging/deploying the code changes above, or the landing page will advertise a price the checkout doesn't charge.
 - [ ] Real social proof once numbers justify it (actual CWS install count or real tester quotes) — never a fabricated counter
 - [ ] Ongoing: DOM fragility is a standing risk, not a one-time fix. X's composer DOM has broken scoring twice already this launch week (mention-truncation, viral-analyzer personalization). Keep test coverage up rather than treating as solved.
