@@ -6,7 +6,7 @@ PostPilot is a Chrome extension that scores X/Twitter posts in real time as you 
 
 **Tagline:** Score every X post as you type. Pro learns your voice and your audience — AI rewrites, thread scoring, and a self-building hook library. $24/mo.
 
-**Version:** 0.6.18  
+**Version:** 0.6.19  
 **Framework:** Plasmo (React/TypeScript, Chrome MV3)  
 **Pricing:** Free tier + Pro at $24/mo via LemonSqueezy
 
