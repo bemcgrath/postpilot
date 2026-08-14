@@ -125,8 +125,8 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 
 | Store | Status |
 |-------|--------|
-| Chrome Web Store | v0.6.17 approved and live (2026-08-03) — closes a real Pro-unlock bypass (see Pro-gating discipline note above) plus the Analytics tab gating split |
-| LemonSqueezy | Live — store activated, product published 2026-07-16 ($5/mo, license keys on, activation limit 5) |
+| Chrome Web Store | v0.6.19 submitted 2026-08-13, pending review — Pro price increase ($24/mo), hardcoded price removed from the options page CTA, and the store description rewritten to match the current AI Rewrites backend (was still describing the retired BYOK flow). v0.6.17 (approved 2026-08-03) is live until this clears review. |
+| LemonSqueezy | Live — store activated, product published 2026-07-16. Price updated 2026-08-13 to $24/mo / $240/yr (from $5/mo / $50/yr); license keys on, activation limit 5 |
 
 ---
 
