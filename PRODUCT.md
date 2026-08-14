@@ -41,7 +41,7 @@ PostPilot is a Chrome extension that scores X/Twitter posts in real time as you 
 | Hook Library | Save best-performing openers, remix when stuck |
 | Auto-save hooks | High-scoring posts (70+) auto-saved to hook library on publish |
 
-**Naming note:** externally, lead with **"Voice Match"** as the headline and keep "voice fingerprinting" as the substantiating technical detail underneath — chosen specifically so the messaging doesn't echo competitor CapGo AI's "Vibe Check" (see Comparable Tools below). Similarly, avoid the bare word **"analytics"** in marketing copy for the Settings → Analytics feature; frame it as **"Score Trends"** (free) and the **Full Breakdown** (Pro), selling the "insights that don't require handing over your account" wedge rather than competing on dashboard completeness. See Post-launch todo for the landing-page pass still pending on this.
+**Naming note:** externally, lead with **"Voice Match"** as the headline and keep "voice fingerprinting" as the substantiating technical detail underneath. Watch VoiceMoat: they now ship a live "voice-match score" (0–100), so the phrase is no longer uniquely ours — differentiate on *what is scored* (your typing, locally, plus governors and hook types) rather than on the label. Typefully's Writing Assistant is the other name collision to avoid echoing ("Vibe Check" in some 2026 roundups is theirs, not CapGo AI's; CapGo is programmatic SEO). Similarly, avoid the bare word **"analytics"** in marketing copy for the Settings → Analytics feature; frame it as **"Score Trends"** (free) and the **Full Breakdown** (Pro), selling the "insights that don't require handing over your account" wedge rather than competing on dashboard completeness. See Post-launch todo for the landing-page pass still pending on this.
 
 ---
 
@@ -132,21 +132,27 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 
 ## Comparable Tools
 
-Real competitive set, per market research 2026-08-02 (`RESEARCH/POSTPILOT_MARKET_SCAN.md` in the Buzz workspace) — Taplio and Supergrow were previously listed here but are LinkedIn-only and don't actually compete with PostPilot on X.
+Real competitive set, per market research 2026-08-02 (updated 2026-08-14 — full writing-assistant gap analysis in `RESEARCH/X_AI_WRITING_ASSISTANTS_GAP_ANALYSIS.md`). Taplio and Supergrow are LinkedIn-only and don't compete with PostPilot on X. CapGo AI is programmatic SEO that syndicates to X, not a writing assistant; the "Vibe Check" some roundups attach to it is Typefully's.
+
+Writing-assistant competitors first (the actual category), then schedulers / growth suites that sell an AI writing layer.
 
 | Tool | Price | Gap vs PostPilot |
 |------|-------|-----------------|
-| Typefully | Free–$39/mo (+Team/Enterprise) | Distraction-free writing + scheduling + built-in analytics across X/LinkedIn/Threads/Bluesky/Mastodon. No inline quality scoring. |
-| Tweet Hunter | $49–99/mo | Viral-tweet library, AI writing, scheduling, auto-DM/CRM at top tier. No scoring. |
-| Hypefury | $29–199/mo | Scheduling, engagement automation, auto-plugs/recycling. No free tier, no scoring. |
+| VoiceMoat | $0 keepalive / $35–150/mo | Closest strategic competitor. Trains on 100–200 of *your* posts, live 0–100 voice-match score, Chrome extension, inline replies. **Generates** drafts, then scores them — opposite verb from PostPilot. OAuth/API publish on Pro. No 79-pattern governor, no 20 hook types, no local-only scoring, no audience-learned rubric from the DOM. |
+| Ghosti | $19/mo or $50/yr BYOK | Chrome ext. in the X compose box; no OAuth, never auto-posts (same trust model). Generate / Polish / Reply Guy / threads / remix. Does not score. PostPilot's twin on distribution, opposite job (write vs coach). |
+| VoxMagna | Credits; free start | Dashboard studio: Score It on 4 dimensions (hook, specificity, emotion, reply bait), 6 rewrite tools, URL-to-thread, mention inbox, images, calendar. Requires X OAuth. Click-to-score, not live-in-compose, not local. |
+| Typefully | Free–$39/mo (+Team/Enterprise) | Best-loved writer UX: distraction-free editor, Writing Assistant (voice from past posts, Punchier/Condense commands, persistent style rules, voice memos), scheduling, analytics across X/LinkedIn/Threads/Bluesky. Explicitly refuses auto-post and mass-reply. No inline quality scoring on x.com. |
+| Postwise | $37–97/mo | GhostWriter + 3 framework variations + predicted-engagement score. Trains on viral-performance signal more than on the writer's fingerprint. Dashboard, not compose-box. |
+| Tweet Hunter | $49–99/mo | Viral-tweet library, AI writing, scheduling, auto-DM/CRM at top tier. Reviews: drafts feel generic. No scoring. |
+| SuperX | Free / $29–49/mo | Chrome overlay + scheduler + 10M viral library + "algorithm simulator." Analytics-and-growth cockpit that added writing. OAuth, auto-plug / auto-RT. Prediction without craft diagnosis. |
+| Hypefury | $29–199/mo | Scheduling, engagement automation, auto-plugs/recycling. Almost no native AI writing. No free tier, no scoring. |
 | Publer | Free–$8/mo (+Enterprise) | General multi-platform scheduler; Business tier adds analytics, best-time-to-post, hashtags. No scoring. |
 | FeedHive | $19–299/mo | Scheduler + AI content gen, hashtags, analytics, social inbox. No scoring. |
 | SocialBee | $29–449/mo | Scheduler with AI Copilot, unified inbox, content recycling. No scoring. |
 | ClimbX | $29–39/mo | Growth automation: finds viral posts, auto-drafts/schedules replies and posts (10/day). Proactive content generation, not review. Cloud SaaS, connects your X account. |
-| CapGo AI (new, 2026) | — | "Vibe Check" — single-flag voice-consistency check against your historical voice; hit #1 Product of the Day. Closest thing to a scoring/voice-check competitor. PostPilot's Voice Match (13-dimension fingerprinting) is more sophisticated but was, until this positioning pass, buried as an internal Pro sub-feature rather than a headline capability — see naming note above. |
 | Manipulator (Chrome ext.) | — | Scores *others'* tweets 0–10 for clickbait, on-device/local, no server. Different job (reader-side judgment) but validates real demand for local-only scoring tools — directly supports PostPilot's "never touches your account" positioning as a trust point, not just an implementation detail. |
 
-**PostPilot's moat:** Real-time quality scoring inside the compose box, entirely local and with no account access — scoring, drafts, and your voice profile never leave the device (the only exceptions are license validation and, when you ask for one, an AI rewrite request). No other tool in this set does this. ClimbX in particular writes and schedules content for you (engagement-farming mechanics); PostPilot never touches your account or writes for you, it only scores what you already wrote, locally, before you send. Scheduling is the single highest-demand feature this category has that PostPilot doesn't — and building it would collapse this exact moat, so it's deliberately off-thesis, not a roadmap gap.
+**PostPilot's moat:** Real-time quality scoring inside the compose box, entirely local and with no account access — scoring, drafts, and your voice profile never leave the device (the only exceptions are license validation and, when you ask for one, an AI rewrite request). VoiceMoat now also puts a number on a draft, but it numbers *its* generation, not *your* typing, and it is not local. ClimbX in particular writes and schedules content for you (engagement-farming mechanics); PostPilot never touches your account or writes for you, it only scores what you already wrote, locally, before you send. Scheduling is the single highest-demand feature this category has that PostPilot doesn't — and building it would collapse this exact moat, so it's deliberately off-thesis, not a roadmap gap. The on-thesis gaps (rewrite commands, visible taboo lists, rewrite diffs, reply coaching) are in the research doc, §6.3.
 
 ---
 
