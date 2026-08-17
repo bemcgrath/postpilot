@@ -102,12 +102,43 @@ describe("scorePost reply-aware scoring", () => {
     expect(asReply.voiceMatch).toBeNull()
   })
 
-  it("is backward compatible: omitting the 5th argument matches pre-change behavior", () => {
-    const text = "I tracked 50 AI agents for 90 days. Here's what the data showed:"
+  it("is backward compatible: omitting the 5th argument scores as an original", () => {
+    const text = "The bottleneck is labeled neural recordings, not compute."
     const result = scorePost(text, null, undefined, null)
 
     expect(result.kind).toBe("original")
-    expect(result.hookScore.totalScore).toBe(90)
-    expect(result.inSweetSpot).toBe(false)
+    expect(result.sweetSpotRange).toEqual({ min: 280, max: 320 })
+    expect(result.mediaDelta).toBe(0)
+  })
+
+  it("uses a learned originals length band when provided", () => {
+    const text = "A".repeat(200)
+    const result = scorePost(text, null, undefined, null, {
+      kind: "original",
+      originalLengthRange: { min: 180, max: 220 }
+    })
+    expect(result.sweetSpotRange).toEqual({ min: 180, max: 220 })
+    expect(result.inSweetSpot).toBe(true)
+  })
+
+  it("strips the data-reveal hook bonus when the governor flags fabrication", () => {
+    const text = "I tracked 50 AI agents for 90 days. Here's what the data showed:"
+    const result = scorePost(text)
+    expect(result.governor.hasFabrication).toBe(true)
+    expect(result.hookScore.breakdown.hookType).toBe(0)
+    expect(result.hookScore.breakdown.penaltyReasons.join(" ")).toMatch(
+      /Unverified claim/
+    )
+  })
+
+  it("adds a media delta when an image is attached", () => {
+    const text = "The bottleneck is labeled neural recordings, not compute."
+    const plain = scorePost(text)
+    const withImage = scorePost(text, null, undefined, null, {
+      media: { hasImage: true, hasVideo: false, hasLink: false }
+    })
+    expect(withImage.mediaDelta).toBe(4)
+    expect(withImage.hookScore.totalScore).toBe(plain.hookScore.totalScore + 4)
+    expect(withImage.hookScore.breakdown.media).toBe(4)
   })
 })

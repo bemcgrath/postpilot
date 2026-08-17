@@ -35,6 +35,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
   const [suggestions, setSuggestions] = useState<ScoredSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [quotaResetsAt, setQuotaResetsAt] = useState<string | null>(null)
+  const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null)
   const [replacedIdx, setReplacedIdx] = useState<number | null>(null)
   const [undoText, setUndoText] = useState<string | null>(null)
 
@@ -55,7 +56,14 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
     setSuggestions(null)
     setUndoText(null)
     try {
-      const results = await generateRewrites(originalText, score, isPro, context)
+      const { suggestions: results, remaining } = await generateRewrites(
+        originalText,
+        score,
+        isPro,
+        context,
+        hookTypeBoosts
+      )
+      if (typeof remaining === "number") setQuotaRemaining(remaining)
       const scored: ScoredSuggestion[] = results.map((r) => {
         // Same context as the original score, or the delta below is
         // meaningless -- a reply scored as an original would compare against
@@ -74,10 +82,8 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
       if (msg === "QUOTA_EXCEEDED") {
         setError("QUOTA_EXCEEDED")
         setQuotaResetsAt(resetsAt ?? null)
-      } else if (msg === "PARSE_ERROR") {
-        setError("Unexpected response. Try again.")
       } else {
-        setError("Failed to generate rewrites. Try again in a moment.")
+        setError(msg || "Failed to generate rewrites. Try again in a moment.")
       }
     } finally {
       setLoading(false)
@@ -212,6 +218,11 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
               onClick={handleGenerate}>
               Regenerate
             </button>
+            {quotaRemaining != null && (
+              <span className="postpilot-rewrites__pro-nudge">
+                {quotaRemaining} left today
+              </span>
+            )}
             {!isPro && (
               <span className="postpilot-rewrites__pro-nudge">
                 Pro gets 3 variants —{" "}

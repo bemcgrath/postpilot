@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react"
 
 import { scorePost } from "~scoring/scoring-pipeline"
 import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
+import { loadLearnedInsights } from "~learning/storage"
+import type { LearnedInsights } from "~learning/types"
 import { validateStoredLicense } from "~config/license"
 import { initConfig } from "~config/config-storage"
 
@@ -69,6 +71,7 @@ export function ThreadSummaryPanel() {
   const [isPro, setIsPro] = useState(false)
   const fingerprintRef = useRef<Awaited<ReturnType<typeof loadFingerprint>>>(null)
   const overridesRef = useRef<Awaited<ReturnType<typeof loadVoiceOverrides>> | null>(null)
+  const insightsRef = useRef<LearnedInsights | null>(null)
 
   useEffect(() => {
     initConfig().catch((err) => console.error("[PostPilot]", err))
@@ -85,6 +88,7 @@ export function ThreadSummaryPanel() {
     }).catch((err) => console.error("[PostPilot]", err))
     loadFingerprint().then(fp => { fingerprintRef.current = fp }).catch((err) => console.error("[PostPilot]", err))
     loadVoiceOverrides().then(ov => { overridesRef.current = ov }).catch((err) => console.error("[PostPilot]", err))
+    loadLearnedInsights().then(ins => { insightsRef.current = ins }).catch((err) => console.error("[PostPilot]", err))
   }, [])
 
   useEffect(() => {
@@ -97,12 +101,17 @@ export function ThreadSummaryPanel() {
 
       const fp = isPro ? fingerprintRef.current : null
       const ov = isPro ? overridesRef.current : null
+      const insights = isPro ? insightsRef.current : null
+      const boosts = insights?.isReady ? insights.hookTypeBoosts : undefined
+      const lengthRange = insights?.isReady ? insights.optimalLengthRange : null
 
       const updated = texts.map((text, i) => ({
         index: i + 1,
         text,
         score: text.length >= 2
-          ? scorePost(text, fp, undefined, ov).hookScore.totalScore
+          ? scorePost(text, fp, boosts, ov, {
+              originalLengthRange: lengthRange
+            }).hookScore.totalScore
           : 0,
       }))
       setScores(updated)

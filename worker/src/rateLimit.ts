@@ -20,6 +20,7 @@ function counterKey(identityKey: string, bucket: string): string {
 
 export interface RateLimitResult {
   allowed: boolean
+  remaining: number
   resetsAt: string // ISO timestamp
 }
 
@@ -42,9 +43,26 @@ export async function checkAndIncrement(env: Env, identityKey: string, cap: numb
   const current = raw ? Number.parseInt(raw, 10) : 0
 
   if (current >= cap) {
-    return { allowed: false, resetsAt }
+    return { allowed: false, remaining: 0, resetsAt }
   }
 
-  await env.RATE_LIMIT_KV.put(key, String(current + 1), { expirationTtl: COUNTER_TTL_SECONDS })
-  return { allowed: true, resetsAt }
+  const next = current + 1
+  await env.RATE_LIMIT_KV.put(key, String(next), { expirationTtl: COUNTER_TTL_SECONDS })
+  return { allowed: true, remaining: cap - next, resetsAt }
+}
+
+/**
+ * Refund one increment after a failed generation so a 502 does not burn
+ * a daily slot. Never decrements below zero.
+ */
+export async function decrement(env: Env, identityKey: string): Promise<void> {
+  const now = new Date()
+  const bucket = utcDateBucket(now)
+  const key = counterKey(identityKey, bucket)
+
+  const raw = await env.RATE_LIMIT_KV.get(key)
+  const current = raw ? Number.parseInt(raw, 10) : 0
+  if (!Number.isFinite(current) || current <= 0) return
+
+  await env.RATE_LIMIT_KV.put(key, String(current - 1), { expirationTtl: COUNTER_TTL_SECONDS })
 }

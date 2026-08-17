@@ -1,4 +1,4 @@
-import type { HookTypeName, PostScore } from "./types"
+import type { ComposeMedia, HookTypeName, PostScore } from "./types"
 import type { VoiceFingerprint, VoiceOverrides } from "./voice-types"
 import type { ReplyCraftBenchmarks } from "./reply-craft"
 import type { ComposerKind } from "./reply-context"
@@ -8,9 +8,18 @@ import { checkGovernor } from "./governor"
 import { scoreVoiceMatch } from "./voice-match"
 import { applyOverrides } from "./voice-fingerprint"
 import { scoreReplyCraft } from "./reply-craft"
+import { computeMediaDelta, EMPTY_MEDIA } from "./media-delta"
+import type { MediaBoosts } from "./media-delta"
 import { getPipelineConfig, getHookAnalyzerConfig } from "~config/config-storage"
 
 const analyzer = new HookAnalyzer()
+
+const CLAIM_HOOKS = new Set<HookTypeName>([
+  "data_reveal",
+  "shocking_stat",
+  "secret_reveal",
+  "curiosity_gap"
+])
 
 /**
  * Reply-side learned benchmarks, structurally compatible with (but decoupled
@@ -27,6 +36,10 @@ export interface ScoreContext {
   kind?: ComposerKind // default "original"
   replyInsights?: ReplyScoringBenchmarks | null // learned band + boosts, Pro only
   parentText?: string | null // for adds-vs-echoes, optional
+  /** Learned originals length band; cold-start uses pipeline sweetSpot. */
+  originalLengthRange?: { min: number; max: number } | null
+  media?: ComposeMedia
+  mediaBoosts?: MediaBoosts | null
 }
 
 /** Run the full scoring pipeline on post text. */
@@ -73,6 +86,54 @@ export function scorePost(
   }
 
   const governor = checkGovernor(text)
+
+  // Fabrication vs data-reveal: don't pay a hook bonus for an unverified claim.
+  if (
+    governor.hasFabrication &&
+    hookScore.hookType &&
+    CLAIM_HOOKS.has(hookScore.hookType) &&
+    hookScore.breakdown.hookType > 0
+  ) {
+    const stripped = hookScore.breakdown.hookType
+    const total = Math.max(0, Math.min(100, hookScore.totalScore - stripped))
+    hookScore = {
+      ...hookScore,
+      totalScore: total,
+      breakdown: {
+        ...hookScore.breakdown,
+        hookType: 0,
+        penalties: hookScore.breakdown.penalties - stripped,
+        penaltyReasons: [
+          ...hookScore.breakdown.penaltyReasons,
+          "Unverified claim — hook bonus removed"
+        ]
+      },
+      isWeak: total < getHookAnalyzerConfig().weakThreshold
+    }
+  }
+
+  const media = context?.media ?? EMPTY_MEDIA
+  const { delta: mediaDelta, reasons: mediaReasons } = computeMediaDelta(
+    media,
+    context?.mediaBoosts
+  )
+  if (mediaDelta !== 0) {
+    const total = Math.max(0, Math.min(100, hookScore.totalScore + mediaDelta))
+    hookScore = {
+      ...hookScore,
+      totalScore: total,
+      breakdown: {
+        ...hookScore.breakdown,
+        media: mediaDelta,
+        penaltyReasons:
+          mediaDelta < 0
+            ? [...hookScore.breakdown.penaltyReasons, ...mediaReasons]
+            : hookScore.breakdown.penaltyReasons
+      },
+      isWeak: total < getHookAnalyzerConfig().weakThreshold
+    }
+  }
+
   const charCount = text.length
 
   const sweetSpotRange = isReply
@@ -80,7 +141,10 @@ export function scorePost(
         min: config.replySweetSpotMin,
         max: config.replySweetSpotMax
       })
-    : { min: config.sweetSpotMin, max: config.sweetSpotMax }
+    : (context?.originalLengthRange ?? {
+        min: config.sweetSpotMin,
+        max: config.sweetSpotMax
+      })
   const inSweetSpot =
     charCount >= sweetSpotRange.min && charCount <= sweetSpotRange.max
 
@@ -110,6 +174,8 @@ export function scorePost(
     voiceMatch,
     kind,
     sweetSpotRange,
-    replyCraft
+    replyCraft,
+    media,
+    mediaDelta
   }
 }

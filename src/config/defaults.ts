@@ -29,18 +29,45 @@ function phrasesFromPatterns(
   }))
 }
 
-// ---- Banned phrases (29) ----
+// ---- Banned phrases (engagement farming / hard blocks) ----
 const BANNED_PHRASE_PATTERNS = [
   "\\bthoughts\\?",
   "\\byou should\\b",
-  "\\bgame[- ]changer\\b",
-  "\\brevolutionary\\b",
   "\\blet me know\\b",
   "\\bwhat do you think\\b",
   "\\bdrop a comment\\b",
   "\\bfollow for more\\b",
   "\\bretweet\\b",
   "\\brt if\\b",
+  "\\b\\d+%\\s*confident\\b",
+  "\\bconfident this\\b",
+  "\\b18 months\\b",
+  "\\b12 months\\b",
+  "\\bi've tested\\b",
+  "\\bthis year\\b"
+]
+
+const BANNED_PHRASE_LABELS = [
+  "thoughts?",
+  "you should",
+  "let me know",
+  "what do you think",
+  "drop a comment",
+  "follow for more",
+  "retweet",
+  "rt if",
+  "X% confident",
+  "confident this",
+  "18 months",
+  "12 months",
+  "I've tested",
+  "this year"
+]
+
+// ---- AI slop (named lane — ChatGPT tells) ----
+const AI_SLOP_PATTERNS = [
+  "\\bgame[- ]changer\\b",
+  "\\brevolutionary\\b",
   "\\bunlock(?:s|ing|ed)?\\b",
   "\\bleverag(?:e|es|ing|ed)\\b",
   "\\bdelv(?:e|ing|es|ed)\\b",
@@ -52,27 +79,16 @@ const BANNED_PHRASE_PATTERNS = [
   "—and\\b",
   "—but\\b",
   "—that's\\b",
-  "\\b\\d+%\\s*confident\\b",
-  "\\bconfident this\\b",
-  "\\b18 months\\b",
-  "\\b12 months\\b",
   "\\bthis accelerates\\b",
-  "\\bi've tested\\b",
   "\\btools like\\b",
-  "\\bthis year\\b"
+  "\\btapestry\\b",
+  "in today's (?:rapidly |fast-paced )?",
+  "\\bas an ai\\b"
 ]
 
-const BANNED_PHRASE_LABELS = [
-  "thoughts?",
-  "you should",
+const AI_SLOP_LABELS = [
   "game-changer",
   "revolutionary",
-  "let me know",
-  "what do you think",
-  "drop a comment",
-  "follow for more",
-  "retweet",
-  "rt if",
   "unlock/unlocks/unlocking",
   "leverage/leverages/leveraging",
   "delve/delving",
@@ -84,14 +100,11 @@ const BANNED_PHRASE_LABELS = [
   "em-dash (—and)",
   "em-dash (—but)",
   "em-dash (—that's)",
-  "X% confident",
-  "confident this",
-  "18 months",
-  "12 months",
   "this accelerates",
-  "I've tested",
   "tools like",
-  "this year"
+  "tapestry",
+  "in today's rapidly/fast-paced",
+  "as an AI"
 ]
 
 // ---- Weak phrases (37) ----
@@ -188,6 +201,7 @@ function buildGovernorDefaults(): GovernorConfig {
   return {
     bannedPhrases: phrasesFromPatterns("banned", BANNED_PHRASE_PATTERNS, BANNED_PHRASE_LABELS),
     weakPhrases: phrasesFromPatterns("weak", WEAK_PHRASE_PATTERNS),
+    aiSlopPhrases: phrasesFromPatterns("slop", AI_SLOP_PATTERNS, AI_SLOP_LABELS),
     fabricationPatterns: phrasesFromPatterns("fab", FABRICATION_PATTERNS, FABRICATION_LABELS),
     fabricatedStatsPatterns: phrasesFromPatterns("fabstat", FABRICATED_STATS_PATTERNS, FABRICATED_STATS_LABELS),
     lengthErrorThreshold: 500,
@@ -265,6 +279,8 @@ export function buildDefaults(): PostPilotConfig {
 export {
   BANNED_PHRASE_PATTERNS,
   BANNED_PHRASE_LABELS,
+  AI_SLOP_PATTERNS,
+  AI_SLOP_LABELS,
   WEAK_PHRASE_PATTERNS,
   FABRICATION_PATTERNS,
   FABRICATION_LABELS,

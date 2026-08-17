@@ -7,28 +7,34 @@ import type { RewriteRequestBody, RewriteSuggestion } from "./types"
 const BANNED_PHRASE_LABELS = [
   "thoughts?",
   "you should",
-  "game-changer",
-  "revolutionary",
   "let me know",
   "what do you think",
   "drop a comment",
   "follow for more",
   "retweet",
   "rt if",
+  "X% confident",
+  "confident this",
+  "18 months",
+  "12 months",
+  "I've tested",
+  "this year"
+]
+
+const AI_SLOP_LABELS = [
+  "game-changer",
+  "revolutionary",
   "unlock/unlocks/unlocking",
   "leverage/leverages/leveraging",
   "delve/delving",
   "signals a bigger/major shift",
   "what this signals",
   "this signals",
-  "X% confident",
-  "confident this",
-  "18 months",
-  "12 months",
   "this accelerates",
-  "I've tested",
   "tools like",
-  "this year"
+  "tapestry",
+  "in today's rapidly/fast-paced",
+  "as an AI"
 ]
 
 const WEAK_PHRASE_PATTERNS = [
@@ -61,28 +67,39 @@ const WEAK_PHRASE_PATTERNS = [
  * per-model minimum (see plan doc Part 3 -- likely not yet at this size).
  */
 export function buildSystemPrompt(count: 1 | 3): string {
-  return `You are helping improve an X (Twitter) post or reply. Write ${count} improved version${count > 1 ? "s" : ""} of the post you're given. Rules:
-- Fix any governor violations listed in the request (remove the flagged phrases)
-- Keep the same core message and roughly the same length
-- Sound like a real person writing, not AI-generated
-${count > 1 ? "- Each version should use a clearly different hook angle or framing" : ""}
+  return `You are rewriting an X (Twitter) ${count > 1 ? "post into " + count + " more engaging versions" : "post to be more engaging"}. Engagement means: someone stops scrolling, replies, or reposts. The numeric score is a proxy for that, not the goal.
+
+Steer toward patterns that earn engagement:
+- Put the interesting part first (a sharp claim, a collision with conventional wisdom, a named mechanism, a number the writer already used)
+- When the request lists hook types that outperform for this writer, prefer those
+- Be specific. Vague takes die in the feed
+- For replies: add a mechanism, a constraint, or a detail the parent didn't say. Don't agree or praise
+
+Prevent patterns that kill engagement:
+- AI slop, engagement bait ("thoughts?", "what do you think", "drop a comment"), weak filler
+- Em-dashes (the most common AI tell; readers bounce)
+- Invented personal studies ("I tracked N for D days", "I tested N", "here's what I found", "my data show") when the original has no such evidence. Fake specificity is bait, not a hook. If they already have numbers, use those. If they don't, make a truer sharper claim. Don't fabricate a dataset.
+
+Keep the same core message. Sound like a person, not a model.
+${count > 1 ? "Each version should use a clearly different hook angle." : ""}
 
 BANNED PHRASES — never use these words or phrases, in any form:
 ${BANNED_PHRASE_LABELS.map((l) => `- ${l}`).join("\n")}
 
-BANNED STYLE — no em-dashes. Do not write a word directly joined to another by "—" (e.g. "word—word"), and do not open a clause with "—it's", "—and", "—but", or "—that's". Use a period or comma instead. This is the single most common AI tell — treat it as a hard rule, not a style preference.
+AI SLOP — never use these ChatGPT tells:
+${AI_SLOP_LABELS.map((l) => `- ${l}`).join("\n")}
+
+BANNED STYLE — no em-dashes. Do not write a word directly joined to another by "—" (e.g. "word—word"), and do not open a clause with "—it's", "—and", "—but", or "—that's". Use a period or comma instead.
 
 WEAK — avoid these generic phrases too:
 ${WEAK_PHRASE_PATTERNS.map((p) => `- ${p}`).join("\n")}
 
-If a voice profile is provided in the request, calibrate word choice, sentence length, and person (first/second) toward it -- but never let it override the banned/weak phrase rules above.
+If a voice profile is provided, match that writer's vocabulary and person (first/second), but never at the cost of the engagement rules above.
 
-Before you respond, re-read each rewrite against every rule above — banned phrases, em-dashes, weak phrases, and (if provided) the voice profile. If any rewrite still violates one, rewrite that line again until it's clean.
-
-Respond with valid JSON only, no other text:
+Apply the banned-phrase, em-dash, slop, and invented-study rules in one pass. Output JSON only, no drafts or commentary:
 {
   "rewrites": [
-    { "text": "...", "hookType": "one of: data_reveal|contrarian|curiosity_gap|stakes_urgency|personal_failure|question|pattern_recognition|shocking_stat|prediction|before_after|declarative_claim|direct_challenge|binary_frame", "rationale": "one sentence on why this is stronger" }
+    { "text": "...", "hookType": "one of: data_reveal|contrarian|curiosity_gap|stakes_urgency|personal_failure|question|pattern_recognition|shocking_stat|prediction|before_after|declarative_claim|direct_challenge|binary_frame", "rationale": "one sentence on why this is more engaging" }
   ]
 }`
 }
@@ -103,15 +120,25 @@ export function buildUserContent(body: RewriteRequestBody): string {
   lines.push(body.governorLines ? `Governor violations:\n${body.governorLines}` : "No governor violations.")
   if (body.suggestionLines) lines.push(`Hook suggestions:\n${body.suggestionLines}`)
 
+  lines.push("")
+  lines.push("GOAL: a more engaging version of this " + noun + ". Fix any governor violations.")
+  if (body.engagementLines) {
+    lines.push("WHAT EARNS ENGAGEMENT FOR THIS WRITER:")
+    lines.push(body.engagementLines)
+  }
+
   if (body.isReply) {
     lines.push(
-      `- This is a reply: add something the parent post doesn't already say — a mechanism, a number, or a specific detail. Don't just agree or praise.` +
+      `- This is a reply: add something the parent post doesn't already say (a mechanism, a number, or a specific detail). Don't just agree or praise.` +
         (body.band ? ` Aim for roughly ${body.band.min}-${body.band.max} characters.` : "")
     )
   } else {
     lines.push(
-      `- Open with a stronger hook (claim/collision/number first; builder proof second). Act on the hook suggestions above when present.`
+      `- Open with the part that would stop a scroll. Prefer high-engagement hook types above when they fit. Don't invent a tracking study or sample size. If the original has no data, sharpen the claim they already made.`
     )
+    if (body.band) {
+      lines.push(`- Aim for roughly ${body.band.min}-${body.band.max} characters (length that has worked for this writer).`)
+    }
   }
 
   if (body.voiceDigest) {
@@ -131,6 +158,10 @@ export function buildUserContent(body: RewriteRequestBody): string {
 export function parseRewrites(anthropicResponseText: string): RewriteSuggestion[] {
   const jsonMatch = anthropicResponseText.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error("PARSE_ERROR")
-  const parsed = JSON.parse(jsonMatch[0]) as { rewrites?: RewriteSuggestion[] }
-  return parsed.rewrites ?? []
+  try {
+    const parsed = JSON.parse(jsonMatch[0]) as { rewrites?: RewriteSuggestion[] }
+    return parsed.rewrites ?? []
+  } catch {
+    throw new Error("PARSE_ERROR")
+  }
 }

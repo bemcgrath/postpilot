@@ -23,7 +23,11 @@ FREE_DAILY_CAP = "3"
 PRO_DAILY_CAP = "40"
 
 # Secrets (set via `wrangler secret put <NAME>`, never committed):
-#   ANTHROPIC_API_KEY  -- PostPilot's own Anthropic key, used for every rewrite call.
+#   ANTHROPIC_API_KEY        -- PostPilot's own Anthropic key, used for every rewrite call.
+#   REWRITE_CLIENT_SECRET    -- shared with the extension (`PLASMO_PUBLIC_REWRITE_KEY` in
+#                               the repo-root `.env`). Worker fails closed (401) if unset.
+#                               Ship the extension that sends X-PostPilot-Key FIRST, then
+#                               deploy this worker, or live rewrites 401.
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"

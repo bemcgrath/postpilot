@@ -18,11 +18,14 @@ export async function callAnthropic(env: Env, system: string, userContent: strin
     },
     body: JSON.stringify({
       model: env.MODEL_ID,
-      max_tokens: 1024,
-      // Rewrites are a short creative task, but banned/weak-phrase
-      // self-checking in the system prompt benefits from some reasoning --
-      // medium trims the default's thinking spend without dropping it to
-      // zero the way "low" did in testing.
+      max_tokens: 2048,
+      // Sonnet 5 turns adaptive thinking on when `thinking` is omitted
+      // (Sonnet 4.6 did the opposite). Thinking tokens count toward
+      // max_tokens, so a long rules prompt + medium effort often spent
+      // the whole budget on a thinking block and returned no JSON
+      // (EMPTY_RESPONSE / 502). This task is a 280-char rewrite: turn
+      // thinking off and just write the JSON.
+      thinking: { type: "disabled" },
       output_config: { effort: "medium" },
       system: [
         {
@@ -43,6 +46,7 @@ export async function callAnthropic(env: Env, system: string, userContent: strin
 
   const data = (await response.json()) as {
     content?: Array<{ type: string; text?: string }>
+    stop_reason?: string
     usage?: {
       input_tokens: number
       output_tokens: number
@@ -51,9 +55,18 @@ export async function callAnthropic(env: Env, system: string, userContent: strin
     }
   }
   if (data.usage) {
-    console.log("[postpilot-rewrite-worker] usage", JSON.stringify(data.usage))
+    console.log(
+      "[postpilot-rewrite-worker] usage",
+      JSON.stringify({ ...data.usage, stop_reason: data.stop_reason })
+    )
   }
-  const textBlock = data.content?.find((c) => c.type === "text")?.text
-  if (!textBlock) throw new Error("EMPTY_RESPONSE")
+  const textBlock = data.content?.find(
+    (c) => (c.type === "text" || c.type === "output_text") && c.text
+  )?.text
+  if (!textBlock) {
+    const types = (data.content ?? []).map((c) => c.type)
+    console.error("[postpilot-rewrite-worker] empty text", data.stop_reason, types)
+    throw new Error("EMPTY_RESPONSE")
+  }
   return textBlock
 }

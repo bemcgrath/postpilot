@@ -41,6 +41,7 @@ export interface ScoreBreakdown {
   penalties: number
   penaltyReasons: string[]
   replyCraft?: number // present only when kind === "reply"
+  media?: number // image/link delta; present when compose media was scored
 }
 
 /** Result of hook analysis. */
@@ -57,9 +58,18 @@ export interface HookScore {
 /** Severity level for governor issues. */
 export type IssueSeverity = "error" | "warning"
 
+/** Which governor list produced the issue. */
+export type GovernorLane =
+  | "banned"
+  | "weak"
+  | "slop"
+  | "fabrication"
+  | "structure"
+
 /** A single governor issue (banned phrase, weak phrase, overlength, etc). */
 export interface GovernorIssue {
   severity: IssueSeverity
+  lane: GovernorLane
   message: string
   matchedText?: string
 }
@@ -69,6 +79,8 @@ export interface GovernorResult {
   issues: GovernorIssue[]
   hasBannedPhrases: boolean
   hasWeakPhrases: boolean
+  hasAiSlop: boolean
+  hasFabrication: boolean
   hasLengthWarning: boolean
   hasEmoji: boolean
   hasAllCaps: boolean
@@ -86,4 +98,13 @@ export interface PostScore {
   kind: import("./reply-context").ComposerKind
   sweetSpotRange: { min: number; max: number } // the band actually applied
   replyCraft: import("./reply-craft").ReplyCraftScore | null
+  media: ComposeMedia
+  mediaDelta: number
+}
+
+/** Attached image / external link detected in compose (or passed in tests). */
+export interface ComposeMedia {
+  hasImage: boolean
+  hasVideo: boolean
+  hasLink: boolean
 }

@@ -50,6 +50,10 @@ function mergeWithDefaults(
       defaults.governor.weakPhrases,
       saved.governor?.weakPhrases
     ),
+    aiSlopPhrases: mergePhraseList(
+      defaults.governor.aiSlopPhrases,
+      saved.governor?.aiSlopPhrases
+    ),
     fabricationPatterns: mergePhraseList(
       defaults.governor.fabricationPatterns,
       saved.governor?.fabricationPatterns

@@ -5,3 +5,7 @@ tsconfig.tsbuildinfo
 .claude/settings.local.json
 .playwright-mcp/
 marketing/
+.env
+.env.local
+.env.chrome
+.env.production

@@ -13,6 +13,7 @@ export interface PhraseEntry {
 export interface GovernorConfig {
   bannedPhrases: PhraseEntry[]
   weakPhrases: PhraseEntry[]
+  aiSlopPhrases: PhraseEntry[]
   fabricationPatterns: PhraseEntry[]
   fabricatedStatsPatterns: PhraseEntry[]
   lengthErrorThreshold: number // hard error above this (default 500)

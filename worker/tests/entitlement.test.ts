@@ -10,6 +10,7 @@ function makeEnv(): Env {
     MODEL_ID: "claude-sonnet-5",
     FREE_DAILY_CAP: "3",
     PRO_DAILY_CAP: "40",
+    REWRITE_CLIENT_SECRET: "test-secret",
   }
 }
 

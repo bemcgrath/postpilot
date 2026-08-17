@@ -1,8 +1,17 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import type { LearnedInsights } from "~learning/types"
-import { loadCollectedPosts, loadLearnedInsights, clearAllLearningData } from "~learning/storage"
+import { MIN_POSTS_FOR_LEARNING } from "~learning/types"
+import {
+  loadCollectedPosts,
+  loadFunnelSnapshot,
+  loadLearnedInsights,
+  clearAllLearningData,
+  upsertCollectedPosts
+} from "~learning/storage"
 import { runLearningEngine } from "~learning/engine"
+import { parseAnalyticsCsv } from "~learning/csv-import"
+import type { CollectionFunnelSnapshot } from "~learning/funnel"
 import { humanizeHookType } from "~scoring/hook-types"
 import { getWeekStats, type WeekStats } from "~history/score-history-storage"
 
@@ -19,19 +28,24 @@ interface AnalyticsTabProps {
 export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
   const [insights, setInsights] = useState<LearnedInsights | null>(null)
   const [postCount, setPostCount] = useState(0)
+  const [funnel, setFunnel] = useState<CollectionFunnelSnapshot | null>(null)
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
   const [loading, setLoading] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [status, setStatus] = useState("")
+  const csvInputRef = useRef<HTMLInputElement>(null)
 
   const loadData = useCallback(async () => {
-    const [ins, posts, week] = await Promise.all([
+    const [ins, posts, week, snap] = await Promise.all([
       loadLearnedInsights(),
       loadCollectedPosts(),
-      getWeekStats()
+      getWeekStats(),
+      loadFunnelSnapshot()
     ])
     setInsights(ins)
     setPostCount(posts.length)
     setWeekStats(week)
+    setFunnel(snap)
   }, [])
 
   useEffect(() => {
@@ -47,7 +61,7 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
       setStatus(
         result.isReady
           ? `Learning complete — ${result.postsAnalyzed} posts analyzed`
-          : `Need ${20 - result.postsAnalyzed} more posts (have ${result.postsAnalyzed})`
+          : `Need ${MIN_POSTS_FOR_LEARNING - result.postsAnalyzed} more posts (have ${result.postsAnalyzed})`
       )
     } catch (err) {
       setStatus("Error running learning engine")
@@ -57,10 +71,41 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
 
   const handleClear = useCallback(async () => {
     await clearAllLearningData()
-    setInsights(null)
-    setPostCount(0)
+    await loadData()
     setStatus("All learning data cleared")
-  }, [])
+  }, [loadData])
+
+  const handleCsvPicked = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      event.target.value = ""
+      if (!file) return
+      setImporting(true)
+      setStatus("")
+      try {
+        const text = await file.text()
+        const parsed = parseAnalyticsCsv(text)
+        if (!parsed.ok) {
+          setStatus(parsed.error)
+          return
+        }
+        await upsertCollectedPosts(parsed.posts)
+        const result = await runLearningEngine()
+        await loadData()
+        const skipNote = parsed.skipped > 0 ? ` (${parsed.skipped} rows skipped)` : ""
+        setStatus(
+          result.isReady
+            ? `Imported ${parsed.posts.length} posts${skipNote}. Learning ready.`
+            : `Imported ${parsed.posts.length} posts${skipNote}. Need ${MIN_POSTS_FOR_LEARNING - result.postsAnalyzed} more.`
+        )
+      } catch {
+        setStatus("Could not read that file")
+      } finally {
+        setImporting(false)
+      }
+    },
+    [loadData]
+  )
 
   const fmtER = (er: number) => (er * 100).toFixed(3) + "%"
 
@@ -69,18 +114,50 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
       {/* Collection Status */}
       <InsightCard title="Collection Status">
         <div style={styles.row}>
+          <span>Your handle</span>
+          <span style={{
+            ...styles.value,
+            color: funnel?.handle ? "#00ba7c" : "#f7b731"
+          }}>
+            {funnel?.handle ? `@${funnel.handle}` : "Not detected"}
+          </span>
+        </div>
+        <div style={styles.row}>
           <span>Posts collected</span>
           <span style={styles.value}>{postCount}</span>
+        </div>
+        <div style={styles.progressTrack}>
+          <div
+            style={{
+              ...styles.progressFill,
+              width: `${Math.min(100, (postCount / MIN_POSTS_FOR_LEARNING) * 100)}%`,
+              background: postCount >= MIN_POSTS_FOR_LEARNING ? "#00ba7c" : "#f7b731"
+            }}
+          />
         </div>
         <div style={styles.row}>
           <span>Learning status</span>
           <span style={{
             ...styles.value,
-            color: postCount >= 20 ? "#00ba7c" : "#f7b731"
+            color: postCount >= MIN_POSTS_FOR_LEARNING ? "#00ba7c" : "#f7b731"
           }}>
-            {postCount >= 20 ? "Ready" : `${postCount}/20 posts needed`}
+            {postCount >= MIN_POSTS_FOR_LEARNING
+              ? "Ready"
+              : `${postCount}/${MIN_POSTS_FOR_LEARNING} posts needed`}
           </span>
         </div>
+        {funnel && funnel.waitingOnAge > 0 && (
+          <div style={styles.row}>
+            <span>Waiting 24 hours</span>
+            <span style={styles.valueMuted}>{funnel.waitingOnAge}</span>
+          </div>
+        )}
+        {funnel && funnel.missingImpressions > 0 && (
+          <div style={styles.row}>
+            <span>Missing view counts</span>
+            <span style={styles.valueMuted}>{funnel.missingImpressions}</span>
+          </div>
+        )}
         {insights && (
           <>
             <div style={styles.row}>
@@ -115,9 +192,66 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
             </div>
           </>
         )}
-        {!insights && postCount >= 20 && (
+        {!funnel?.handle && (
+          <div style={styles.hint}>
+            Open x.com while logged in so PostPilot can tell which posts are yours.
+          </div>
+        )}
+        {funnel && funnel.handle && funnel.waitingOnAge > 0 && (
+          <div style={styles.hint}>
+            Views need a day to settle — {funnel.waitingOnAge} of your posts are
+            under 24 hours old.
+          </div>
+        )}
+        {funnel && funnel.handle && funnel.missingImpressions > 0 && (
+          <div style={styles.hint}>
+            Open your profile (not Home) so X shows view counts. {funnel.missingImpressions}{" "}
+            posts had no impressions.
+          </div>
+        )}
+        {!insights && postCount >= MIN_POSTS_FOR_LEARNING && (
           <div style={styles.hint}>
             Click "Re-run Learning" to generate insights
+          </div>
+        )}
+      </InsightCard>
+
+      <InsightCard title="Import X Analytics CSV">
+        <div style={styles.hint}>
+          X Premium: More → Analytics, or analytics.x.com. Export tweet activity
+          (Tweet id / Tweet text), not the by-day summary. Import skips the 24-hour
+          wait. Profile scraping still runs in the background.
+        </div>
+        {isPro ? (
+          <div style={{ marginTop: 10 }}>
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleCsvPicked}
+              style={{ display: "none" }}
+            />
+            <button
+              type="button"
+              onClick={() => csvInputRef.current?.click()}
+              disabled={importing}
+              style={{
+                ...styles.button,
+                ...styles.primaryButton,
+                opacity: importing ? 0.5 : 1
+              }}>
+              {importing ? "Importing..." : "Choose CSV"}
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginTop: 8 }}>
+            <a
+              href={UPGRADE_URL}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#1d9bf0", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+              Upgrade to Pro to import →
+            </a>
           </div>
         )}
       </InsightCard>
@@ -431,6 +565,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontStyle: "italic",
     marginTop: 6
+  },
+  progressTrack: {
+    height: 4,
+    background: "#2f3336",
+    borderRadius: 2,
+    overflow: "hidden",
+    margin: "6px 0 8px"
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 2
   },
   highlight: {
     color: "#00ba7c",

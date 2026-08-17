@@ -34,6 +34,7 @@ interface RewriteRequestBody {
   hookInfo: string
   governorLines: string
   suggestionLines: string
+  engagementLines?: string
   band?: { min: number; max: number }
   count: 1 | 3
   voiceDigest?: VoiceDigest
@@ -55,9 +56,7 @@ async function resolveIdentity(): Promise<Identity> {
 
 /**
  * Compact style digest from the user's Voice Fingerprint, if one exists.
- * Sent regardless of tier -- the worker is the enforcement boundary and
- * strips this for Free callers, so there's no need to duplicate that gating
- * here (see plan doc Part 1b).
+ * Only sent for Pro — Free never transmits a voice profile.
  */
 async function buildVoiceDigest(): Promise<VoiceDigest | undefined> {
   const fingerprint = await loadFingerprint()
@@ -73,13 +72,52 @@ async function buildVoiceDigest(): Promise<VoiceDigest | undefined> {
   }
 }
 
+/** Same lean-in / avoid cutoffs the compose badge uses (hook-analyzer pattern match). */
+const LEAN_IN_BOOST = 1.15
+const AVOID_BOOST = 0.85
+
+/**
+ * Compact "what earns engagement for this writer" block for the rewrite
+ * worker. Neutral multipliers (0.85–1.15) are omitted — they aren't a signal.
+ */
+export function formatEngagementLines(
+  boosts?: Partial<Record<string, number>>
+): string | undefined {
+  if (!boosts) return undefined
+  const entries = Object.entries(boosts).filter(
+    (entry): entry is [string, number] => typeof entry[1] === "number"
+  )
+  const leanIn = entries
+    .filter(([, n]) => n >= LEAN_IN_BOOST)
+    .sort((a, b) => b[1] - a[1])
+  const avoid = entries
+    .filter(([, n]) => n < AVOID_BOOST)
+    .sort((a, b) => a[1] - b[1])
+  if (!leanIn.length && !avoid.length) return undefined
+  const lines: string[] = []
+  if (leanIn.length) {
+    lines.push(
+      "Lean in: " +
+        leanIn.map(([k, n]) => `${humanizeHookType(k)} (${n.toFixed(2)}x)`).join(", ")
+    )
+  }
+  if (avoid.length) {
+    lines.push(
+      "Avoid: " +
+        avoid.map(([k, n]) => `${humanizeHookType(k)} (${n.toFixed(2)}x)`).join(", ")
+    )
+  }
+  return lines.join("\n")
+}
+
 function buildRequestBody(
   originalText: string,
   score: PostScore,
   identity: Identity,
   count: 1 | 3,
   voiceDigest: VoiceDigest | undefined,
-  context?: ScoreContext
+  context?: ScoreContext,
+  hookTypeBoosts?: Partial<Record<string, number>>
 ): RewriteRequestBody {
   const isReply = context?.kind === "reply"
 
@@ -96,7 +134,13 @@ function buildRequestBody(
     ? score.hookScore.suggestions.map((s) => `- ${s}`).join("\n")
     : ""
 
-  const band = context?.replyInsights?.optimalLengthRange
+  const band = isReply
+    ? context?.replyInsights?.optimalLengthRange
+    : context?.originalLengthRange ?? undefined
+
+  const boosts = isReply
+    ? (context?.replyInsights?.hookTypeBoosts ?? hookTypeBoosts)
+    : hookTypeBoosts
 
   return {
     identity,
@@ -105,25 +149,57 @@ function buildRequestBody(
     hookInfo,
     governorLines,
     suggestionLines,
+    engagementLines: formatEngagementLines(boosts),
     band,
     count,
     voiceDigest,
   }
 }
 
-function parseRewrites(data: unknown): RewriteSuggestion[] {
-  const d = data as { rewrites?: RewriteSuggestion[] }
-  return d.rewrites ?? []
+function parseRewriteResponse(data: unknown): {
+  suggestions: RewriteSuggestion[]
+  remaining?: number
+  resetsAt?: string
+  tier?: "free" | "pro"
+} {
+  const d = data as {
+    rewrites?: RewriteSuggestion[]
+    remaining?: number
+    resetsAt?: string
+    tier?: "free" | "pro"
+  }
+  return {
+    suggestions: d.rewrites ?? [],
+    remaining: typeof d.remaining === "number" ? d.remaining : undefined,
+    resetsAt: typeof d.resetsAt === "string" ? d.resetsAt : undefined,
+    tier: d.tier === "pro" || d.tier === "free" ? d.tier : undefined,
+  }
 }
 
 export async function generateRewrites(
   originalText: string,
   score: PostScore,
   isPro: boolean,
-  context?: ScoreContext
-): Promise<RewriteSuggestion[]> {
-  const [identity, voiceDigest] = await Promise.all([resolveIdentity(), buildVoiceDigest()])
-  const body = buildRequestBody(originalText, score, identity, isPro ? 3 : 1, voiceDigest, context)
+  context?: ScoreContext,
+  hookTypeBoosts?: Partial<Record<string, number>>
+): Promise<{
+  suggestions: RewriteSuggestion[]
+  remaining?: number
+  resetsAt?: string
+}> {
+  const [identity, voiceDigest] = await Promise.all([
+    resolveIdentity(),
+    isPro ? buildVoiceDigest() : Promise.resolve(undefined)
+  ])
+  const body = buildRequestBody(
+    originalText,
+    score,
+    identity,
+    isPro ? 3 : 1,
+    voiceDigest,
+    context,
+    hookTypeBoosts
+  )
 
   // Route through background service worker -- consistent with the rest of
   // the extension's network calls, and keeps this module ignorant of
@@ -131,9 +207,13 @@ export async function generateRewrites(
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       { type: "GENERATE_REWRITES", body },
-      (response: { ok: boolean; data?: unknown; error?: string; resetsAt?: string }) => {
+      (response: { ok: boolean; data?: unknown; error?: string; resetsAt?: string } | undefined) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message))
+          return
+        }
+        if (!response) {
+          reject(new Error("NO_RESPONSE"))
           return
         }
         if (!response.ok) {
@@ -143,7 +223,7 @@ export async function generateRewrites(
           return
         }
         try {
-          resolve(parseRewrites(response.data))
+          resolve(parseRewriteResponse(response.data))
         } catch (e) {
           reject(e)
         }

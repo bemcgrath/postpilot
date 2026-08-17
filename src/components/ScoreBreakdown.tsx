@@ -13,16 +13,24 @@ const ROWS: Array<{ key: keyof ScoreBreakdownType; label: string; max: number }>
   { key: "length", label: "Length", max: 10 },
   { key: "curiosityGap", label: "Curiosity Gap", max: 15 },
   { key: "patternMatch", label: "Learned Patterns", max: 10 },
+  { key: "media", label: "Image / link", max: 8 },
+  { key: "replyCraft", label: "Reply craft", max: 15 },
   { key: "penalties", label: "Penalties", max: 0 }
 ]
 
 export function ScoreBreakdown({ breakdown, suggestions }: Props) {
+  const reasons = breakdown.penaltyReasons ?? []
+  const tips = suggestions ?? []
+
   return (
     <>
       <div className="postpilot-details__section">
         <div className="postpilot-details__heading">Score Breakdown</div>
         {ROWS.map(({ key, label, max }) => {
-          const value = breakdown[key] as number
+          const raw = breakdown[key]
+          if (typeof raw !== "number") return null
+          if (key === "media" && raw === 0) return null
+          const value = raw
 
           let valueClass = "postpilot-breakdown__value"
           if (value > 0) valueClass += " postpilot-breakdown__value--positive"
@@ -40,9 +48,9 @@ export function ScoreBreakdown({ breakdown, suggestions }: Props) {
                 </span>
               </div>
               {key === "penalties" &&
-                breakdown.penaltyReasons.length > 0 && (
+                reasons.length > 0 && (
                   <div style={{ paddingLeft: 12, paddingBottom: 2 }}>
-                    {breakdown.penaltyReasons.map((reason, i) => (
+                    {reasons.map((reason, i) => (
                       <div
                         key={i}
                         style={{ fontSize: 11, color: "#f4212e" }}>
@@ -56,10 +64,10 @@ export function ScoreBreakdown({ breakdown, suggestions }: Props) {
         })}
       </div>
 
-      {suggestions.length > 0 && (
+      {tips.length > 0 && (
         <div className="postpilot-details__section">
           <div className="postpilot-details__heading">Suggestions</div>
-          {suggestions.map((s, i) => (
+          {tips.map((s, i) => (
             <div key={i} className="postpilot-suggestions__item">
               {s}
             </div>

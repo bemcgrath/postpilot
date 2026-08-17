@@ -106,6 +106,15 @@ export function GovernorSettings({ config, onChange }: GovernorSettingsProps) {
       />
 
       <PhraseListEditor
+        title="AI Slop"
+        phrases={config.aiSlopPhrases}
+        onChange={(phrases) =>
+          onChange({ ...config, aiSlopPhrases: phrases })
+        }
+        severity="error"
+      />
+
+      <PhraseListEditor
         title="Fabrication Patterns"
         phrases={config.fabricationPatterns}
         onChange={(phrases) =>

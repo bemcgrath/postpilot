@@ -62,7 +62,10 @@ function Popup() {
         PostPilot
       </div>
       <div style={{ fontSize: 12, color: "#71767b", marginBottom: 16 }}>
-        v0.2.0 &mdash; Score your posts as you type
+        v{typeof chrome !== "undefined" && chrome.runtime?.getManifest
+          ? chrome.runtime.getManifest().version
+          : "0.7.0"}{" "}
+        &mdash; Voice Match &amp; scoring as you type
       </div>
 
       <label
@@ -96,7 +99,7 @@ function Popup() {
           fontWeight: 600,
           cursor: "pointer"
         }}>
-        Voice Settings
+        Voice Match
       </button>
     </div>
   )

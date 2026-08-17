@@ -9,6 +9,8 @@ describe("checkGovernor", () => {
     )
     expect(result.hasBannedPhrases).toBe(false)
     expect(result.hasWeakPhrases).toBe(false)
+    expect(result.hasAiSlop).toBe(false)
+    expect(result.hasFabrication).toBe(false)
     expect(result.hasLengthWarning).toBe(false)
     expect(result.hasEmoji).toBe(false)
     expect(result.hasAllCaps).toBe(false)
@@ -18,12 +20,8 @@ describe("checkGovernor", () => {
 
   describe("banned phrases", () => {
     const bannedExamples = [
-      ["game-changer", "game-changer"],
       ["What do you think?", "What do you think"],
-      ["This leverages the power of AI", "leverages"],
-      ["Let's delve into this topic", "delve"],
       ["Follow for more insights", "Follow for more"],
-      ["This unlocks new possibilities", "unlocks"],
       ["thoughts?", "thoughts?"],
       ["You should try this", "You should"],
       ["I've tested this approach", "I've tested"]
@@ -34,22 +32,41 @@ describe("checkGovernor", () => {
         const result = checkGovernor(input)
         expect(result.hasBannedPhrases).toBe(true)
         const errorIssues = result.issues.filter(
-          (i) => i.severity === "error"
+          (i) => i.severity === "error" && i.lane === "banned"
         )
         expect(errorIssues.length).toBeGreaterThan(0)
       })
     }
 
-    it("catches em-dashes (word—word)", () => {
-      const result = checkGovernor(
-        "AI isn't just coming—it's already here."
-      )
-      expect(result.hasBannedPhrases).toBe(true)
-    })
-
     it("catches percentage confident", () => {
       const result = checkGovernor("I'm 90% confident this will work.")
       expect(result.hasBannedPhrases).toBe(true)
+    })
+  })
+
+  describe("AI slop lane", () => {
+    const slopExamples = [
+      ["game-changer", "game-changer"],
+      ["This leverages the power of AI", "leverages"],
+      ["Let's delve into this topic", "delve"],
+      ["This unlocks new possibilities", "unlocks"]
+    ]
+
+    for (const [input, fragment] of slopExamples) {
+      it(`names "${fragment}" as AI slop`, () => {
+        const result = checkGovernor(input)
+        expect(result.hasAiSlop).toBe(true)
+        expect(result.hasBannedPhrases).toBe(false)
+        expect(result.issues.some((i) => i.lane === "slop")).toBe(true)
+      })
+    }
+
+    it("catches em-dashes as slop (word—word)", () => {
+      const result = checkGovernor(
+        "AI isn't just coming—it's already here."
+      )
+      expect(result.hasAiSlop).toBe(true)
+      expect(result.hasBannedPhrases).toBe(false)
     })
   })
 
@@ -89,13 +106,15 @@ describe("checkGovernor", () => {
           i.message.includes("fabrication")
       )
       expect(fabricationWarnings.length).toBeGreaterThan(0)
+      expect(result.hasFabrication).toBe(true)
     })
 
     it("blocks fabricated percentage stats", () => {
       const result = checkGovernor(
         "This led to a 47% reduction in processing time."
       )
-      expect(result.hasBannedPhrases).toBe(true)
+      expect(result.hasFabrication).toBe(true)
+      expect(result.issues.some((i) => i.lane === "fabrication" && i.severity === "error")).toBe(true)
     })
   })
 
@@ -191,6 +210,7 @@ describe("checkGovernor", () => {
     )
     expect(result.issues.length).toBeGreaterThan(3)
     expect(result.hasBannedPhrases).toBe(true)
+    expect(result.hasAiSlop).toBe(true)
     expect(result.hasWeakPhrases).toBe(true)
     expect(result.hasEmoji).toBe(true)
     expect(result.hasLengthWarning).toBe(true)

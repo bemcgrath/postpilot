@@ -1,5 +1,5 @@
-import type { GovernorIssue, GovernorResult } from "./types"
-import type { GovernorConfig } from "~config/types"
+import type { GovernorIssue, GovernorLane, GovernorResult } from "./types"
+import type { GovernorConfig, PhraseEntry } from "~config/types"
 
 import { getGovernorConfig } from "~config/config-storage"
 
@@ -25,6 +25,31 @@ function safeRegex(pattern: string, flags: string = "i"): RegExp | null {
   }
 }
 
+function matchPhrases(
+  text: string,
+  entries: PhraseEntry[],
+  lane: GovernorLane,
+  severity: GovernorIssue["severity"],
+  messageFor: (entry: PhraseEntry, match: string) => string
+): GovernorIssue[] {
+  const issues: GovernorIssue[] = []
+  for (const entry of entries) {
+    if (!entry.enabled) continue
+    const re = safeRegex(entry.pattern)
+    if (!re) continue
+    const match = text.match(re)
+    if (match) {
+      issues.push({
+        severity,
+        lane,
+        message: messageFor(entry, match[0]),
+        matchedText: match[0]
+      })
+    }
+  }
+  return issues
+}
+
 /** Run all governor checks on post text. */
 export function checkGovernor(
   text: string,
@@ -32,91 +57,72 @@ export function checkGovernor(
 ): GovernorResult {
   const cfg = config ?? getGovernorConfig()
   const issues: GovernorIssue[] = []
-  let hasBannedPhrases = false
-  let hasWeakPhrases = false
-  let hasLengthWarning = false
+
+  issues.push(
+    ...matchPhrases(
+      text,
+      cfg.bannedPhrases,
+      "banned",
+      "error",
+      () => "Banned phrase detected"
+    )
+  )
+  issues.push(
+    ...matchPhrases(
+      text,
+      cfg.weakPhrases,
+      "weak",
+      "warning",
+      () => "Weak/generic phrase"
+    )
+  )
+  issues.push(
+    ...matchPhrases(
+      text,
+      cfg.aiSlopPhrases,
+      "slop",
+      "error",
+      (_entry, match) => `AI slop: "${match}"`
+    )
+  )
+  issues.push(
+    ...matchPhrases(
+      text,
+      cfg.fabricationPatterns,
+      "fabrication",
+      "warning",
+      (entry) => `Possible fabrication: ${entry.label ?? "Unverified claim"}`
+    )
+  )
+  issues.push(
+    ...matchPhrases(
+      text,
+      cfg.fabricatedStatsPatterns,
+      "fabrication",
+      "error",
+      (entry) => `Fabricated statistic: ${entry.label ?? "Invented statistic"}`
+    )
+  )
+
   let hasEmoji = false
   let hasAllCaps = false
   let hasSpammyPunctuation = false
   let hasExcessHashtags = false
+  let hasLengthWarning = false
 
-  // Banned phrases (errors)
-  for (const entry of cfg.bannedPhrases) {
-    if (!entry.enabled) continue
-    const re = safeRegex(entry.pattern)
-    if (!re) continue
-    const match = text.match(re)
-    if (match) {
-      hasBannedPhrases = true
-      issues.push({
-        severity: "error",
-        message: "Banned phrase detected",
-        matchedText: match[0]
-      })
-    }
-  }
-
-  // Weak phrases (warnings)
-  for (const entry of cfg.weakPhrases) {
-    if (!entry.enabled) continue
-    const re = safeRegex(entry.pattern)
-    if (!re) continue
-    const match = text.match(re)
-    if (match) {
-      hasWeakPhrases = true
-      issues.push({
-        severity: "warning",
-        message: "Weak/generic phrase",
-        matchedText: match[0]
-      })
-    }
-  }
-
-  // Fabrication patterns (warnings)
-  for (const entry of cfg.fabricationPatterns) {
-    if (!entry.enabled) continue
-    const re = safeRegex(entry.pattern)
-    if (!re) continue
-    const match = text.match(re)
-    if (match) {
-      issues.push({
-        severity: "warning",
-        message: `Possible fabrication: ${entry.label ?? "Unverified claim"}`,
-        matchedText: match[0]
-      })
-    }
-  }
-
-  // Fabricated stats (errors)
-  for (const entry of cfg.fabricatedStatsPatterns) {
-    if (!entry.enabled) continue
-    const re = safeRegex(entry.pattern)
-    if (!re) continue
-    const match = text.match(re)
-    if (match) {
-      hasBannedPhrases = true
-      issues.push({
-        severity: "error",
-        message: `Fabricated statistic: ${entry.label ?? "Invented statistic"}`,
-        matchedText: match[0]
-      })
-    }
-  }
-
-  // Emoji check
   if (cfg.emojiWarningEnabled) {
     const emojiMatch = text.match(EMOJI_PATTERN)
     if (emojiMatch) {
       hasEmoji = true
       issues.push({
         severity: "warning",
+        lane: "structure",
         message: "Contains emoji",
         matchedText: emojiMatch[0]
       })
     }
   }
 
-  // All-caps (SHOUTING) check
   if (cfg.allCapsWarningEnabled) {
     const capsWords = text.match(ALL_CAPS_WORD_PATTERN) ?? []
     const shouting = capsWords.filter(
@@ -126,57 +132,61 @@ export function checkGovernor(
       hasAllCaps = true
       issues.push({
         severity: "warning",
+        lane: "structure",
         message: "All-caps word reads as shouting",
         matchedText: shouting[0]
       })
     }
   }
 
-  // Spammy punctuation check
   if (cfg.spammyPunctuationWarningEnabled) {
     const match = text.match(SPAMMY_PUNCTUATION_PATTERN)
     if (match) {
       hasSpammyPunctuation = true
       issues.push({
         severity: "warning",
+        lane: "structure",
         message: "Spammy punctuation (repeated !/?)",
         matchedText: match[0]
       })
     }
   }
 
-  // Hashtag restraint check
   if (cfg.hashtagWarningEnabled) {
     const hashtags = text.match(HASHTAG_PATTERN) ?? []
     if (hashtags.length > cfg.hashtagLimit) {
       hasExcessHashtags = true
       issues.push({
         severity: "warning",
+        lane: "structure",
         message: `Too many hashtags (${hashtags.length}, keep to ${cfg.hashtagLimit} or fewer)`
       })
     }
   }
 
-  // Length checks
   const charCount = text.length
   if (charCount > cfg.lengthErrorThreshold) {
     hasLengthWarning = true
     issues.push({
       severity: "error",
+      lane: "structure",
       message: `Way too long: ${charCount} chars (max ${cfg.lengthErrorThreshold})`
     })
   } else if (charCount > cfg.lengthWarningThreshold) {
     hasLengthWarning = true
     issues.push({
       severity: "warning",
+      lane: "structure",
       message: `Over ideal length: ${charCount} chars (target 280-320, max ${cfg.lengthWarningThreshold})`
     })
   }
 
   return {
     issues,
-    hasBannedPhrases,
-    hasWeakPhrases,
+    hasBannedPhrases: issues.some((i) => i.lane === "banned"),
+    hasWeakPhrases: issues.some((i) => i.lane === "weak"),
+    hasAiSlop: issues.some((i) => i.lane === "slop"),
+    hasFabrication: issues.some((i) => i.lane === "fabrication"),
     hasLengthWarning,
     hasEmoji,
     hasAllCaps,

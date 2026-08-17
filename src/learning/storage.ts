@@ -1,5 +1,13 @@
 import type { CollectedPost, LearnedInsights } from "./types"
 import { STORAGE_KEYS, MAX_STORED_POSTS } from "./types"
+import {
+  EMPTY_FUNNEL,
+  mergeSkipIds,
+  summarizeFunnel,
+  type CollectionFunnelSnapshot,
+  type OwnPostSkip,
+  type StoredFunnel
+} from "./funnel"
 
 /** Safely access chrome.storage.local — returns null if unavailable. */
 function getStorage(): typeof chrome.storage.local | null {
@@ -149,6 +157,49 @@ export async function saveLearnedInsights(
   })
 }
 
+// --- Collection funnel ---
+
+export async function loadStoredFunnel(): Promise<StoredFunnel> {
+  const storage = getStorage()
+  if (!storage) return { ...EMPTY_FUNNEL }
+  return new Promise((resolve) => {
+    storage.get(STORAGE_KEYS.COLLECTION_FUNNEL, (result) => {
+      const raw = result[STORAGE_KEYS.COLLECTION_FUNNEL] as StoredFunnel | undefined
+      resolve({
+        waitingOnAgeIds: Array.isArray(raw?.waitingOnAgeIds) ? raw.waitingOnAgeIds : [],
+        missingImpressionIds: Array.isArray(raw?.missingImpressionIds)
+          ? raw.missingImpressionIds
+          : []
+      })
+    })
+  })
+}
+
+export async function recordOwnPostSkips(skips: OwnPostSkip[]): Promise<void> {
+  if (skips.length === 0) return
+  const storage = getStorage()
+  if (!storage) return
+  const stored = await loadStoredFunnel()
+  const merged = mergeSkipIds(stored, skips)
+  return new Promise((resolve) => {
+    storage.set({ [STORAGE_KEYS.COLLECTION_FUNNEL]: merged }, resolve)
+  })
+}
+
+export async function loadFunnelSnapshot(): Promise<CollectionFunnelSnapshot> {
+  const [handle, posts, stored] = await Promise.all([
+    loadUserHandle(),
+    loadCollectedPosts(),
+    loadStoredFunnel()
+  ])
+  return summarizeFunnel({
+    handle,
+    posts,
+    waitingOnAgeIds: stored.waitingOnAgeIds,
+    missingImpressionIds: stored.missingImpressionIds
+  })
+}
+
 // --- Clearing ---
 
 export async function clearAllLearningData(): Promise<void> {
@@ -159,7 +210,8 @@ export async function clearAllLearningData(): Promise<void> {
       [
         STORAGE_KEYS.USER_HANDLE,
         STORAGE_KEYS.COLLECTED_POSTS,
-        STORAGE_KEYS.LEARNED_INSIGHTS
+        STORAGE_KEYS.LEARNED_INSIGHTS,
+        STORAGE_KEYS.COLLECTION_FUNNEL
       ],
       resolve
     )

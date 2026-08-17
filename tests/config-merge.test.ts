@@ -93,7 +93,8 @@ describe("config test helpers", () => {
   it("section getters return correct sections", () => {
     resetConfigForTesting()
     const gov = getGovernorConfig()
-    expect(gov.bannedPhrases.length).toBe(29)
+    expect(gov.bannedPhrases.length).toBe(14)
+    expect(gov.aiSlopPhrases.length).toBe(18)
 
     const ha = getHookAnalyzerConfig()
     expect(ha.baseScore).toBe(50)

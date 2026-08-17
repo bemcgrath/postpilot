@@ -1,0 +1,4 @@
+# Local wrangler secrets. Copy to `.dev.vars` (gitignored).
+# Must match repo-root `.env` PLASMO_PUBLIC_REWRITE_KEY.
+REWRITE_CLIENT_SECRET=
+ANTHROPIC_API_KEY=

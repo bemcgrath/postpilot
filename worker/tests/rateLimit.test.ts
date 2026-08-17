@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { checkAndIncrement } from "../src/rateLimit"
+import { checkAndIncrement, decrement } from "../src/rateLimit"
 import { createFakeKv } from "./fakeKv"
 import type { Env } from "../src/types"
 
@@ -10,6 +10,7 @@ function makeEnv(): Env {
     MODEL_ID: "claude-sonnet-5",
     FREE_DAILY_CAP: "3",
     PRO_DAILY_CAP: "40",
+    REWRITE_CLIENT_SECRET: "test-secret",
   }
 }
 
@@ -27,8 +28,11 @@ describe("checkAndIncrement", () => {
     const r2 = await checkAndIncrement(env, id, 2)
     const r3 = await checkAndIncrement(env, id, 2)
     expect(r1.allowed).toBe(true)
+    expect(r1.remaining).toBe(1)
     expect(r2.allowed).toBe(true)
+    expect(r2.remaining).toBe(0)
     expect(r3.allowed).toBe(false)
+    expect(r3.remaining).toBe(0)
   })
 
   it("returns a resetsAt timestamp at the next UTC midnight when blocked", async () => {
@@ -56,5 +60,26 @@ describe("checkAndIncrement", () => {
     await checkAndIncrement(env, "license:shared-value", 1)
     const deviceResult = await checkAndIncrement(env, "device:shared-value", 1)
     expect(deviceResult.allowed).toBe(true)
+  })
+})
+
+describe("decrement", () => {
+  it("refunds one increment so a later request is allowed again", async () => {
+    const env = makeEnv()
+    const id = "device:refund"
+    await checkAndIncrement(env, id, 1)
+    const blocked = await checkAndIncrement(env, id, 1)
+    expect(blocked.allowed).toBe(false)
+    await decrement(env, id)
+    const afterRefund = await checkAndIncrement(env, id, 1)
+    expect(afterRefund.allowed).toBe(true)
+  })
+
+  it("is a no-op when the counter is already zero", async () => {
+    const env = makeEnv()
+    await decrement(env, "device:never-used")
+    const result = await checkAndIncrement(env, "device:never-used", 1)
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(0)
   })
 })

@@ -126,7 +126,8 @@ export interface LearnedInsights {
 export const STORAGE_KEYS = {
   USER_HANDLE: "postpilot_user_handle",
   COLLECTED_POSTS: "postpilot_collected_posts",
-  LEARNED_INSIGHTS: "postpilot_learned_insights"
+  LEARNED_INSIGHTS: "postpilot_learned_insights",
+  COLLECTION_FUNNEL: "postpilot_collection_funnel"
 } as const
 
 /** Minimum posts required before learning engine produces insights. */

@@ -1,6 +1,17 @@
 /* PostPilot overlay — dark theme matching X.com */
+:host {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .postpilot-root {
   position: relative;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
   color: #e7e9ea;
@@ -13,9 +24,12 @@
 .postpilot-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   padding: 8px 12px;
   min-height: 40px;
+  max-width: 100%;
+  min-width: 0;
   background: #16181c;
   border: 1px solid #2f3336;
   border-radius: 12px;
@@ -125,20 +139,24 @@
   position: absolute;
   left: 0;
   right: 0;
+  top: 100%;
   z-index: 9999;
+  max-width: 100%;
+  max-height: 480px;
+  box-sizing: border-box;
   background: #16181c;
   border: 1px solid #2f3336;
   border-top: none;
   border-radius: 0 0 12px 12px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   margin-top: -1px;
-  max-height: 480px;
+  overflow-x: hidden;
   overflow-y: auto;
   box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 .postpilot-details__section {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .postpilot-details__section:last-child {
@@ -157,17 +175,22 @@
 .postpilot-breakdown__row {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
   padding: 2px 0;
   font-size: 12px;
 }
 
 .postpilot-breakdown__label {
   color: #e7e9ea;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .postpilot-breakdown__value {
   color: #71767b;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .postpilot-breakdown__value--positive {
@@ -204,11 +227,14 @@
 
 .postpilot-warnings__text {
   color: #e7e9ea;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .postpilot-warnings__match {
   color: #71767b;
   font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 /* Suggestions */
@@ -216,6 +242,7 @@
   font-size: 12px;
   color: #71767b;
   padding: 2px 0;
+  overflow-wrap: anywhere;
 }
 
 /* Voice match badge */
@@ -354,6 +381,197 @@
   white-space: nowrap;
 }
 
+.postpilot-better-time {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(247, 183, 49, 0.12);
+  color: #f7b731;
+  white-space: nowrap;
+}
+
+.postpilot-reach {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(0, 186, 124, 0.12);
+  color: #00ba7c;
+  white-space: nowrap;
+}
+
+.postpilot-invite {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(29, 155, 240, 0.12);
+  color: #1d9bf0;
+  white-space: nowrap;
+}
+
+.postpilot-invite--bait {
+  background: rgba(244, 33, 46, 0.12);
+  color: #f4212e;
+}
+
+.postpilot-checklist__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 12px;
+}
+
+.postpilot-checklist__mark {
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.postpilot-checklist__mark--ok {
+  color: #00ba7c;
+}
+
+.postpilot-checklist__mark--bad {
+  color: #f4212e;
+}
+
+.postpilot-checklist__label {
+  color: #e7e9ea;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.postpilot-self-reply {
+  padding: 10px 12px;
+  background: #16181c;
+  border: 1px solid #2f3336;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+.postpilot-self-reply__text {
+  font-size: 12px;
+  color: #e7e9ea;
+  line-height: 1.45;
+  margin: 4px 0 8px;
+}
+
+.postpilot-self-reply__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.postpilot-compare {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #2f3336;
+}
+
+.postpilot-compare__col {
+  flex: 1;
+  min-width: 0;
+}
+
+.postpilot-compare__score {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.postpilot-compare__meta {
+  font-size: 11px;
+  color: #71767b;
+  margin: 2px 0 6px;
+}
+
+.postpilot-compare__vs {
+  font-size: 11px;
+  color: #71767b;
+  font-weight: 600;
+}
+
+.postpilot-drafts__hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #71767b;
+}
+
+.postpilot-drafts__pick {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid #2f3336;
+  background: transparent;
+  color: #71767b;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.postpilot-drafts__pick--on {
+  border-color: #1d9bf0;
+  color: #1d9bf0;
+}
+
+.postpilot-learn-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(247, 183, 49, 0.12);
+  color: #f7b731;
+  white-space: nowrap;
+}
+
+.postpilot-funnel {
+  padding-top: 8px;
+  border-top: 1px solid #2f3336;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #e7e9ea;
+  line-height: 1.45;
+}
+
+.postpilot-funnel__bar {
+  height: 4px;
+  background: #2f3336;
+  border-radius: 2px;
+  margin: 6px 0;
+  overflow: hidden;
+}
+
+.postpilot-funnel__bar-fill {
+  height: 100%;
+  background: #f7b731;
+  border-radius: 2px;
+}
+
+.postpilot-funnel__hint {
+  color: #71767b;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.postpilot-funnel__link {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #1d9bf0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 /* Draft Queue */
 .postpilot-drafts {
   padding-top: 8px;
@@ -431,7 +649,6 @@
 /* Save draft button (in expanded panel header) */
 .postpilot-save-btn {
   display: inline-block;
-  float: right;
   padding: 2px 10px;
   background: none;
   border: 1px solid #2f3336;
@@ -697,6 +914,7 @@
   background: #1e2024;
   border: 1px solid #2f3336;
   border-radius: 8px;
+  min-width: 0;
   padding: 10px 12px;
 }
 
@@ -730,6 +948,7 @@
   font-size: 13px;
   color: #e7e9ea;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
   line-height: 1.5;
   margin-bottom: 8px;

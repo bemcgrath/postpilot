@@ -2,14 +2,23 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import type { PostScore } from "~scoring/types"
 import type { VoiceFingerprint, VoiceOverrides } from "~scoring/voice-types"
-import type { LearnedInsights } from "~learning/types"
+import { STORAGE_KEYS, type LearnedInsights } from "~learning/types"
+import type { CollectionFunnelSnapshot } from "~learning/funnel"
 import type { ComposerKind } from "~scoring/reply-context"
 
 import { scorePost } from "~scoring/scoring-pipeline"
 import type { ScoreContext } from "~scoring/scoring-pipeline"
 import { detectComposerKind, readParentTweetText } from "~scoring/reply-context"
 import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
-import { loadLearnedInsights } from "~learning/storage"
+import { loadLearnedInsights, loadFunnelSnapshot, loadCollectedPosts } from "~learning/storage"
+import type { CollectedPost } from "~learning/types"
+import { estimateReachRange, formatReach } from "~learning/reach"
+import { evaluatePostingTime } from "~scoring/timing"
+import { detectComposeMedia } from "~scoring/compose-media"
+import { buildPrePublishChecklist } from "~scoring/checklist"
+import { scoreReplyInvite } from "~scoring/reply-invite"
+import { suggestSelfReply } from "~scoring/self-reply"
+import { EMPTY_MEDIA } from "~scoring/media-delta"
 import { initConfig, onConfigChanged } from "~config/config-storage"
 import { validateStoredLicense } from "~config/license"
 
@@ -51,6 +60,8 @@ import { RewriteSuggestions } from "./RewriteSuggestions"
 import { ScoreHistoryBadge } from "./ScoreHistoryBadge"
 import { DraftQueue } from "./DraftQueue"
 import { HookLibrary } from "./HookLibrary"
+import { PrePublishChecklist } from "./PrePublishChecklist"
+import { SelfReplyPrompt } from "./SelfReplyPrompt"
 import { saveScoreEntry, getWeekStats } from "~history/score-history-storage"
 import type { WeekStats } from "~history/score-history-storage"
 import { loadDrafts, saveDraft, deleteDraft } from "~drafts/draft-storage"
@@ -59,43 +70,6 @@ import { recordHighScorePost, shouldShowPrompt } from "~review/review-prompt-sto
 import type { DraftEntry } from "~drafts/draft-storage"
 import { loadHooks, saveHook, deleteHook } from "~hooks/hook-storage"
 import type { HookEntry } from "~hooks/hook-storage"
-
-function fmtHour(h: number): string {
-  if (h === 0) return "12 AM"
-  if (h < 12) return `${h} AM`
-  if (h === 12) return "12 PM"
-  return `${h - 12} PM`
-}
-
-function getBestTimeLabel(
-  timePerformance: Array<{ hour: number; postCount: number; boostMultiplier: number }>
-): string | null {
-  const candidates = timePerformance.filter((t) => t.postCount >= 3)
-  if (candidates.length === 0) return null
-  const best = candidates.reduce((a, b) =>
-    a.boostMultiplier > b.boostMultiplier ? a : b
-  )
-  if (best.boostMultiplier < 1.1) return null
-  const end = (best.hour + 2) % 24
-  return `${fmtHour(best.hour)}–${fmtHour(end)}`
-}
-
-/**
- * Best-time varies between weekdays and weekends for most accounts, so
- * blending all seven days into one figure hides that. Prefer whichever
- * bucket matches today; if it doesn't have enough data yet, fall back to
- * the all-days figure rather than showing nothing.
- */
-function getBestTimeLabelForToday(insights: {
-  timePerformance: Array<{ hour: number; postCount: number; boostMultiplier: number }>
-  weekdayTimePerformance: Array<{ hour: number; postCount: number; boostMultiplier: number }>
-  weekendTimePerformance: Array<{ hour: number; postCount: number; boostMultiplier: number }>
-}): string | null {
-  const day = new Date().getDay()
-  const todaysPerformance =
-    day === 0 || day === 6 ? insights.weekendTimePerformance : insights.weekdayTimePerformance
-  return getBestTimeLabel(todaysPerformance) ?? getBestTimeLabel(insights.timePerformance)
-}
 
 function findNearestContentEditable(
   panelEl: HTMLElement | null
@@ -218,11 +192,13 @@ function useComposeText(panelRef: React.RefObject<HTMLElement | null>): {
   text: string
   kind: ComposerKind
   parentText: string | null
+  media: import("~scoring/types").ComposeMedia
   readNow: () => void
 } {
   const [text, setText] = useState("")
   const [kind, setKind] = useState<ComposerKind>("original")
   const [parentText, setParentText] = useState<string | null>(null)
+  const [media, setMedia] = useState(EMPTY_MEDIA)
   const lastTextRef = useRef("")
 
   const readNow = useCallback(() => {
@@ -236,6 +212,7 @@ function useComposeText(panelRef: React.RefObject<HTMLElement | null>): {
     const ctx = findComposeContext(panelRef.current)
     setKind(detectComposerKind(ctx?.container ?? null))
     setParentText(readParentTweetText(ctx?.container ?? null))
+    setMedia(detectComposeMedia(ctx?.container ?? null, raw))
   }, [panelRef])
 
   useEffect(() => {
@@ -244,17 +221,20 @@ function useComposeText(panelRef: React.RefObject<HTMLElement | null>): {
     return () => clearInterval(interval)
   }, [readNow])
 
-  return { text, kind, parentText, readNow }
+  return { text, kind, parentText, media, readNow }
 }
 
 export function PostPilotPanel() {
   const panelRef = useRef<HTMLDivElement>(null)
-  const { text, kind, parentText, readNow: readTextNow } = useComposeText(panelRef)
+  const { text, kind, parentText, media, readNow: readTextNow } = useComposeText(panelRef)
   const [expanded, setExpanded] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
   const [overrides, setOverrides] = useState<VoiceOverrides | null>(null)
   const [insights, setInsights] = useState<LearnedInsights | null>(null)
+  const [funnel, setFunnel] = useState<CollectionFunnelSnapshot | null>(null)
+  const [collectedPosts, setCollectedPosts] = useState<CollectedPost[]>([])
+  const [selfReply, setSelfReply] = useState<string | null>(null)
   const [configRevision, setConfigRevision] = useState(0)
   const [isPro, setIsPro] = useState(false)
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
@@ -264,6 +244,8 @@ export function PostPilotPanel() {
   const [hookSavedMsg, setHookSavedMsg] = useState(false)
   const [reviewPromptVisible, setReviewPromptVisible] = useState(false)
   const lastScoreRef = useRef<number>(0)
+  const lastHookTypeRef = useRef<PostScore["hookScore"]["hookType"]>(null)
+  const lastKindRef = useRef<ComposerKind>("original")
   const prevTextRef = useRef<string>("")
   const lastSavedAtRef = useRef<number>(0)
   const pendingClearRef = useRef<{ prev: string; score: number; timer: number } | null>(null)
@@ -383,6 +365,34 @@ export function PostPilotPanel() {
     return () => { try { storage.onChanged.removeListener(listener) } catch {} }
   }, [])
 
+  // Collection funnel (Pro, until learning is ready) + reach corpus
+  useEffect(() => {
+    loadFunnelSnapshot().then(setFunnel).catch((err) => console.error("[PostPilot]", err))
+    loadCollectedPosts().then(setCollectedPosts).catch((err) => console.error("[PostPilot]", err))
+
+    const storage = getStorage()
+    if (!storage) return
+
+    const listener = (changes: Record<string, { newValue?: unknown }>) => {
+      try {
+        if (
+          STORAGE_KEYS.COLLECTED_POSTS in changes ||
+          STORAGE_KEYS.USER_HANDLE in changes ||
+          STORAGE_KEYS.COLLECTION_FUNNEL in changes
+        ) {
+          loadFunnelSnapshot().then(setFunnel).catch((err) => console.error("[PostPilot]", err))
+        }
+        if (STORAGE_KEYS.COLLECTED_POSTS in changes) {
+          setCollectedPosts(
+            (changes.postpilot_collected_posts.newValue as CollectedPost[]) ?? []
+          )
+        }
+      } catch (err) { console.error("[PostPilot]", err) }
+    }
+    storage.onChanged.addListener(listener)
+    return () => { try { storage.onChanged.removeListener(listener) } catch {} }
+  }, [])
+
   const commitClearSave = useCallback((prev: string, score: number, pro: boolean) => {
     lastSavedAtRef.current = Date.now()
     saveScoreEntry(score).then(() => {
@@ -397,6 +407,14 @@ export function PostPilotPanel() {
       saveHook(prev, null, score, "auto").then((entry) => {
         setHooks((h) => [entry, ...h.filter((x) => x.id !== entry.id)].slice(0, 50))
       }).catch((err) => console.error("[PostPilot]", err))
+    }
+    if (pro) {
+      const suggestion = suggestSelfReply(
+        prev,
+        lastHookTypeRef.current,
+        lastKindRef.current
+      )
+      if (suggestion) setSelfReply(suggestion)
     }
   }, [])
 
@@ -497,6 +515,20 @@ export function PostPilotPanel() {
     }
   }, [expanded])
 
+  // Plasmo's <plasmo-csui> host is an unknown custom element (inline by
+  // default). Nowrap chips in the bar can then inflate it past the compose
+  // column and force a horizontal page scroll to see the dropdown.
+  useEffect(() => {
+    const root = panelRef.current?.getRootNode()
+    const host = root instanceof ShadowRoot ? (root.host as HTMLElement) : null
+    if (!host) return
+    host.style.display = "block"
+    host.style.width = "100%"
+    host.style.maxWidth = "100%"
+    host.style.minWidth = "0"
+    host.style.boxSizing = "border-box"
+  }, [])
+
   // Load week stats, drafts, and hooks on mount; keep in sync with storage changes
   useEffect(() => {
     getWeekStats().then(setWeekStats).catch((err) => console.error("[PostPilot]", err))
@@ -530,6 +562,21 @@ export function PostPilotPanel() {
   // up a different compose box's text (e.g. an open reply modal's), making
   // the panel oscillate mount/unmount and bounce the page behind the modal.
   if (!text || text.length < 2) {
+    if (selfReply) {
+      return (
+        <div className="postpilot-root" ref={panelRef}>
+          <SelfReplyPrompt
+            suggestion={selfReply}
+            onInsert={() => {
+              injectText(panelRef.current, selfReply)
+              setSelfReply(null)
+              setTimeout(readTextNow, 300)
+            }}
+            onDismiss={() => setSelfReply(null)}
+          />
+        </div>
+      )
+    }
     return <div className="postpilot-root" ref={panelRef} />
   }
 
@@ -538,10 +585,21 @@ export function PostPilotPanel() {
   const proFingerprint = isPro ? fingerprint : null
   const proOverrides = isPro ? overrides : null
   const hookTypeBoosts = isPro && insights?.isReady ? insights.hookTypeBoosts : undefined
+  const mediaBoosts =
+    isPro && insights?.isReady && insights.mediaPerformance
+      ? {
+          imageBoost: insights.mediaPerformance.imageBoost,
+          linkBoost: insights.mediaPerformance.linkBoost
+        }
+      : null
   const scoreContext: ScoreContext = {
     kind,
     replyInsights: isPro && insights?.replyInsights ? insights.replyInsights : null,
-    parentText
+    parentText,
+    originalLengthRange:
+      isPro && insights?.isReady ? insights.optimalLengthRange : null,
+    media,
+    mediaBoosts
   }
   const result: PostScore = scorePost(
     text,
@@ -551,6 +609,8 @@ export function PostPilotPanel() {
     scoreContext
   )
   lastScoreRef.current = result.hookScore.totalScore
+  lastHookTypeRef.current = result.hookScore.hookType
+  lastKindRef.current = result.kind
 
   function handleSaveDraft() {
     saveDraft(text, result.hookScore.totalScore, result.hookScore.hookType)
@@ -589,15 +649,45 @@ export function PostPilotPanel() {
     (i) => i.severity === "warning"
   ).length
   const totalIssues = errorCount + warningCount
+  const showLearnFunnel = isPro && !insights?.isReady && funnel !== null
+  const postingTime =
+    isPro && insights?.isReady ? evaluatePostingTime(insights) : null
+  const reach =
+    isPro && insights?.isReady
+      ? estimateReachRange(collectedPosts, {
+          hookType: result.hookScore.hookType,
+          charCount: result.charCount,
+          isReply: result.kind === "reply"
+        })
+      : null
+  const replyInvite =
+    result.kind !== "reply" ? scoreReplyInvite(text) : null
+  const checklist = buildPrePublishChecklist({
+    hookScore: result.hookScore.totalScore,
+    governorErrors: errorCount,
+    inSweetSpot: result.inSweetSpot,
+    hasImage: result.media.hasImage || result.media.hasVideo,
+    hasLink: result.media.hasLink,
+    mediaDelta: result.mediaDelta,
+    nowGood: postingTime ? postingTime.nowGood : null
+  })
+
+  const openAnalyticsSettings = (event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    try {
+      chrome.runtime.sendMessage({ type: "OPEN_OPTIONS_TAB", tab: "analytics" })
+    } catch (err) {
+      console.error("[PostPilot]", err)
+    }
+  }
 
   return (
     <div className="postpilot-root" ref={panelRef}>
       <div
         className="postpilot-bar"
         onClick={() => setExpanded(!expanded)}
-        style={
-          expanded ? { borderRadius: "12px 12px 0 0" } : undefined
-        }>
+        style={expanded ? { borderRadius: "12px 12px 0 0" } : undefined}>
         <ScoreBadge score={result.hookScore.totalScore} />
         <HookTypeLabel hookType={result.hookScore.hookType} />
         <CharacterCount
@@ -618,12 +708,26 @@ export function PostPilotPanel() {
             {totalIssues} {totalIssues === 1 ? "issue" : "issues"}
           </span>
         )}
-        {isPro && insights?.isReady && (() => {
-          const label = getBestTimeLabelForToday(insights)
-          return label ? (
-            <span className="postpilot-best-time">Best: {label}</span>
-          ) : null
-        })()}
+        {postingTime && (
+          <span className={postingTime.nowGood ? "postpilot-best-time" : "postpilot-better-time"}>
+            {postingTime.label}
+          </span>
+        )}
+        {reach && (
+          <span className="postpilot-reach">
+            ~{formatReach(reach.low)}–{formatReach(reach.high)} · n={reach.n}
+          </span>
+        )}
+        {replyInvite && replyInvite.kind !== "broadcast" && (
+          <span className={replyInvite.kind === "invite" ? "postpilot-invite" : "postpilot-invite postpilot-invite--bait"}>
+            {replyInvite.label}
+          </span>
+        )}
+        {showLearnFunnel && (
+          <span className="postpilot-learn-chip">
+            {funnel.collected}/{funnel.needed}
+          </span>
+        )}
         {drafts.length > 0 && (
           <span className="postpilot-drafts-count">
             {drafts.length} draft{drafts.length !== 1 ? "s" : ""}
@@ -637,7 +741,7 @@ export function PostPilotPanel() {
           {reviewPromptVisible && (
             <ReviewPrompt onDone={() => setReviewPromptVisible(false)} />
           )}
-          <div style={{ display: "flex", gap: "6px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
             <button
               className={`postpilot-save-btn${savedMsg ? " postpilot-save-btn--saved" : ""}`}
               onClick={handleSaveDraft}>
@@ -655,6 +759,7 @@ export function PostPilotPanel() {
             breakdown={result.hookScore.breakdown}
             suggestions={result.hookScore.suggestions}
           />
+          <PrePublishChecklist items={checklist} />
           <GovernorWarnings issues={result.governor.issues} />
           {/* Always offer rewrite — previously hidden at score ≥65, which hid
               the button on borderline posts (e.g. 66) that still need a stronger open. */}
@@ -684,6 +789,43 @@ export function PostPilotPanel() {
               isReply={result.kind === "reply"}
             />
           )}
+          {showLearnFunnel && (
+            <div className="postpilot-funnel">
+              <div className="postpilot-details__heading">Learning</div>
+              <div>
+                {funnel.collected}/{funnel.needed} posts collected
+              </div>
+              <div className="postpilot-funnel__bar">
+                <div
+                  className="postpilot-funnel__bar-fill"
+                  style={{
+                    width: `${Math.min(100, (funnel.collected / funnel.needed) * 100)}%`
+                  }}
+                />
+              </div>
+              {!funnel.handle && (
+                <div className="postpilot-funnel__hint">
+                  Open x.com logged in so PostPilot can tell which posts are yours.
+                </div>
+              )}
+              {funnel.waitingOnAge > 0 && (
+                <div className="postpilot-funnel__hint">
+                  {funnel.waitingOnAge} waiting 24h for views to settle.
+                </div>
+              )}
+              {funnel.missingImpressions > 0 && (
+                <div className="postpilot-funnel__hint">
+                  {funnel.missingImpressions} missing view counts — open your profile.
+                </div>
+              )}
+              <button
+                type="button"
+                className="postpilot-funnel__link"
+                onClick={openAnalyticsSettings}>
+                Import Analytics CSV in Settings
+              </button>
+            </div>
+          )}
           <DraftQueue
             drafts={drafts}
             onRestore={handleRestoreDraft}
@@ -703,7 +845,7 @@ export function PostPilotPanel() {
               <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0", textDecoration: "none" }}>
                 Upgrade to PostPilot Pro
               </a>
-              {" "}for voice fingerprinting &amp; learning engine
+              {" "}for Voice Match &amp; the learning engine
             </div>
           )}
         </div>

@@ -14,10 +14,15 @@ window.addEventListener("unhandledrejection", (event) => {
 })
 
 import type { CollectedPost } from "~learning/types"
-import { collectFromArticle } from "~learning/collector"
+import { inspectOwnArticle } from "~learning/collector"
 import { detectUserHandle } from "~learning/user-detector"
-import { upsertCollectedPosts, loadLearnedInsights } from "~learning/storage"
+import {
+  upsertCollectedPosts,
+  loadLearnedInsights,
+  recordOwnPostSkips
+} from "~learning/storage"
 import { runLearningEngine } from "~learning/engine"
+import type { OwnPostSkip } from "~learning/funnel"
 
 export const config: PlasmoCSConfig = {
   matches: ["https://x.com/*", "https://twitter.com/*"],
@@ -50,6 +55,9 @@ const RECALC_INTERVAL_MS = 24 * 60 * 60 * 1000
 /** Pending posts waiting to be flushed to storage. */
 let pendingPosts: CollectedPost[] = []
 
+/** Own-post skip reasons waiting to be flushed (funnel diagnostics). */
+let pendingSkips: OwnPostSkip[] = []
+
 /** Set of tweet IDs already processed in this page session. */
 const processedIds = new Set<string>()
 
@@ -81,10 +89,18 @@ function processTweetArticles() {
       const idMatch = href.match(/\/status\/(\d+)/)
       if (idMatch && processedIds.has(idMatch[1])) continue
 
-      const post = collectFromArticle(article, userHandle)
-      if (post && !processedIds.has(post.tweetId)) {
-        processedIds.add(post.tweetId)
-        pendingPosts.push(post)
+      const result = inspectOwnArticle(article, userHandle)
+      if (result.kind === "collect" && !processedIds.has(result.post.tweetId)) {
+        processedIds.add(result.post.tweetId)
+        pendingPosts.push(result.post)
+      } else if (
+        result.kind === "skip" &&
+        result.tweetId &&
+        (result.reason === "too_new" || result.reason === "no_impressions") &&
+        !processedIds.has(result.tweetId)
+      ) {
+        processedIds.add(result.tweetId)
+        pendingSkips.push({ tweetId: result.tweetId, reason: result.reason })
       }
     } catch {
       // Skip individual article errors
@@ -92,20 +108,23 @@ function processTweetArticles() {
   }
 }
 
-/** Flush pending posts to chrome.storage. */
+/** Flush pending posts and skip reasons to chrome.storage. */
 async function flushToStorage() {
   if (!isContextValid()) { teardown(); return }
-  if (pendingPosts.length === 0) return
+  if (pendingPosts.length === 0 && pendingSkips.length === 0) return
   const batch = pendingPosts.splice(0)
+  const skips = pendingSkips.splice(0)
   try {
-    await upsertCollectedPosts(batch)
+    if (batch.length > 0) await upsertCollectedPosts(batch)
+    if (skips.length > 0) await recordOwnPostSkips(skips)
     // Fire-and-forget: only new data could change the computed insights,
     // so only bother checking staleness right after a successful flush.
-    maybeRecalculateInsights()
+    if (batch.length > 0) maybeRecalculateInsights()
   } catch {
     // If context invalidated, just drop — don't re-queue endlessly
     if (isContextValid()) {
       pendingPosts.unshift(...batch)
+      pendingSkips.unshift(...skips)
     }
   }
 }

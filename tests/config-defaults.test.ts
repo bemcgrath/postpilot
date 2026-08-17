@@ -10,8 +10,12 @@ describe("buildDefaults", () => {
   })
 
   describe("governor", () => {
-    it("has 29 banned phrases", () => {
-      expect(config.governor.bannedPhrases).toHaveLength(29)
+    it("has 14 banned phrases", () => {
+      expect(config.governor.bannedPhrases).toHaveLength(14)
+    })
+
+    it("has 18 AI-slop phrases", () => {
+      expect(config.governor.aiSlopPhrases).toHaveLength(18)
     })
 
     it("has 37 weak phrases", () => {
@@ -30,6 +34,7 @@ describe("buildDefaults", () => {
       const allPhrases = [
         ...config.governor.bannedPhrases,
         ...config.governor.weakPhrases,
+        ...config.governor.aiSlopPhrases,
         ...config.governor.fabricationPatterns,
         ...config.governor.fabricatedStatsPatterns
       ]
@@ -40,6 +45,7 @@ describe("buildDefaults", () => {
       const allPhrases = [
         ...config.governor.bannedPhrases,
         ...config.governor.weakPhrases,
+        ...config.governor.aiSlopPhrases,
         ...config.governor.fabricationPatterns,
         ...config.governor.fabricatedStatsPatterns
       ]
@@ -50,6 +56,7 @@ describe("buildDefaults", () => {
       const allPhrases = [
         ...config.governor.bannedPhrases,
         ...config.governor.weakPhrases,
+        ...config.governor.aiSlopPhrases,
         ...config.governor.fabricationPatterns,
         ...config.governor.fabricatedStatsPatterns
       ]
@@ -61,6 +68,7 @@ describe("buildDefaults", () => {
       const allPhrases = [
         ...config.governor.bannedPhrases,
         ...config.governor.weakPhrases,
+        ...config.governor.aiSlopPhrases,
         ...config.governor.fabricationPatterns,
         ...config.governor.fabricatedStatsPatterns
       ]

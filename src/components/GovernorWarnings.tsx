@@ -19,7 +19,11 @@ export function GovernorWarnings({ issues }: Props) {
             {issue.severity === "error" ? "\u2716" : "\u26A0"}
           </span>
           <span>
-            <span className="postpilot-warnings__text">{issue.message}</span>
+            <span className="postpilot-warnings__text">
+              {issue.lane === "slop" && !issue.message.startsWith("AI slop")
+                ? `AI slop — ${issue.message}`
+                : issue.message}
+            </span>
             {issue.matchedText && (
               <span className="postpilot-warnings__match">
                 {" "}

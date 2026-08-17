@@ -319,7 +319,7 @@ function Options() {
                 <span style={{ fontWeight: 600, fontSize: "15px" }}>PostPilot Pro is active</span>
               </div>
               <p style={{ color: "#555", fontSize: "13px", marginBottom: "20px" }}>
-                Voice fingerprinting and the learning engine are unlocked.
+                Voice Match and the learning engine are unlocked.
               </p>
               {isDev && !devPro && (
                 <p style={{ color: "#f7b731", fontSize: "12px", marginBottom: "20px" }}>
@@ -341,7 +341,7 @@ function Options() {
             <div>
               <h3 style={{ margin: "0 0 8px", fontSize: "15px" }}>Activate PostPilot Pro</h3>
               <p style={{ color: "#555", fontSize: "13px", margin: "0 0 20px" }}>
-                Enter your license key from your purchase email to unlock voice fingerprinting and the learning engine.
+                Enter your license key from your purchase email to unlock Voice Match and the learning engine.
               </p>
               <p style={{ color: "#555", fontSize: "13px", margin: "0 0 20px" }}>
                 Don't have a license?{" "}

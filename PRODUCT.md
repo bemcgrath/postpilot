@@ -183,7 +183,7 @@ Merged 2026-08-13. Store clones in the same job (X Post Analyzer, ReachOS, Conte
 - [x] Authenticate rewrite worker (`X-PostPilot-Key` / `REWRITE_CLIENT_SECRET`). Fail closed if unset. **Deploy order:** ship the extension that sends the header first (old worker ignores it), then `wrangler secret put REWRITE_CLIENT_SECRET` and deploy the worker. Copy `.env.example` → `.env` with the same value as `PLASMO_PUBLIC_REWRITE_KEY` before `plasmo package`.
 - [x] Refund quota on failed/empty generation; return `{ tier, remaining, resetsAt }` on success. Server forces Pro count to 3. KV burst still possible — Durable Objects later if gamed.
 
-User-facing list for Waves 1–4 (share with the user base): [coming.html](./coming.html) → https://postpilotforx.com/coming.html. Update that page when a listed item ships.
+User-facing list for Waves 1–4 (share with the user base): [releases.html](./releases.html) → https://postpilotforx.com/releases.html. Update that page when a listed item ships.
 
 ### Wave 1 — time-to-insight (beats X Post Analyzer's $1.49 CSV Pro)
 - [x] Collection funnel in Analytics + compose (handle / 24h / impressions / 20-post bar)

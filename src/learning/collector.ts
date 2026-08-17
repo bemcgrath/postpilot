@@ -8,7 +8,35 @@ import { getHookAnalyzerConfig } from "~config/config-storage"
 const analyzer = new HookAnalyzer()
 
 /** Minimum age in ms before collecting a post (24 hours). */
-const MIN_AGE_MS = 24 * 60 * 60 * 1000
+export const OWN_POST_MIN_AGE_MS = 24 * 60 * 60 * 1000
+
+export type OwnArticleInspect =
+  | { kind: "not_own" }
+  | {
+      kind: "skip"
+      reason: "no_id" | "no_timestamp" | "too_new" | "no_text" | "no_impressions"
+      tweetId: string | null
+    }
+  | { kind: "collect"; post: CollectedPost }
+
+/** Hook type, score, and topics for a collected post. Shared with CSV import. */
+export function classifyCollectedText(text: string): {
+  hookType: HookTypeName | null
+  hookScore: number
+  topics: string[]
+} {
+  let hookType: HookTypeName | null = null
+  let hookScore = 0
+  try {
+    const config = getHookAnalyzerConfig()
+    const result = analyzer.score(text, config)
+    hookType = result.hookType
+    hookScore = result.totalScore
+  } catch {
+    // Scoring may fail if config not loaded yet
+  }
+  return { hookType, hookScore, topics: extractTopics(text) }
+}
 
 /**
  * Parse a compact number string like "12.3K", "1.5M", "892" into a number.
@@ -117,51 +145,12 @@ export function isReplyArticle(article: Element): boolean {
   return prevArticle ? hasOutgoingThreadConnector(prevArticle) : false
 }
 
-/**
- * Attempt to collect a post from a tweet article DOM element.
- * Returns null if the post shouldn't be collected (not own, too new, no impressions).
- */
-export function collectFromArticle(
-  article: Element,
-  userHandle: string
-): CollectedPost | null {
-  // Must be own post
-  if (!isOwnPost(article, userHandle)) return null
-
-  // Must have a tweet ID
-  const tweetId = extractTweetId(article)
-  if (!tweetId) return null
-
-  // Must have a timestamp and be 24+ hours old
-  const postedAt = extractPostedAt(article)
-  if (!postedAt) return null
-  if (Date.now() - postedAt < MIN_AGE_MS) return null
-
-  // Extract text
-  const textEl = article.querySelector('[data-testid="tweetText"]')
-  const text = textEl?.textContent?.trim() ?? ""
-  if (!text) return null
-
-  // Extract metrics
-  const likes = parseAriaMetric(
-    article.querySelector('[data-testid="like"]')
-  )
-  const retweets = parseAriaMetric(
-    article.querySelector('[data-testid="retweet"]')
-  )
-  const replies = parseAriaMetric(
-    article.querySelector('[data-testid="reply"]')
-  )
-
-  // Impressions: look for analytics link or views indicator
+function extractImpressions(article: Element): number {
   let impressions = 0
   const analyticsLink = article.querySelector('a[href*="/analytics"]')
   if (analyticsLink) {
-    impressions = parseCompactNumber(
-      analyticsLink.textContent?.trim() ?? ""
-    )
+    impressions = parseCompactNumber(analyticsLink.textContent?.trim() ?? "")
   }
-  // Fallback: aria-label on the views element
   if (impressions === 0) {
     const viewsEl = article.querySelector('[role="group"] a[href*="/analytics"]')
     if (viewsEl) {
@@ -170,56 +159,78 @@ export function collectFromArticle(
       if (match) impressions = parseCompactNumber(match[1])
     }
   }
+  return impressions
+}
 
-  // Must have impressions > 0
-  if (impressions <= 0) return null
+/**
+ * Inspect an article for collection, including why an own post was skipped.
+ * `now` is injectable so tests can freeze the 24h gate.
+ */
+export function inspectOwnArticle(
+  article: Element,
+  userHandle: string,
+  now = Date.now()
+): OwnArticleInspect {
+  if (!isOwnPost(article, userHandle)) return { kind: "not_own" }
 
-  // Quotes — may not always be visible
-  const quotes = 0 // X doesn't consistently expose quote count in DOM
+  const tweetId = extractTweetId(article)
+  if (!tweetId) return { kind: "skip", reason: "no_id", tweetId: null }
 
-  // Engagement rate
-  const totalEngagement = likes + retweets + replies + quotes
-  const engagementRate = impressions > 0 ? totalEngagement / impressions : 0
+  const postedAt = extractPostedAt(article)
+  if (!postedAt) return { kind: "skip", reason: "no_timestamp", tweetId }
 
-  // Media detection
-  const hasImage = article.querySelector('[data-testid="tweetPhoto"]') !== null
-  const hasVideo = article.querySelector("video") !== null
-  const hasLink = article.querySelector('[data-testid="card.wrapper"]') !== null
-  const isReply = isReplyArticle(article)
-
-  // Hook analysis
-  let hookType: HookTypeName | null = null
-  let hookScore = 0
-  try {
-    const config = getHookAnalyzerConfig()
-    const result = analyzer.score(text, config)
-    hookType = result.hookType
-    hookScore = result.totalScore
-  } catch {
-    // Scoring may fail if config not loaded yet
+  if (now - postedAt < OWN_POST_MIN_AGE_MS) {
+    return { kind: "skip", reason: "too_new", tweetId }
   }
 
-  // Topics
-  const topics = extractTopics(text)
+  const textEl = article.querySelector('[data-testid="tweetText"]')
+  const text = textEl?.textContent?.trim() ?? ""
+  if (!text) return { kind: "skip", reason: "no_text", tweetId }
+
+  const impressions = extractImpressions(article)
+  if (impressions <= 0) {
+    return { kind: "skip", reason: "no_impressions", tweetId }
+  }
+
+  const likes = parseAriaMetric(article.querySelector('[data-testid="like"]'))
+  const retweets = parseAriaMetric(article.querySelector('[data-testid="retweet"]'))
+  const replies = parseAriaMetric(article.querySelector('[data-testid="reply"]'))
+  const quotes = 0
+  const { hookType, hookScore, topics } = classifyCollectedText(text)
 
   return {
-    tweetId,
-    text,
-    impressions,
-    likes,
-    retweets,
-    replies,
-    quotes,
-    engagementRate,
-    postedAt,
-    collectedAt: Date.now(),
-    charCount: text.length,
-    hasImage,
-    hasVideo,
-    hasLink,
-    isReply,
-    hookType,
-    hookScore,
-    topics
+    kind: "collect",
+    post: {
+      tweetId,
+      text,
+      impressions,
+      likes,
+      retweets,
+      replies,
+      quotes,
+      engagementRate: (likes + retweets + replies + quotes) / impressions,
+      postedAt,
+      collectedAt: now,
+      charCount: text.length,
+      hasImage: article.querySelector('[data-testid="tweetPhoto"]') !== null,
+      hasVideo: article.querySelector("video") !== null,
+      hasLink: article.querySelector('[data-testid="card.wrapper"]') !== null,
+      isReply: isReplyArticle(article),
+      hookType,
+      hookScore,
+      topics
+    }
   }
+}
+
+/**
+ * Attempt to collect a post from a tweet article DOM element.
+ * Returns null if the post shouldn't be collected (not own, too new, no impressions).
+ */
+export function collectFromArticle(
+  article: Element,
+  userHandle: string
+): CollectedPost | null {
+  const result = inspectOwnArticle(article, userHandle)
+  return result.kind === "collect" ? result.post : null
 }

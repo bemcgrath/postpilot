@@ -8,14 +8,14 @@ vi.mock("../src/entitlement", async (importOriginal) => {
 })
 vi.mock("../src/rateLimit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/rateLimit")>()
-  return { ...actual, checkAndIncrement: vi.fn() }
+  return { ...actual, checkAndIncrement: vi.fn(), decrement: vi.fn() }
 })
 vi.mock("../src/anthropic", () => ({
   callAnthropic: vi.fn(),
 }))
 
 import { resolveTier } from "../src/entitlement"
-import { checkAndIncrement } from "../src/rateLimit"
+import { checkAndIncrement, decrement } from "../src/rateLimit"
 import { callAnthropic } from "../src/anthropic"
 import handler, { handleRewrite } from "../src/index"
 
@@ -26,13 +26,14 @@ function makeEnv(): Env {
     MODEL_ID: "claude-sonnet-5",
     FREE_DAILY_CAP: "3",
     PRO_DAILY_CAP: "40",
+    REWRITE_CLIENT_SECRET: "test-secret",
   }
 }
 
-function makeRequest(body: unknown): Request {
+function makeRequest(body: unknown, headers: Record<string, string> = {}): Request {
   return new Request("https://api.postpilotforx.com/v1/rewrite", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-PostPilot-Key": "test-secret", ...headers },
     body: JSON.stringify(body),
   })
 }
@@ -60,8 +61,43 @@ describe("routing", () => {
 })
 
 describe("handleRewrite validation", () => {
+  it("401s when the client key is missing", async () => {
+    const req = new Request("https://api.postpilotforx.com/v1/rewrite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validBody),
+    })
+    const res = await handleRewrite(req, makeEnv())
+    expect(res.status).toBe(401)
+  })
+
+  it("401s when the client key is wrong", async () => {
+    const res = await handleRewrite(makeRequest(validBody, { "X-PostPilot-Key": "nope" }), makeEnv())
+    expect(res.status).toBe(401)
+  })
+
+  it("allows requests when the worker secret is unset so a missing secret cannot take down rewrites", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("free")
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
+    vi.mocked(callAnthropic).mockResolvedValue(
+      JSON.stringify({ rewrites: [{ text: "rewritten", rationale: "better" }] })
+    )
+    const env = makeEnv()
+    env.REWRITE_CLIENT_SECRET = ""
+    const res = await handleRewrite(makeRequest(validBody), env)
+    expect(res.status).toBe(200)
+  })
+
   it("400s on invalid JSON", async () => {
-    const req = new Request("https://api.postpilotforx.com/v1/rewrite", { method: "POST", body: "{not json" })
+    const req = new Request("https://api.postpilotforx.com/v1/rewrite", {
+      method: "POST",
+      headers: { "X-PostPilot-Key": "test-secret" },
+      body: "{not json",
+    })
     const res = await handleRewrite(req, makeEnv())
     expect(res.status).toBe(400)
   })
@@ -89,7 +125,11 @@ describe("handleRewrite orchestration", () => {
 
   it("blocks with 429 and resetsAt when over the rate limit", async () => {
     vi.mocked(resolveTier).mockResolvedValue("free")
-    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: false, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: false,
+      remaining: 0,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
 
     const res = await handleRewrite(makeRequest(validBody), makeEnv())
     expect(res.status).toBe(429)
@@ -101,7 +141,11 @@ describe("handleRewrite orchestration", () => {
 
   it("clamps a free identity's count to 1 and drops voiceDigest even if the client sent them", async () => {
     vi.mocked(resolveTier).mockResolvedValue("free")
-    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: true, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
 
     const freeSneakingPro = {
       ...validBody,
@@ -124,7 +168,11 @@ describe("handleRewrite orchestration", () => {
 
   it("passes a pro identity's voiceDigest through", async () => {
     vi.mocked(resolveTier).mockResolvedValue("pro")
-    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: true, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
 
     const proBody = {
       ...validBody,
@@ -148,26 +196,48 @@ describe("handleRewrite orchestration", () => {
 
   it("returns 502 when generation fails", async () => {
     vi.mocked(resolveTier).mockResolvedValue("free")
-    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: true, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
     vi.mocked(callAnthropic).mockRejectedValue(new Error("boom"))
 
     const res = await handleRewrite(makeRequest(validBody), makeEnv())
     expect(res.status).toBe(502)
+    expect(decrement).toHaveBeenCalledTimes(1)
   })
 
   it("returns the parsed rewrites on success", async () => {
     vi.mocked(resolveTier).mockResolvedValue("free")
-    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: true, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
 
     const res = await handleRewrite(makeRequest(validBody), makeEnv())
     expect(res.status).toBe(200)
-    const data = (await res.json()) as { rewrites: Array<{ text: string }> }
+    const data = (await res.json()) as {
+      rewrites: Array<{ text: string }>
+      remaining: number
+      tier: string
+      resetsAt: string
+    }
     expect(data.rewrites[0].text).toBe("rewritten")
+    expect(data.remaining).toBe(2)
+    expect(data.tier).toBe("free")
+    expect(data.resetsAt).toBe("2026-01-01T00:00:00.000Z")
+    expect(decrement).not.toHaveBeenCalled()
   })
 
   it("truncates to the requested count when the model over-generates", async () => {
     vi.mocked(resolveTier).mockResolvedValue("pro")
-    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: true, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
     vi.mocked(callAnthropic).mockResolvedValue(
       JSON.stringify({
         rewrites: [
@@ -188,7 +258,11 @@ describe("handleRewrite orchestration", () => {
 
   it("passes through fewer rewrites than requested without padding", async () => {
     vi.mocked(resolveTier).mockResolvedValue("pro")
-    vi.mocked(checkAndIncrement).mockResolvedValue({ allowed: true, resetsAt: "2026-01-01T00:00:00.000Z" })
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
     vi.mocked(callAnthropic).mockResolvedValue(
       JSON.stringify({ rewrites: [{ text: "only-one", rationale: "a" }] })
     )
@@ -196,5 +270,44 @@ describe("handleRewrite orchestration", () => {
     const res = await handleRewrite(makeRequest({ ...validBody, count: 3 }), makeEnv())
     const data = (await res.json()) as { rewrites: Array<{ text: string }> }
     expect(data.rewrites).toHaveLength(1)
+  })
+
+  it("forces 3 variants for Pro even when the client asked for 1", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("pro")
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 39,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
+    vi.mocked(callAnthropic).mockResolvedValue(
+      JSON.stringify({
+        rewrites: [
+          { text: "one", rationale: "a" },
+          { text: "two", rationale: "b" },
+          { text: "three", rationale: "c" },
+        ],
+      })
+    )
+
+    const res = await handleRewrite(makeRequest({ ...validBody, count: 1 }), makeEnv())
+    expect(res.status).toBe(200)
+    const [, system] = vi.mocked(callAnthropic).mock.calls[0]
+    expect(system).toContain("3 more engaging versions")
+    const data = (await res.json()) as { rewrites: Array<{ text: string }> }
+    expect(data.rewrites).toHaveLength(3)
+  })
+
+  it("refunds quota when the model returns no parseable rewrites", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("free")
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
+    vi.mocked(callAnthropic).mockResolvedValue("not json at all")
+
+    const res = await handleRewrite(makeRequest(validBody), makeEnv())
+    expect(res.status).toBe(502)
+    expect(decrement).toHaveBeenCalledTimes(1)
   })
 })
