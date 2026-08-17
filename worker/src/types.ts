@@ -5,6 +5,14 @@ export interface VoiceDigest {
   secondPersonRatio: number
   topHookTypes: string[]
   signatureWords?: string[]
+  /** Share of sentences that are ≤5 words. */
+  fragmentRatio?: number
+  /** Mean line breaks per sample post. */
+  lineBreaksPerPost?: number
+  /** Share of sample posts that use a colon. */
+  usesColons?: number
+  /** Share of sample posts that use a list. */
+  usesLists?: number
 }
 
 export type Identity =

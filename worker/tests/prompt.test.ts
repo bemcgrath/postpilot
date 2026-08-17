@@ -26,6 +26,13 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toMatch(/here's what I found/)
     expect(prompt).toMatch(/Fake specificity is bait/)
   })
+
+  it("requires a complete first-line hook on original posts, not replies", () => {
+    const prompt = buildSystemPrompt(1)
+    expect(prompt).toMatch(/For original posts \(not replies\): line 1 is a complete hook/)
+    expect(prompt).toMatch(/Do not open with a fragment/)
+    expect(prompt).toMatch(/For replies: do not impose post stanza layout/)
+  })
 })
 
 describe("buildUserContent", () => {
@@ -59,6 +66,65 @@ describe("buildUserContent", () => {
     })
     expect(text).toMatch(/This is a reply/)
     expect(text).toMatch(/60-160/)
+  })
+
+  it("asks for a complete first-line hook on originals", () => {
+    const text = buildUserContent(baseBody)
+    expect(text).toMatch(/Line 1 is the hook: a complete claim/)
+  })
+
+  it("asks to keep stanza layout when an original has line breaks", () => {
+    const text = buildUserContent({
+      ...baseBody,
+      originalText: "Line one.\n\nLine two.\nLine three."
+    })
+    expect(text).toMatch(/this draft uses 3 line breaks/)
+    expect(text).toMatch(/After a complete hook on line 1/)
+  })
+
+  it("does not impose stanza format on replies", () => {
+    const text = buildUserContent({
+      ...baseBody,
+      isReply: true,
+      originalText: "Line one.\n\nLine two.\nLine three.",
+      voiceDigest: {
+        distinctiveTerms: ["bottleneck"],
+        sentenceLengthTarget: 11,
+        firstPersonRatio: 0.4,
+        secondPersonRatio: 0.1,
+        topHookTypes: ["declarative_claim"],
+        fragmentRatio: 0.42,
+        lineBreaksPerPost: 4.2,
+        usesColons: 0.5,
+        usesLists: 0.1
+      }
+    })
+    expect(text).toMatch(/Do not rewrite it as a stanza original/)
+    expect(text).not.toMatch(/this draft uses 3 line breaks/)
+    expect(text).not.toMatch(/Typical line breaks per post/)
+    expect(text).not.toMatch(/Short fragments/)
+  })
+
+  it("includes Voice Match layout stats when present", () => {
+    const text = buildUserContent({
+      ...baseBody,
+      voiceDigest: {
+        distinctiveTerms: ["bottleneck"],
+        sentenceLengthTarget: 11,
+        firstPersonRatio: 0.4,
+        secondPersonRatio: 0.1,
+        topHookTypes: ["declarative_claim"],
+        fragmentRatio: 0.42,
+        lineBreaksPerPost: 4.2,
+        usesColons: 0.5,
+        usesLists: 0.1
+      }
+    })
+    expect(text).toMatch(/Short fragments/)
+    expect(text).toMatch(/42%/)
+    expect(text).toMatch(/Typical line breaks per post: ~4/)
+    expect(text).toMatch(/Colons: often/)
+    expect(text).toMatch(/Lists: rarely/)
   })
 })
 

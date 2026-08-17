@@ -25,6 +25,10 @@ interface VoiceDigest {
   secondPersonRatio: number
   topHookTypes: string[]
   signatureWords?: string[]
+  fragmentRatio?: number
+  lineBreaksPerPost?: number
+  usesColons?: number
+  usesLists?: number
 }
 
 interface RewriteRequestBody {
@@ -69,6 +73,10 @@ async function buildVoiceDigest(): Promise<VoiceDigest | undefined> {
     secondPersonRatio: fingerprint.secondPersonRatio,
     topHookTypes: fingerprint.topHookTypes.map(humanizeHookType),
     signatureWords: overrides.addSignatureWords.length ? overrides.addSignatureWords : undefined,
+    fragmentRatio: fingerprint.fragmentRatio,
+    lineBreaksPerPost: fingerprint.lineBreakFrequency.mean,
+    usesColons: fingerprint.usesColons,
+    usesLists: fingerprint.usesLists,
   }
 }
 
