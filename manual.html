@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PostPilot for X — User manual</title>
+  <meta name="description" content="How PostPilot for X works: the compose score, hook types, governor, AI rewrites, Voice Match, Score Trends, and Pro features. Free and Pro." />
+  <link rel="canonical" href="https://postpilotforx.com/manual.html" />
+  <meta property="og:title" content="PostPilot for X — User manual" />
+  <meta property="og:description" content="A field guide to every PostPilot feature: where it lives, what it scores, and what stays on your device." />
+  <meta property="og:image" content="https://postpilotforx.com/assets/icon.png" />
+  <meta property="og:url" content="https://postpilotforx.com/manual.html" />
+  <link rel="icon" href="assets/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0b0d;
+      --panel: #121417;
+      --line: #23272d;
+      --text: #e9ecef;
+      --muted: #8b939c;
+      --faint: #565e66;
+      --green: #4ade80;
+      --green-dim: #14532d;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --display: "Bricolage Grotesque", sans-serif;
+      --body: "Instrument Sans", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--body);
+      line-height: 1.65;
+    }
+    .shell { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0; gap: 16px; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .brand img { width: 34px; height: 34px; border-radius: 8px; }
+    .brand strong { font-family: var(--display); font-weight: 800; font-size: 1.15rem; }
+    .brand span { font-family: var(--mono); font-size: .7rem; color: var(--green); border: 1px solid var(--green-dim); border-radius: 4px; padding: 2px 6px; }
+    .header-links { display: flex; align-items: center; gap: 18px; }
+    .header-links a { color: var(--muted); text-decoration: none; font-size: .9rem; }
+    .header-links a:hover { color: var(--green); }
+    .top-cta { font-size: .85rem; font-weight: 600; color: var(--bg); background: var(--green); padding: 8px 16px; border-radius: 7px; text-decoration: none; }
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 48px;
+      align-items: start;
+      padding-bottom: 64px;
+    }
+    nav.toc {
+      position: sticky; top: 24px;
+      font-family: var(--mono); font-size: .72rem;
+      color: var(--muted);
+      padding: 4px 0 24px;
+    }
+    nav.toc p { color: var(--faint); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
+    nav.toc a {
+      display: block; color: var(--muted); text-decoration: none;
+      padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px;
+    }
+    nav.toc a:hover, nav.toc a:focus { color: var(--green); border-left-color: var(--green); }
+    h1 {
+      font-family: var(--display); font-weight: 800; letter-spacing: -0.03em;
+      font-size: clamp(2rem, 4vw, 2.7rem); line-height: 1.1; margin: 28px 0 16px;
+    }
+    h1 em { font-style: normal; color: var(--green); }
+    .sub { color: var(--muted); font-size: 1.05rem; margin-bottom: 10px; max-width: 58ch; }
+    .fine { font-family: var(--mono); font-size: .72rem; color: var(--faint); margin-bottom: 36px; }
+    article h2 {
+      font-family: var(--display); font-weight: 700; font-size: 1.25rem;
+      margin: 48px 0 12px; scroll-margin-top: 24px;
+    }
+    article h3 {
+      font-size: 1.02rem; font-weight: 600; margin: 22px 0 6px;
+    }
+    article p, article li { color: var(--muted); font-size: .95rem; }
+    article p { margin-bottom: 12px; max-width: 62ch; }
+    article ul, article ol { padding-left: 1.2rem; margin: 0 0 14px; }
+    article li { margin: 4px 0; }
+    article strong { color: var(--text); font-weight: 600; }
+    .where {
+      font-family: var(--mono); font-size: .7rem; color: var(--faint);
+      letter-spacing: .02em; margin: -2px 0 10px;
+    }
+    .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .tag {
+      font-family: var(--mono); font-size: .68rem; letter-spacing: .04em;
+      text-transform: uppercase; border-radius: 4px; padding: 2px 6px;
+      border: 1px solid var(--line); color: var(--muted);
+    }
+    .tag.free { color: var(--green); border-color: var(--green-dim); }
+    .tag.pro { color: var(--amber); border-color: #3d2e0a; }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      padding: 16px 18px; margin: 12px 0 16px;
+    }
+    .card h3 { margin-top: 0; }
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 16px;
+    }
+    .grid .card { margin: 0; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
+    .chip {
+      font-family: var(--mono); font-size: .72rem; background: var(--panel);
+      border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; color: var(--text);
+    }
+    .chip.g { color: #00ba7c; }
+    .chip.y { color: #f7b731; }
+    .chip.r { color: #f4212e; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: .88rem; margin: 12px 0 18px;
+    }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-family: var(--mono); font-size: .68rem; color: var(--faint); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+    td { color: var(--muted); }
+    td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
+    .note { color: var(--faint); font-size: .85rem; margin: 28px 0 8px; }
+    footer {
+      border-top: 1px solid var(--line); padding: 24px 0 40px;
+      font-size: .8rem; color: var(--faint); display: flex; gap: 18px; flex-wrap: wrap;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--green); }
+    a.in { color: var(--green); }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; gap: 8px; }
+      nav.toc { position: static; display: flex; flex-wrap: wrap; gap: 4px 14px; padding-bottom: 8px; }
+      nav.toc p { width: 100%; }
+      nav.toc a { border-left: none; padding-left: 0; }
+      .grid { grid-template-columns: 1fr; }
+      td:first-child { white-space: normal; }
+    }
+    @media print {
+      nav.toc, header .header-links, .top-cta { display: none; }
+      .layout { grid-template-columns: 1fr; }
+      body { background: #fff; color: #111; }
+      article p, article li, td, .sub { color: #333; }
+      .card { border-color: #ccc; background: #fff; }
+      a { color: #111; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <a class="brand" href="/">
+        <img src="assets/icon.png" alt="" />
+        <strong>PostPilot</strong>
+        <span>for X</span>
+      </a>
+      <div class="header-links">
+        <a href="/coming.html">What's next</a>
+        <a class="top-cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome</a>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav class="toc" aria-label="Contents">
+        <p>Contents</p>
+        <a href="#start">Get started</a>
+        <a href="#compose">Compose bar</a>
+        <a href="#score">The score</a>
+        <a href="#hooks">Hook types</a>
+        <a href="#governor">Governor</a>
+        <a href="#rewrites">AI rewrites</a>
+        <a href="#drafts">Drafts</a>
+        <a href="#settings">Settings</a>
+        <a href="#voice">Voice Match</a>
+        <a href="#insights">Score Trends</a>
+        <a href="#pro">Pro-only</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <article>
+        <h1>User <em>manual</em></h1>
+        <p class="sub">How every PostPilot feature works — where it lives, what it scores, and what it never does. Written for v0.7.</p>
+        <p class="fine">STILL LOCAL · STILL NO X LOGIN · YOU HIT SEND</p>
+
+        <h2 id="start">Get started</h2>
+        <p>Install from the Chrome Web Store. Open <strong>x.com</strong> and start a post, reply, or quote. A dark bar appears under the compose toolbar. Type. The number updates as you go.</p>
+        <p>The toolbar icon popup turns scoring on or off and opens Settings (labeled Voice Match). You do not log into X through PostPilot. You do not grant account access. PostPilot reads the composer on the page you already have open.</p>
+        <div class="card">
+          <h3>What it will not do</h3>
+          <p>It does not post, schedule, auto-reply, or write the tweet for you. AI rewrites are suggestions you paste. A self-reply prompt is a follow-up you still send.</p>
+        </div>
+
+        <h2 id="compose">The compose bar</h2>
+        <p class="where">Where: under the X compose toolbar on x.com / twitter.com</p>
+        <p>Click the bar to expand the panel. Click again to collapse. The bar is a summary; the panel is the explanation.</p>
+
+        <h3>What you see on the bar</h3>
+        <table>
+          <thead><tr><th>Chip</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>Score badge</td><td>0–100. Green ≥ 70, yellow ≥ 50, red below that.</td></tr>
+            <tr><td>Hook type</td><td>Which of 20 opener patterns matched, or none.</td></tr>
+            <tr><td>Character count</td><td>Turns green in the length sweet spot (default 280–320; Settings can change this, and Pro can learn yours).</td></tr>
+            <tr><td>Voice Match</td><td class="tags"><span class="tag pro">Pro</span> How close this draft is to your voice fingerprint.</td></tr>
+            <tr><td>Issues</td><td>Count of governor errors (red) or warnings (yellow).</td></tr>
+            <tr><td>Now / better hour</td><td class="tags"><span class="tag pro">Pro</span> From your own posting-time data, once learning is ready.</td></tr>
+            <tr><td>Reach range</td><td class="tags"><span class="tag pro">Pro</span> ~low–high impressions from similar posts of yours, with sample size. Hidden until n ≥ 8 similar posts.</td></tr>
+            <tr><td>Invites a reply / Reply bait</td><td>Broadcast vs a real question. “Thoughts?” and similar bait is called out, not rewarded.</td></tr>
+            <tr><td>12/20</td><td class="tags"><span class="tag pro">Pro</span> Collection funnel: how many of your posts have been learned vs the 20 needed.</td></tr>
+            <tr><td>N drafts</td><td>How many drafts sit in the queue.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Inside the expanded panel</h3>
+        <ul>
+          <li><strong>Save draft</strong> — keeps the current text and score. Restore later from the queue in this panel.</li>
+          <li><strong>Save hook</strong> <span class="tag pro">Pro</span> — appears when the score is 70+. Also auto-saves on publish at 70+.</li>
+          <li><strong>Score Breakdown</strong> — the parts that add up to the badge.</li>
+          <li><strong>Before you send</strong> — checklist. Warns. Never blocks send.</li>
+          <li><strong>Governor list</strong> — each matched phrase or structural issue.</li>
+          <li><strong>Rewrite</strong> — generate suggestion(s) and replace the compose box if you accept.</li>
+          <li><strong>This week</strong> — rolling score average of posts you actually sent.</li>
+        </ul>
+
+        <h2 id="score">How the score is built</h2>
+        <p class="where">Where: expanded panel → Score Breakdown</p>
+        <p>The badge is a 0–100 number from local scoring. Attached images and pasted links move it. A claim that looks like fabricated research does not get a data-reveal bonus.</p>
+        <table>
+          <thead><tr><th>Component</th><th>What it rewards</th></tr></thead>
+          <tbody>
+            <tr><td>Hook Type /15</td><td>Did an opener pattern fire, and how strong is that type?</td></tr>
+            <tr><td>Specificity /20</td><td>Numbers, names, concrete claims — not “this is huge.”</td></tr>
+            <tr><td>Length /10</td><td>Inside the sweet spot (default 280–320 characters, or your learned band on Pro).</td></tr>
+            <tr><td>Curiosity Gap /15</td><td>Does the first line create an open loop worth clicking or reading?</td></tr>
+            <tr><td>Learned Patterns /10</td><td class="tags"><span class="tag pro">Pro</span> Boosts from what actually worked on your account.</td></tr>
+            <tr><td>Image / link /8</td><td>Media you attached in this compose box, not emoji or the parent tweet’s photo.</td></tr>
+            <tr><td>Reply craft /15</td><td>Replies only — substance vs echoing the parent.</td></tr>
+            <tr><td>Penalties</td><td>Governor hits and other deductions. Reasons listed under the row.</td></tr>
+          </tbody>
+        </table>
+        <p>A score under 60 is treated as a weak hook. The checklist will say so. You can still send.</p>
+
+        <h3>Originals vs replies</h3>
+        <p>Originals, quotes, and ambiguous compose boxes use the original-post rubric. A reply uses a separate reply-craft layer (mechanism, constraint, adding something the parent didn’t say). Reply-craft shows in the breakdown instead of silently moving the number.</p>
+
+        <h2 id="hooks">Hook types</h2>
+        <p class="where">Where: compose bar label · Settings → Hooks to tune weights</p>
+        <p>PostPilot classifies the opener. One type wins. Weights are priors; Pro can shift them from your own results.</p>
+        <div class="grid">
+          <div class="card"><h3>Data Reveal</h3><p>Lead with specific data from tracking or research.</p></div>
+          <div class="card"><h3>Contrarian</h3><p>Challenge a common belief.</p></div>
+          <div class="card"><h3>Curiosity Gap</h3><p>Open a loop that wants resolution.</p></div>
+          <div class="card"><h3>Stakes Urgency</h3><p>Time pressure or real stakes.</p></div>
+          <div class="card"><h3>Personal Failure</h3><p>A mistake and what it taught you.</p></div>
+          <div class="card"><h3>Question</h3><p>A direct, specific question.</p></div>
+          <div class="card"><h3>Pattern Recognition</h3><p>A pattern across several observations.</p></div>
+          <div class="card"><h3>Shocking Stat</h3><p>A surprising number up front.</p></div>
+          <div class="card"><h3>Prediction</h3><p>A dated or falsifiable call.</p></div>
+          <div class="card"><h3>Before After</h3><p>Contrast then vs now.</p></div>
+          <div class="card"><h3>Secret Reveal</h3><p>Insider knowledge others skip.</p></div>
+          <div class="card"><h3>Social Proof</h3><p>Authority or earned results, not clout-begging.</p></div>
+          <div class="card"><h3>Declarative Claim</h3><p>Name the constraint or mechanism in one sentence.</p></div>
+          <div class="card"><h3>Observation</h3><p>Domain insight without making it about you.</p></div>
+          <div class="card"><h3>Direct Challenge</h3><p>Name what the reader is doing and the cost.</p></div>
+          <div class="card"><h3>Stolen Thought</h3><p>The thing they already know and won’t say.</p></div>
+          <div class="card"><h3>Absurd Reframe</h3><p>Mundane thing, dramatic stakes — a pattern interrupt.</p></div>
+          <div class="card"><h3>Binary Frame</h3><p>Two choices, no fake third option.</p></div>
+          <div class="card"><h3>Reader Mirror</h3><p>Describe their situation so they feel seen, then the insight.</p></div>
+          <div class="card"><h3>Amplification</h3><p>A reply that adds analysis, not “this.”</p></div>
+        </div>
+
+        <h2 id="governor">Governor</h2>
+        <p class="where">Where: bar issue count · expanded panel list · Settings → Governor</p>
+        <p>The governor is a phrase and structure checker. It flags patterns that tend to kill engagement. It does not stop you from posting.</p>
+        <ul>
+          <li><strong>Banned / blocking</strong> — treated as errors. Checklist: “blocking phrases.”</li>
+          <li><strong>Weak</strong> — soft, hedgey, or empty language. Warnings.</li>
+          <li><strong>AI slop</strong> — ChatGPT tells, bland templates, telltale phrasing.</li>
+          <li><strong>Fabrication</strong> — “I tracked N for D days” energy without it being a real study. Those drafts do not get a data-reveal bonus.</li>
+          <li><strong>Structure</strong> — length and shape issues the lists don’t cover.</li>
+        </ul>
+        <p>You can add or remove phrases in Settings → Governor. Export/import config from the bottom of the Governor and Hooks tabs.</p>
+
+        <h3>Before you send</h3>
+        <p class="where">Where: expanded panel → Before you send</p>
+        <p>A last look: hook ≥ 60, no blocking phrases, length in the sweet spot, image/link delta if you attached media, and (Pro) whether this hour is one of your better ones. Warns. Never greys out Post.</p>
+
+        <h3>Reply invite</h3>
+        <p>A specific question can show <strong>Invites a reply</strong>. Engagement bait (“thoughts?”, “what do you think?”, “RT if”) shows <strong>Reply bait</strong>. A statement with no question is a broadcast and stays quiet on the bar.</p>
+
+        <h2 id="rewrites">AI rewrites</h2>
+        <p class="where">Where: expanded panel · Settings → AI Rewrites (quota copy only)</p>
+        <p>One click sends the current draft, score context, and governor issues to PostPilot’s rewrite server (Claude). Suggestions are meant to be more engaging — stop, reply, repost — not to chase the badge. You choose whether to replace the compose box.</p>
+        <table>
+          <thead><tr><th></th><th>Free</th><th>Pro</th></tr></thead>
+          <tbody>
+            <tr><td>Suggestions per click</td><td>1</td><td>3, each a different hook angle</td></tr>
+            <tr><td>Per day</td><td>3</td><td>40</td></tr>
+            <tr><td>Reset</td><td colspan="2">Midnight UTC</td></tr>
+            <tr><td>Voice</td><td>Generic</td><td>Calibrated to Voice Match when a profile exists</td></tr>
+            <tr><td>API key</td><td colspan="2">None. PostPilot pays. No BYOK.</td></tr>
+          </tbody>
+        </table>
+        <p>Quota is enforced on the server. A Free client cannot claim three variants. Failed generations are not supposed to burn a slot. There is no API key field anywhere in Settings.</p>
+
+        <h2 id="drafts">Drafts and compare</h2>
+        <p class="where">Where: expanded panel → Save draft · draft list below</p>
+        <p>Save scored drafts, restore one into the compose box, delete ones you don’t need. Pick two and compare scores side by side — short vs long, question vs claim — without leaving X.</p>
+
+        <h2 id="settings">Settings</h2>
+        <p class="where">Where: extension popup → Voice Match, or chrome://extensions → PostPilot → Extension options</p>
+        <table>
+          <thead><tr><th>Tab</th><th>What it’s for</th></tr></thead>
+          <tbody>
+            <tr><td>License</td><td>Paste the LemonSqueezy key from your purchase email. Deactivate. Export/import a full backup of local data (voice, drafts, history, collected posts).</td></tr>
+            <tr><td>Voice</td><td class="tags"><span class="tag pro">Pro</span> Paste a voice profile, generate the fingerprint, coach, overrides.</td></tr>
+            <tr><td>Posts</td><td class="tags"><span class="tag pro">Pro</span> Sample posts (at least 5) used to build Voice Match. Can pull from your best collected posts.</td></tr>
+            <tr><td>Governor</td><td>Edit phrase lists and severity.</td></tr>
+            <tr><td>Hooks</td><td>Hook-type weights and scoring knobs (sweet spot, weak threshold).</td></tr>
+            <tr><td>Analytics</td><td>Score Trends on Free. Full Breakdown, CSV import, and learning controls on Pro. The tab is named Analytics; the product names are Score Trends and Full Breakdown.</td></tr>
+            <tr><td>AI Rewrites</td><td>Quota explanation only. No key to paste.</td></tr>
+          </tbody>
+        </table>
+        <p>Pro is $24/mo or $240/yr. Activate once per machine (limit 5). The store install ignores any “dev Pro” flag — that toggle exists only on unpacked builds.</p>
+
+        <h2 id="voice">Voice Match</h2>
+        <p class="where">Where: Settings → Voice and Posts · compose bar badge · expanded Voice Match breakdown</p>
+        <p class="tags"><span class="tag pro">Pro</span></p>
+        <p>Voice Match is a local fingerprint of how you write: sentence length, fragments, hook mix, formality, you vs I, niche words, and more (13 dimensions). Scoring and Pro rewrites use it so “better” still sounds like you.</p>
+        <ol>
+          <li>Add at least <strong>5 sample posts</strong> on the Posts tab (paste, or import from collected high-performers).</li>
+          <li>Optionally paste a longer voice profile markdown on the Voice tab.</li>
+          <li>Generate the fingerprint. The compose bar then shows a Voice Match badge on drafts.</li>
+        </ol>
+        <p>Nothing in the fingerprint is uploaded except a compact style digest when you, on Pro, request a rewrite.</p>
+
+        <h2 id="insights">Score Trends and the Full Breakdown</h2>
+        <p class="where">Where: Settings → Analytics · compose chips once ready</p>
+        <p><strong>Score Trends (Free):</strong> this week’s average score, post count, trend vs last week. Built from scores of posts you sent, stored locally.</p>
+        <p><strong>Full Breakdown (Pro):</strong> hook-type performance, length sweet spot, topics, best hours (weekday / weekend / combined), media impact, reply craft, and a short recommendation list. Derived from your own collected posts — never from a global “viral” average.</p>
+
+        <h3>How collection works</h3>
+        <p class="tags"><span class="tag pro">Pro</span></p>
+        <p>As you browse your own profile, PostPilot reads tweet text and public engagement counts off the page. No X API. Posts younger than 24 hours wait. Posts with no impressions yet are skipped. The funnel chip (12/20) tells you why insights are empty.</p>
+        <p>Learning turns on at <strong>20 collected posts</strong>. Until then the Full Breakdown stays dark and the compose chips for time/reach/learned boosts do not appear.</p>
+
+        <h3>Import X Analytics CSV</h3>
+        <p class="tags"><span class="tag pro">Pro</span></p>
+        <p>X Premium: More → Analytics, or analytics.x.com. Export <strong>tweet activity</strong> (columns like Tweet id / Tweet text) — not the by-day summary. Drop the CSV on Settings → Analytics. Import skips the 24-hour wait. Profile scraping still runs afterward so new posts keep feeding in.</p>
+
+        <h2 id="pro">Other Pro surfaces</h2>
+
+        <div class="card">
+          <h3>Viral Post Analyzer</h3>
+          <p class="where">Where: badges on posts in your X feed</p>
+          <p>Every feed post gets a PostPilot score and hook type. Same engine as compose, including your voice and learned boosts, so the number means the same thing in both places.</p>
+        </div>
+        <div class="card">
+          <h3>Thread scorer</h3>
+          <p class="where">Where: when you are composing a thread (multiple tweet boxes)</p>
+          <p>Each tweet in the thread is scored. The weakest link is flagged so you fix the sagging post instead of averaging the thread into one fake number.</p>
+        </div>
+        <div class="card">
+          <h3>Hook Library</h3>
+          <p class="where">Where: expanded panel · auto-save on publish at 70+</p>
+          <p>Save openers that worked. Remix when you are stuck. High-scoring posts can auto-save when you hit Post.</p>
+        </div>
+        <div class="card">
+          <h3>Self-reply prompt</h3>
+          <p class="where">Where: after you publish an original (not a reply)</p>
+          <p>One suggested follow-up, based on hook type. You paste and send it. PostPilot never posts it.</p>
+        </div>
+        <div class="card">
+          <h3>Reach range</h3>
+          <p class="where">Where: compose bar, once n is honest</p>
+          <p>A range (roughly the 25th–75th percentile of impressions on similar posts of yours) plus <strong>n=</strong> sample size. Not a single invented “14,200 people.” Hidden until there are at least 8 similar posts with impressions.</p>
+        </div>
+
+        <h2 id="privacy">Privacy</h2>
+        <p>Scoring, drafts, Voice Match, Score Trends, and the Full Breakdown stay in <code>chrome.storage.local</code> on this browser. Uninstalling the extension deletes them.</p>
+        <p>Two network calls you trigger:</p>
+        <ol>
+          <li><strong>License check</strong> — key and instance id to LemonSqueezy. No post text.</li>
+          <li><strong>Rewrite</strong> — the draft you asked to rewrite, a device id (Free) or license key (Pro), and on Pro a compact style digest. Daily caps are counted on PostPilot’s server. Post content is not kept as a dataset.</li>
+        </ol>
+        <p>Full language: <a class="in" href="privacy-policy.html">privacy policy</a>.</p>
+        <p>Store vs unpacked Chrome profiles do not share storage. Use License → Export / Import backup if you move machines or test an unpacked build.</p>
+
+        <h2 id="faq">FAQ</h2>
+        <h3>The bar isn’t showing</h3>
+        <p>Confirm scoring is enabled in the popup. Refresh x.com after installing or updating. The overlay attaches to X’s compose toolbar; if X ships a DOM change, the bar can vanish until PostPilot updates. That is a known standing risk.</p>
+        <h3>Rewrites say try again / quota</h3>
+        <p>Quota copy is explicit when you are out for the day (reset midnight UTC). A generic failure is usually a stale extension after an update — reload the extension on chrome://extensions and refresh x.com. Free is 3/day, not 1.</p>
+        <h3>Image attached on a text-only reply</h3>
+        <p>v0.7 only scores media inside the composer attachments, not emoji images or the parent tweet’s photo. Update if you are still on an older store build.</p>
+        <h3>Insights are empty</h3>
+        <p>Need 20 collected posts with impressions, or a tweet-level CSV. Check the funnel: handle detected, waiting on 24h, missing impressions. Browse your own profile while logged in so the collector can see counts.</p>
+        <h3>Can I cancel Pro?</h3>
+        <p>Yes, anytime in LemonSqueezy. Scoring on Free keeps working. Local data stays on the device until you clear it or uninstall.</p>
+
+        <p class="note">Manual for PostPilot for X v0.7.0. Scheduling is off-thesis on purpose. Something wrong or missing? <a class="in" href="https://github.com/bemcgrath/postpilot/issues">Open an issue</a> or reply to @postpilotforx.</p>
+      </article>
+    </div>
+
+    <footer>
+      <span>© 2026 Brian McGrath LLC</span>
+      <a href="/">Home</a>
+      <a href="coming.html">What's next</a>
+      <a href="privacy-policy.html">Privacy Policy</a>
+      <a href="https://github.com/bemcgrath/postpilot/issues" target="_blank" rel="noopener">Support</a>
+    </footer>
+  </div>
+</body>
+</html>
