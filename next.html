@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vote on what's next — PostPilot for X</title>
+  <meta name="description" content="Help pick PostPilot's next features. Reply with your top 3. Still local. Still no X login. You hit send." />
+  <link rel="canonical" href="https://postpilotforx.com/next.html" />
+  <meta property="og:title" content="Vote on what's next — PostPilot for X" />
+  <meta property="og:description" content="12 features on the ballot. Reply with three numbers. Scheduling and account access are not on the list." />
+  <meta property="og:image" content="https://postpilotforx.com/assets/icon.png" />
+  <meta property="og:url" content="https://postpilotforx.com/next.html" />
+  <link rel="icon" href="assets/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0b0d;
+      --panel: #121417;
+      --line: #23272d;
+      --text: #e9ecef;
+      --muted: #8b939c;
+      --faint: #565e66;
+      --green: #4ade80;
+      --green-dim: #14532d;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --display: "Bricolage Grotesque", sans-serif;
+      --body: "Instrument Sans", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--body);
+      line-height: 1.6;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0; gap: 16px; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .brand img { width: 34px; height: 34px; border-radius: 8px; }
+    .brand strong { font-family: var(--display); font-weight: 800; font-size: 1.15rem; }
+    .brand span { font-family: var(--mono); font-size: .7rem; color: var(--green); border: 1px solid var(--green-dim); border-radius: 4px; padding: 2px 6px; }
+    .header-links { display: flex; align-items: center; gap: 16px; }
+    .header-links a:not(.top-cta) { color: var(--muted); text-decoration: none; font-size: .9rem; }
+    .header-links a:not(.top-cta):hover { color: var(--green); }
+    .top-cta { font-size: .85rem; font-weight: 600; color: var(--bg); background: var(--green); padding: 8px 16px; border-radius: 7px; text-decoration: none; }
+    h1 {
+      font-family: var(--display); font-weight: 800; letter-spacing: -0.03em;
+      font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1.1; margin: 48px 0 16px;
+    }
+    h1 em { font-style: normal; color: var(--green); }
+    .sub { color: var(--muted); font-size: 1.05rem; margin-bottom: 12px; }
+    .fine { font-family: var(--mono); font-size: .72rem; color: var(--faint); margin-bottom: 40px; }
+    h2 { font-family: var(--display); font-weight: 700; font-size: 1.15rem; margin: 36px 0 14px; }
+    .list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+    .item {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .item h3 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; display: flex; gap: 10px; align-items: baseline; flex: 1; min-width: 0; }
+    .item p { color: var(--muted); font-size: .92rem; }
+    .num {
+      font-family: var(--mono); font-size: .78rem; color: var(--green);
+      min-width: 1.6rem;
+    }
+    .vote {
+      flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; min-width: 52px; padding: 6px 8px;
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--line); border-radius: 8px;
+      cursor: pointer; font-family: var(--mono); font-size: .72rem;
+    }
+    .vote:hover { border-color: var(--green); color: var(--green); }
+    .vote[aria-pressed="true"] {
+      border-color: var(--green-dim); color: var(--green); background: rgba(74, 222, 128, 0.08);
+    }
+    .vote:disabled { opacity: .55; cursor: default; }
+    .vote-mark { font-size: .85rem; line-height: 1; }
+    .item.leading { border-color: var(--green-dim); }
+    .share-box {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      padding: 18px; margin: 16px 0 12px;
+    }
+    .share-box pre {
+      font-family: var(--mono); font-size: .82rem; white-space: pre-wrap; color: var(--text);
+      line-height: 1.55;
+    }
+    .copy {
+      background: transparent; color: var(--text); border: 1px solid var(--line);
+      padding: 10px 16px; border-radius: 8px; cursor: pointer; font-family: var(--body); font-size: .9rem;
+    }
+    .copy:hover { border-color: var(--green); }
+    .note { color: var(--faint); font-size: .85rem; margin: 28px 0 48px; }
+    .note a { color: var(--muted); }
+    .note a:hover { color: var(--green); }
+    footer { border-top: 1px solid var(--line); padding: 24px 0 40px; font-size: .8rem; color: var(--faint); display: flex; gap: 18px; flex-wrap: wrap; }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--green); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="/">
+        <img src="assets/icon.png" alt="" />
+        <strong>PostPilot</strong>
+        <span>for X</span>
+      </a>
+      <div class="header-links">
+        <a href="releases.html">Releases</a>
+        <a class="top-cta" href="https://chromewebstore.google.com/detail/postpilot-for-x/jhpaadadlahdlmkoejpfdlflkpofcjgf" target="_blank" rel="noopener">Add to Chrome</a>
+      </div>
+    </header>
+
+    <h1>What should we <em>build</em></h1>
+    <p class="sub">0.7 is out. This is the ballot for what comes next. Upvote the ideas you want — one click per idea, counts are live. Write-ins still welcome as a reply. Scheduling, auto-post, and X login are not on the list — those would break the product.</p>
+    <p class="fine">STILL LOCAL · STILL NO X LOGIN · YOU HIT SEND</p>
+
+    <h2>How to vote</h2>
+    <div class="item">
+      <p>Tap <strong style="color:var(--text)">▲</strong> on this page. You can upvote more than one idea, and tap again to undo. Optional: reply to <a href="https://x.com/postpilotforx" style="color:var(--green)">@postpilotforx</a> with a write-in or a ranked top 3 like <strong style="color:var(--text)">1, 6, 9</strong>.</p>
+    </div>
+
+    <h2>On the ballot</h2>
+    <div class="list" id="ballot">
+      <div class="item" data-idea="1">
+        <div class="item-top">
+          <h3><span class="num">1</span> Hook-only rewrite</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote hook-only rewrite"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>Swap the first line, keep the body you already wrote. Three opener angles, same post.</p>
+      </div>
+      <div class="item" data-idea="2">
+        <div class="item-top">
+          <h3><span class="num">2</span> Voice Match from your X archive</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote Voice Match from archive"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>Drop the official tweet archive zip. Skip pasting five sample posts by hand.</p>
+      </div>
+      <div class="item" data-idea="3">
+        <div class="item-top">
+          <h3><span class="num">3</span> Multiple local profiles</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote multiple local profiles"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>One Voice Match and insight set per X account on this machine. Switch when you switch accounts.</p>
+      </div>
+      <div class="item" data-idea="4">
+        <div class="item-top">
+          <h3><span class="num">4</span> Quote-tweet rubric</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote quote-tweet rubric"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>Score a quote as add vs echo. Same honesty as reply-craft, for quotes.</p>
+      </div>
+      <div class="item" data-idea="5">
+        <div class="item-top">
+          <h3><span class="num">5</span> Thread reorder</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote thread reorder"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>See the weakest tweet in a thread and move or rewrite it before you post. You still hit send.</p>
+      </div>
+      <div class="item" data-idea="6">
+        <div class="item-top">
+          <h3><span class="num">6</span> Save a feed post to the Hook Library</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote save feed post to Hook Library"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>One tap from Viral Post Analyzer. Steal the opener shape, not the words.</p>
+      </div>
+      <div class="item" data-idea="7">
+        <div class="item-top">
+          <h3><span class="num">7</span> Score history calendar</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote score history calendar"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>A local heatmap of what you shipped, scores, and hook types — not another cloud dashboard.</p>
+      </div>
+      <div class="item" data-idea="8">
+        <div class="item-top">
+          <h3><span class="num">8</span> Image and alt-text scoring</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote image and alt-text scoring"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>Judge the photo and the alt, not just “image attached +2.” Still on-device.</p>
+      </div>
+      <div class="item" data-idea="9">
+        <div class="item-top">
+          <h3><span class="num">9</span> Firefox and Edge</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote Firefox and Edge"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>Same extension, same local storage rules, not Chrome-only.</p>
+      </div>
+      <div class="item" data-idea="10">
+        <div class="item-top">
+          <h3><span class="num">10</span> Keyboard shortcuts in compose</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote keyboard shortcuts"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>Expand the panel, save a draft, run a rewrite, without taking your hands off the post.</p>
+      </div>
+      <div class="item" data-idea="11">
+        <div class="item-top">
+          <h3><span class="num">11</span> Custom governor packs</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote custom governor packs"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>Import/export phrase lists you can share. Your slop list, your banned bait, not ours only.</p>
+      </div>
+      <div class="item" data-idea="12">
+        <div class="item-top">
+          <h3><span class="num">12</span> Reply skip signal</h3>
+          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote reply skip signal"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
+        </div>
+        <p>When the parent isn’t worth a reply — the inverse of “invites a reply.” You still choose.</p>
+      </div>
+    </div>
+
+    <h2>Not on the ballot</h2>
+    <div class="item">
+      <p>Schedulers. Auto-post. Auto-reply queues. Connecting your X account. Fake “14,200 impressions” forecasts. Scoring LinkedIn, Instagram, and twelve other networks. If you want those, a different tool already exists. PostPilot scores what you wrote, on your device, before you send.</p>
+    </div>
+
+    <h2>Share this</h2>
+    <div class="share-box">
+      <pre id="share-text">0.7 is live. Help pick what PostPilot builds next.
+
+Upvote on the page (or reply with your top 3):
+
+1 Hook-only rewrite (keep your body)
+2 Voice Match from your X archive
+3 Multiple local profiles (per account)
+4 Quote-tweet rubric
+5 Thread reorder (weakest link first)
+6 Save a feed post to the Hook Library
+7 Score history calendar
+8 Image + alt-text scoring
+9 Firefox and Edge
+10 Keyboard shortcuts in compose
+11 Custom governor packs
+12 Reply skip signal
+
+No scheduling. No X login. You hit send.
+
+https://postpilotforx.com/next.html</pre>
+    </div>
+    <button class="copy" type="button" id="copy-btn">Copy post</button>
+
+    <p class="note">Counts are stored as a random id in this browser — no X login, no post text. Something missing? Reply to @postpilotforx. <a href="releases.html">What 0.7 shipped</a> · <a href="manual.html">Manual</a></p>
+
+    <footer>
+      <span>© 2026 Brian McGrath LLC</span>
+      <a href="/">Home</a>
+      <a href="releases.html">Releases</a>
+      <a href="manual.html">Manual</a>
+      <a href="privacy-policy.html">Privacy Policy</a>
+      <a href="https://github.com/bemcgrath/postpilot/issues" target="_blank" rel="noopener">Support</a>
+    </footer>
+  </div>
+  <script>
+    var API = "https://postpilot-rewrite-worker.brianemcgrath.workers.dev/v1/votes";
+    var VOTER_KEY = "postpilot_ballot_voter";
+    var VOTED_KEY = "postpilot_ballot_voted";
+
+    function voterId() {
+      var id = localStorage.getItem(VOTER_KEY);
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(VOTER_KEY, id);
+      }
+      return id;
+    }
+
+    function votedSet() {
+      try {
+        var raw = JSON.parse(localStorage.getItem(VOTED_KEY) || "[]");
+        return new Set(Array.isArray(raw) ? raw.map(String) : []);
+      } catch (e) {
+        return new Set();
+      }
+    }
+
+    function saveVoted(set) {
+      localStorage.setItem(VOTED_KEY, JSON.stringify(Array.from(set)));
+    }
+
+    function paint(counts, voted) {
+      var items = document.querySelectorAll("#ballot .item");
+      var ranked = Array.from(items).map(function (el) {
+        var id = el.getAttribute("data-idea");
+        return { el: el, n: (counts && counts[id]) || 0 };
+      }).sort(function (a, b) { return b.n - a.n; });
+      var cutoff = ranked[2] ? ranked[2].n : 0;
+      items.forEach(function (el) {
+        var id = el.getAttribute("data-idea");
+        var n = (counts && counts[id]) || 0;
+        var btn = el.querySelector(".vote");
+        el.querySelector(".vote-count").textContent = String(n);
+        var on = voted.has(id);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        el.classList.toggle("leading", n > 0 && n >= cutoff);
+      });
+    }
+
+    document.getElementById("copy-btn").addEventListener("click", async function () {
+      var text = document.getElementById("share-text").textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        this.textContent = "Copied";
+        var btn = this;
+        setTimeout(function () { btn.textContent = "Copy post"; }, 1500);
+      } catch (e) {
+        this.textContent = "Select the text and copy";
+      }
+    });
+
+    (async function () {
+      var voted = votedSet();
+      try {
+        var res = await fetch(API);
+        if (res.ok) {
+          var data = await res.json();
+          paint(data.counts || {}, voted);
+        }
+      } catch (e) {}
+
+      document.getElementById("ballot").addEventListener("click", async function (ev) {
+        var btn = ev.target.closest(".vote");
+        if (!btn) return;
+        var item = btn.closest(".item");
+        var id = item.getAttribute("data-idea");
+        var on = btn.getAttribute("aria-pressed") === "true";
+        btn.disabled = true;
+        try {
+          var res = await fetch(API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: id,
+              voter: voterId(),
+              action: on ? "remove" : "add"
+            })
+          });
+          var data = await res.json();
+          if (!res.ok) throw new Error(data.error || "vote failed");
+          if (data.voted) voted.add(id);
+          else voted.delete(id);
+          saveVoted(voted);
+          paint(data.counts || {}, voted);
+        } catch (e) {
+          btn.title = "Could not record the vote. Try again in a moment.";
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

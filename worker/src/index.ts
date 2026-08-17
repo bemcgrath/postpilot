@@ -2,6 +2,7 @@ import { dailyCapFor, identityKey, resolveTier } from "./entitlement"
 import { checkAndIncrement, decrement } from "./rateLimit"
 import { callAnthropic } from "./anthropic"
 import { buildSystemPrompt, buildUserContent, parseRewrites } from "./prompt"
+import { handleVotes } from "./votes"
 import type { Env, RewriteRequestBody } from "./types"
 
 const CLIENT_KEY_HEADER = "X-PostPilot-Key"
@@ -111,6 +112,10 @@ export async function handleRewrite(request: Request, env: Env): Promise<Respons
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
+
+    if (url.pathname === "/v1/votes") {
+      return handleVotes(request, env)
+    }
 
     if (request.method === "POST" && url.pathname === "/v1/rewrite") {
       return handleRewrite(request, env)

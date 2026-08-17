@@ -5,7 +5,7 @@ export function createFakeKv(): KVNamespace {
     async get(key: string) {
       return store.has(key) ? store.get(key)! : null
     },
-    async put(key: string, value: string) {
+    async put(key: string, value: string, _opts?: { expirationTtl?: number }) {
       store.set(key, value)
     },
     async delete(key: string) {
