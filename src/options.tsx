@@ -81,6 +81,7 @@ function Options() {
   const [importStatus, setImportStatus] = useState("")
   const importInputRef = useRef<HTMLInputElement>(null)
   const [isDev, setIsDev] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
     Promise.all([loadSamplePosts(), loadCollectedPosts()]).then(
@@ -109,11 +110,13 @@ function Options() {
     const hash = window.location.hash.slice(1) as TabId
     if (hash) {
       setActiveTab(hash)
+      if (hash === "governor" || hash === "hooks") setShowAdvanced(true)
     } else {
       chrome.storage.local.get("postpilot_options_tab", (result) => {
         const tab = result.postpilot_options_tab as TabId | undefined
         if (tab) {
           setActiveTab(tab)
+          if (tab === "governor" || tab === "hooks") setShowAdvanced(true)
           chrome.storage.local.remove("postpilot_options_tab")
         }
       })
@@ -280,8 +283,33 @@ function Options() {
     <div style={styles.container}>
       <h1 style={styles.title}>PostPilot Settings</h1>
       <p style={styles.subtitle}>
-        Configure voice matching, governor rules, hook scoring, and hook types.
+        Scoring works with no setup. Voice Match takes five posts. Leave the rest at the default.
       </p>
+
+      <div style={styles.startHere}>
+        <div style={styles.startHereLabel}>Start here</div>
+        {!isPro ? (
+          <p style={styles.startHereText}>
+            You're done. Open x.com, write a post, watch the score. Nothing in Settings is required.
+          </p>
+        ) : fingerprint ? (
+          <p style={styles.startHereText}>
+            Voice Match is on. Keep writing — the score already uses your fingerprint.
+          </p>
+        ) : (
+          <>
+            <p style={styles.startHereText}>
+              Add 5 of your posts, then Analyze. That's Voice Match.
+            </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab("posts")}
+              style={{ ...styles.button, ...styles.primaryButton, marginTop: 8 }}>
+              Go to Posts ({posts.length}/{MIN_POSTS})
+            </button>
+          </>
+        )}
+      </div>
 
       {/* Tabs */}
       <div style={styles.tabBar}>
@@ -289,10 +317,14 @@ function Options() {
           { id: "license" as TabId, label: license.isActive ? "Pro ✓" : "License", indicator: "" },
           { id: "profile" as TabId, label: "Voice", indicator: profileText.trim().length > 100 ? " *" : "" },
           { id: "posts" as TabId, label: "Posts", indicator: posts.length > 0 ? ` (${posts.length})` : "" },
-          { id: "governor" as TabId, label: "Governor", indicator: "" },
-          { id: "hooks" as TabId, label: "Hooks", indicator: "" },
           { id: "analytics" as TabId, label: "Analytics", indicator: "" },
-          { id: "aiRewrites" as TabId, label: "AI Rewrites", indicator: "" }
+          { id: "aiRewrites" as TabId, label: "AI Rewrites", indicator: "" },
+          ...(showAdvanced
+            ? [
+                { id: "governor" as TabId, label: "Governor", indicator: "" },
+                { id: "hooks" as TabId, label: "Hooks", indicator: "" }
+              ]
+            : [])
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -307,6 +339,22 @@ function Options() {
             )}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !showAdvanced
+            setShowAdvanced(next)
+            if (!next && (activeTab === "governor" || activeTab === "hooks")) {
+              setActiveTab("license")
+            }
+          }}
+          style={{
+            ...styles.tab,
+            marginLeft: "auto"
+          }}
+          aria-expanded={showAdvanced}>
+          Advanced{showAdvanced ? " ▾" : " ▸"}
+        </button>
       </div>
 
       {/* License tab */}
@@ -479,6 +527,9 @@ function Options() {
           <div style={styles.section}>
             <h2 style={styles.heading}>Voice Profile</h2>
             <p style={styles.hint}>
+              Leave Governor and Hooks alone unless a score feels wrong.
+            </p>
+            <p style={styles.hint}>
               Paste your voice_profile.md content or import a file. This defines
               your niche, hook preferences, tone, and writing style.
             </p>
@@ -545,6 +596,9 @@ function Options() {
         <>
           <div style={styles.section}>
             <h2 style={styles.heading}>Add Posts</h2>
+            <p style={styles.hint}>
+              Leave Governor and Hooks alone unless a score feels wrong.
+            </p>
             <p style={styles.hint}>
               Paste one post, or multiple posts separated by <code>---</code>.
               Posts refine statistical patterns (sentence length, fragment ratio, etc.)
@@ -929,7 +983,28 @@ const styles: Record<string, React.CSSProperties> = {
   subtitle: {
     fontSize: 14,
     color: "#71767b",
-    margin: "0 0 24px",
+    margin: "0 0 16px",
+    lineHeight: 1.5
+  },
+  startHere: {
+    background: "#1e2024",
+    border: "1px solid #2f3336",
+    borderRadius: 8,
+    padding: "12px 14px",
+    marginBottom: 20
+  },
+  startHereLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.6,
+    textTransform: "uppercase" as const,
+    color: "#1d9bf0",
+    marginBottom: 4
+  },
+  startHereText: {
+    fontSize: 13,
+    color: "#e7e9ea",
+    margin: 0,
     lineHeight: 1.5
   },
   tabBar: {
