@@ -873,6 +873,13 @@
   margin-top: 6px;
 }
 
+.postpilot-rewrites__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .postpilot-rewrites__btn {
   display: inline-block;
   padding: 6px 12px;
@@ -886,8 +893,18 @@
   margin-top: 4px;
 }
 
+.postpilot-rewrites__btn--secondary {
+  background: transparent;
+  color: #e7e9ea;
+  border: 1px solid #536471;
+}
+
 .postpilot-rewrites__btn:hover {
   background: #1a8cd8;
+}
+
+.postpilot-rewrites__btn--secondary:hover {
+  background: #2f3336;
 }
 
 .postpilot-rewrites__loading {
@@ -952,6 +969,15 @@
   word-break: break-word;
   line-height: 1.5;
   margin-bottom: 8px;
+}
+
+.postpilot-rewrites__hook-line {
+  color: #e7e9ea;
+  font-weight: 600;
+}
+
+.postpilot-rewrites__frozen {
+  color: #71767b;
 }
 
 .postpilot-rewrites__gov-issues {

@@ -310,4 +310,84 @@ describe("handleRewrite orchestration", () => {
     expect(res.status).toBe(502)
     expect(decrement).toHaveBeenCalledTimes(1)
   })
+
+  it("stitches a hook-only result onto the frozen body", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("free")
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
+    vi.mocked(callAnthropic).mockResolvedValue(
+      JSON.stringify({ rewrites: [{ text: "Labels, not compute, are the bottleneck.", rationale: "sharper" }] })
+    )
+
+    const res = await handleRewrite(
+      makeRequest({
+        ...validBody,
+        mode: "hook",
+        originalText: "The bottleneck is labels.\n\nNot compute.",
+      }),
+      makeEnv()
+    )
+    expect(res.status).toBe(200)
+    const data = (await res.json()) as { rewrites: Array<{ text: string }> }
+    expect(data.rewrites[0].text).toBe("Labels, not compute, are the bottleneck.\n\nNot compute.")
+    const [, , userContent] = vi.mocked(callAnthropic).mock.calls[0]
+    expect(userContent).toContain("MODE: HOOK ONLY")
+  })
+
+  it("discards a body the model rewrote in hook mode", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("free")
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
+    vi.mocked(callAnthropic).mockResolvedValue(
+      JSON.stringify({
+        rewrites: [{ text: "New hook.\n\nI also rewrote the body.", rationale: "x" }],
+      })
+    )
+
+    const res = await handleRewrite(
+      makeRequest({
+        ...validBody,
+        mode: "hook",
+        originalText: "Old hook.\n\nKeep me.",
+      }),
+      makeEnv()
+    )
+    const data = (await res.json()) as { rewrites: Array<{ text: string }> }
+    expect(data.rewrites[0].text).toBe("New hook.\n\nKeep me.")
+  })
+
+  it("does not stitch when hook mode is sent on a reply", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("free")
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
+    vi.mocked(callAnthropic).mockResolvedValue(
+      JSON.stringify({ rewrites: [{ text: "full reply rewrite", rationale: "x" }] })
+    )
+
+    const res = await handleRewrite(
+      makeRequest({
+        ...validBody,
+        isReply: true,
+        mode: "hook",
+        originalText: "Agree.\n\nThe constraint is latency.",
+      }),
+      makeEnv()
+    )
+    const data = (await res.json()) as { rewrites: Array<{ text: string }> }
+    expect(data.rewrites[0].text).toBe("full reply rewrite")
+  })
+
+  it("400s on an unknown mode", async () => {
+    const res = await handleRewrite(makeRequest({ ...validBody, mode: "thread" }), makeEnv())
+    expect(res.status).toBe(400)
+  })
 })

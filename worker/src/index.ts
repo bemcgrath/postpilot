@@ -3,6 +3,7 @@ import { checkAndIncrement, decrement } from "./rateLimit"
 import { callAnthropic } from "./anthropic"
 import { buildSystemPrompt, buildUserContent, parseRewrites } from "./prompt"
 import { handleVotes } from "./votes"
+import { splitHookBody, stitchHook } from "./hook-split"
 import type { Env, RewriteRequestBody } from "./types"
 
 const CLIENT_KEY_HEADER = "X-PostPilot-Key"
@@ -47,7 +48,8 @@ function isValidBody(body: unknown): body is RewriteRequestBody {
     typeof b.hookInfo === "string" &&
     typeof b.governorLines === "string" &&
     typeof b.suggestionLines === "string" &&
-    (b.count === 1 || b.count === 3)
+    (b.count === 1 || b.count === 3) &&
+    (b.mode === undefined || b.mode === "full" || b.mode === "hook")
   )
 }
 
@@ -91,10 +93,14 @@ export async function handleRewrite(request: Request, env: Env): Promise<Respons
     // The prompt asks Claude for exactly `count` rewrites, but nothing
     // guarantees it obeys that -- truncate defensively so callers can rely
     // on the contract rather than the model's compliance.
-    const rewrites = parseRewrites(responseText).slice(0, count)
+    let rewrites = parseRewrites(responseText).slice(0, count)
     if (rewrites.length === 0) {
       await decrement(env, idKey)
       return json({ error: "GENERATION_FAILED" }, 502)
+    }
+    if (body.mode === "hook" && !body.isReply) {
+      const { rest } = splitHookBody(body.originalText)
+      rewrites = rewrites.map((r) => ({ ...r, text: stitchHook(r.text, rest) }))
     }
     return json({
       rewrites,

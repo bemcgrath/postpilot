@@ -42,6 +42,7 @@ interface RewriteRequestBody {
   band?: { min: number; max: number }
   count: 1 | 3
   voiceDigest?: VoiceDigest
+  mode?: "full" | "hook"
 }
 
 /**
@@ -125,9 +126,11 @@ function buildRequestBody(
   count: 1 | 3,
   voiceDigest: VoiceDigest | undefined,
   context?: ScoreContext,
-  hookTypeBoosts?: Partial<Record<string, number>>
+  hookTypeBoosts?: Partial<Record<string, number>>,
+  mode: "full" | "hook" = "full"
 ): RewriteRequestBody {
   const isReply = context?.kind === "reply"
+  const hookOnly = mode === "hook" && !isReply
 
   const governorLines = score.governor.issues
     .filter((i) => i.severity === "error" || i.severity === "warning")
@@ -158,9 +161,10 @@ function buildRequestBody(
     governorLines,
     suggestionLines,
     engagementLines: formatEngagementLines(boosts),
-    band,
+    band: hookOnly ? undefined : band,
     count,
     voiceDigest,
+    mode: hookOnly ? "hook" : undefined,
   }
 }
 
@@ -189,7 +193,8 @@ export async function generateRewrites(
   score: PostScore,
   isPro: boolean,
   context?: ScoreContext,
-  hookTypeBoosts?: Partial<Record<string, number>>
+  hookTypeBoosts?: Partial<Record<string, number>>,
+  mode: "full" | "hook" = "full"
 ): Promise<{
   suggestions: RewriteSuggestion[]
   remaining?: number
@@ -206,7 +211,8 @@ export async function generateRewrites(
     isPro ? 3 : 1,
     voiceDigest,
     context,
-    hookTypeBoosts
+    hookTypeBoosts,
+    mode
   )
 
   // Route through background service worker -- consistent with the rest of

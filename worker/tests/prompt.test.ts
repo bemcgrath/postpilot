@@ -126,6 +126,46 @@ describe("buildUserContent", () => {
     expect(text).toMatch(/Colons: often/)
     expect(text).toMatch(/Lists: rarely/)
   })
+
+  it("asks for a first line only in hook mode and skips layout", () => {
+    const text = buildUserContent({
+      ...baseBody,
+      mode: "hook",
+      originalText: "The bottleneck is labels.\n\nNot compute.",
+      band: { min: 280, max: 320 },
+      voiceDigest: {
+        distinctiveTerms: ["bottleneck"],
+        sentenceLengthTarget: 11,
+        firstPersonRatio: 0.4,
+        secondPersonRatio: 0.1,
+        topHookTypes: ["declarative_claim"],
+        fragmentRatio: 0.42,
+        lineBreaksPerPost: 4.2,
+        usesColons: 0.5,
+        usesLists: 0.1
+      }
+    })
+    expect(text).toMatch(/MODE: HOOK ONLY/)
+    expect(text).toMatch(/ORIGINAL HOOK/)
+    expect(text).toMatch(/The bottleneck is labels/)
+    expect(text).toMatch(/FROZEN BODY/)
+    expect(text).toMatch(/Not compute/)
+    expect(text).not.toMatch(/this draft uses/)
+    expect(text).not.toMatch(/Typical line breaks per post/)
+    expect(text).not.toMatch(/280-320/)
+    expect(text).not.toMatch(/Then break the rest/)
+  })
+
+  it("ignores hook mode on replies", () => {
+    const text = buildUserContent({
+      ...baseBody,
+      isReply: true,
+      mode: "hook",
+      originalText: "Agree, and the constraint is latency."
+    })
+    expect(text).not.toMatch(/MODE: HOOK ONLY/)
+    expect(text).toMatch(/This is a reply/)
+  })
 })
 
 describe("parseRewrites", () => {

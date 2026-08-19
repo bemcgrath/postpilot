@@ -1,4 +1,5 @@
 import type { RewriteRequestBody, RewriteSuggestion } from "./types"
+import { splitHookBody } from "./hook-split"
 
 // Duplicated from src/config/defaults.ts (extension) rather than shared via a
 // package -- these are static string lists, low churn, and keeping the
@@ -110,17 +111,37 @@ Apply the banned-phrase, em-dash, slop, and invented-study rules in one pass. Ou
  * Per-post, per-user content -- goes in the user turn, after the cached
  * system block. This is where token spend varies request to request.
  */
+function isHookOnly(body: RewriteRequestBody): boolean {
+  return body.mode === "hook" && !body.isReply
+}
+
 export function buildUserContent(body: RewriteRequestBody): string {
   const noun = body.isReply ? "reply" : "post"
+  const hookOnly = isHookOnly(body)
   const lines: string[] = []
 
-  lines.push(`ORIGINAL ${noun.toUpperCase()}:`)
-  lines.push(body.originalText)
-  const originalBreaks = (body.originalText.match(/\n/g) ?? []).length
-  if (!body.isReply && originalBreaks >= 2) {
-    lines.push(
-      `FORMAT: this draft uses ${originalBreaks} line breaks. After a complete hook on line 1, keep a similar short-line / stanza layout. Do not flatten into one paragraph.`
-    )
+  if (hookOnly) {
+    const { hook, rest } = splitHookBody(body.originalText)
+    lines.push("MODE: HOOK ONLY. Put only a new first line in JSON \"text\". Do not rewrite or repeat the frozen body. Ignore stanza/layout instructions. A complete claim, not a fragment, preferably under 120 characters.")
+    lines.push("")
+    lines.push("ORIGINAL HOOK:")
+    lines.push(hook)
+    lines.push("")
+    if (rest.trim()) {
+      lines.push("FROZEN BODY (do not change, do not include in \"text\"):")
+      lines.push(rest.replace(/^\n+/, ""))
+    } else {
+      lines.push("There is no frozen body — the whole draft is the hook. Return a stronger complete first line.")
+    }
+  } else {
+    lines.push(`ORIGINAL ${noun.toUpperCase()}:`)
+    lines.push(body.originalText)
+    const originalBreaks = (body.originalText.match(/\n/g) ?? []).length
+    if (!body.isReply && originalBreaks >= 2) {
+      lines.push(
+        `FORMAT: this draft uses ${originalBreaks} line breaks. After a complete hook on line 1, keep a similar short-line / stanza layout. Do not flatten into one paragraph.`
+      )
+    }
   }
   lines.push("")
   lines.push("SCORING CONTEXT:")
@@ -129,7 +150,11 @@ export function buildUserContent(body: RewriteRequestBody): string {
   if (body.suggestionLines) lines.push(`Hook suggestions:\n${body.suggestionLines}`)
 
   lines.push("")
-  lines.push("GOAL: a more engaging version of this " + noun + ". Fix any governor violations.")
+  if (hookOnly) {
+    lines.push("GOAL: a stronger first line for this post. The body stays frozen. Fix any governor issues that live in the opener.")
+  } else {
+    lines.push("GOAL: a more engaging version of this " + noun + ". Fix any governor violations.")
+  }
   if (body.engagementLines) {
     lines.push("WHAT EARNS ENGAGEMENT FOR THIS WRITER:")
     lines.push(body.engagementLines)
@@ -139,6 +164,10 @@ export function buildUserContent(body: RewriteRequestBody): string {
     lines.push(
       `- This is a reply: add something the parent post doesn't already say (a mechanism, a number, or a specific detail). Don't just agree or praise. Do not rewrite it as a stanza original.` +
         (body.band ? ` Aim for roughly ${body.band.min}-${body.band.max} characters.` : "")
+    )
+  } else if (hookOnly) {
+    lines.push(
+      `- Return only the new opener: a complete claim that would stop a scroll, not a fragment. Prefer high-engagement hook types above when they fit. Don't invent a tracking study or sample size. If the original has no data, sharpen the claim they already made.`
     )
   } else {
     lines.push(
@@ -158,7 +187,7 @@ export function buildUserContent(body: RewriteRequestBody): string {
     lines.push(`- First-person usage: ${(d.firstPersonRatio * 100).toFixed(0)}%, second-person: ${(d.secondPersonRatio * 100).toFixed(0)}%`)
     if (d.topHookTypes.length) lines.push(`- Preferred hook types: ${d.topHookTypes.join(", ")}`)
     if (d.signatureWords?.length) lines.push(`- Always favor these words when natural: ${d.signatureWords.join(", ")}`)
-    if (!body.isReply) {
+    if (!body.isReply && !hookOnly) {
       if (typeof d.fragmentRatio === "number") {
         lines.push(`- Short fragments (≤5 words): ${Math.round(d.fragmentRatio * 100)}% of sentences — after line 1`)
       }

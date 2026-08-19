@@ -31,6 +31,8 @@ export interface RewriteRequestBody {
   band?: { min: number; max: number }
   count: 1 | 3
   voiceDigest?: VoiceDigest
+  /** Omit or "full" = rewrite the whole post. "hook" = new first line only. */
+  mode?: "full" | "hook"
 }
 
 export interface RewriteSuggestion {

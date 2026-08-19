@@ -6,6 +6,7 @@ import { scorePost } from "~scoring/scoring-pipeline"
 import type { ScoreContext } from "~scoring/scoring-pipeline"
 import { generateRewrites } from "~rewrite/rewrite-service"
 import type { RewriteSuggestion } from "~rewrite/rewrite-service"
+import { splitHookBody } from "~rewrite/hook-split"
 import { humanizeHookType } from "~scoring/hook-types"
 
 interface ScoredSuggestion extends RewriteSuggestion {
@@ -30,6 +31,17 @@ function scoreColor(s: number): string {
   return "#f4212e"
 }
 
+function HookPreview({ text }: { text: string }) {
+  const { hook, rest } = splitHookBody(text)
+  if (!rest) return <>{hook}</>
+  return (
+    <>
+      <span className="postpilot-rewrites__hook-line">{hook}</span>
+      <span className="postpilot-rewrites__frozen">{rest}</span>
+    </>
+  )
+}
+
 export function RewriteSuggestions({ originalText, score, isPro, fingerprint, overrides, hookTypeBoosts, context, onReplace }: Props) {
   const [loading, setLoading] = useState(false)
   const [suggestions, setSuggestions] = useState<ScoredSuggestion[] | null>(null)
@@ -38,9 +50,11 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
   const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null)
   const [replacedIdx, setReplacedIdx] = useState<number | null>(null)
   const [undoText, setUndoText] = useState<string | null>(null)
+  const [lastMode, setLastMode] = useState<"full" | "hook">("full")
 
   const originalScore = score.hookScore.totalScore
   const isBorderlineOrAbove = originalScore >= 65
+  const isReply = context?.kind === "reply"
   const generateLabel = isPro
     ? isBorderlineOrAbove
       ? "Rewrite anyway (3 variants)"
@@ -48,20 +62,23 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
     : isBorderlineOrAbove
       ? "Rewrite anyway"
       : "Improve this post"
+  const hookLabel = isPro ? "New hook only (3 angles)" : "New hook only"
 
-  async function handleGenerate() {
+  async function handleGenerate(mode: "full" | "hook" = "full") {
     setLoading(true)
     setError(null)
     setQuotaResetsAt(null)
     setSuggestions(null)
     setUndoText(null)
+    setLastMode(mode)
     try {
       const { suggestions: results, remaining } = await generateRewrites(
         originalText,
         score,
         isPro,
         context,
-        hookTypeBoosts
+        hookTypeBoosts,
+        mode
       )
       if (typeof remaining === "number") setQuotaRemaining(remaining)
       const scored: ScoredSuggestion[] = results.map((r) => {
@@ -106,20 +123,31 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
         <>
           {isBorderlineOrAbove && (
             <div className="postpilot-rewrites__hint" style={{ fontSize: "12px", color: "#71767b", marginBottom: "6px" }}>
-              Score is {originalScore}/100 — solid, but a stronger hook could push it higher.
+              Score is {originalScore}/100 — solid, but a stronger first line could push it higher.
             </div>
           )}
-          <button
-            className="postpilot-rewrites__btn"
-            onClick={handleGenerate}>
-            {generateLabel}
-          </button>
+          <div className="postpilot-rewrites__actions">
+            <button
+              className="postpilot-rewrites__btn"
+              onClick={() => handleGenerate("full")}>
+              {generateLabel}
+            </button>
+            {!isReply && (
+              <button
+                className="postpilot-rewrites__btn postpilot-rewrites__btn--secondary"
+                onClick={() => handleGenerate("hook")}>
+                {hookLabel}
+              </button>
+            )}
+          </div>
         </>
       )}
 
       {loading && (
         <div className="postpilot-rewrites__loading">
-          Generating{isPro ? " 3 rewrites" : " rewrite"}...
+          {lastMode === "hook"
+            ? `Generating${isPro ? " 3 hooks" : " a new hook"}...`
+            : `Generating${isPro ? " 3 rewrites" : " rewrite"}...`}
         </div>
       )}
 
@@ -171,7 +199,9 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
                     </span>
                   )}
                 </div>
-                <div className="postpilot-rewrites__text">{s.text}</div>
+                <div className="postpilot-rewrites__text">
+                  {lastMode === "hook" ? <HookPreview text={s.text} /> : s.text}
+                </div>
                 {s.governorIssues.length > 0 && (
                   <div className="postpilot-rewrites__gov-issues">
                     {s.governorIssues.map((issue, j) => (
@@ -215,7 +245,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
           <div className="postpilot-rewrites__regen-row">
             <button
               className="postpilot-rewrites__retry"
-              onClick={handleGenerate}>
+              onClick={() => handleGenerate(lastMode)}>
               Regenerate
             </button>
             {quotaRemaining != null && (
