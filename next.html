@@ -7,7 +7,7 @@
   <meta name="description" content="Help pick PostPilot's next features. Reply with your top 3. Still local. Still no X login. You hit send." />
   <link rel="canonical" href="https://postpilotforx.com/next.html" />
   <meta property="og:title" content="Vote on what's next — PostPilot for X" />
-  <meta property="og:description" content="12 features on the ballot. Reply with three numbers. Scheduling and account access are not on the list." />
+  <meta property="og:description" content="Hook-only rewrite shipped in 0.7.1. Vote on what’s next. Scheduling and account access are not on the list." />
   <meta property="og:image" content="https://postpilotforx.com/assets/icon.png" />
   <meta property="og:url" content="https://postpilotforx.com/next.html" />
   <link rel="icon" href="assets/icon.png" />
@@ -117,23 +117,26 @@
     </header>
 
     <h1>What should we <em>build</em></h1>
-    <p class="sub">0.7 is out. This is the ballot for what comes next. Upvote the ideas you want — one click per idea, counts are live. Write-ins still welcome as a reply. Scheduling, auto-post, and X login are not on the list — those would break the product.</p>
+    <p class="sub">0.7.1 is out. Hook-only rewrite shipped. Upvote what’s left — one click per idea, counts are live. Write-ins still welcome as a reply. Scheduling, auto-post, and X login are not on the list — those would break the product.</p>
     <p class="fine">STILL LOCAL · STILL NO X LOGIN · YOU HIT SEND</p>
 
     <h2>How to vote</h2>
     <div class="item">
-      <p>Tap <strong style="color:var(--text)">▲</strong> on this page. You can upvote more than one idea, and tap again to undo. Optional: reply to <a href="https://x.com/postpilotforx" style="color:var(--green)">@postpilotforx</a> with a write-in or a ranked top 3 like <strong style="color:var(--text)">1, 6, 9</strong>.</p>
+      <p>Tap <strong style="color:var(--text)">▲</strong> on this page. You can upvote more than one idea, and tap again to undo. Optional: reply to <a href="https://x.com/postpilotforx" style="color:var(--green)">@postpilotforx</a> with a write-in or a ranked top 3 like <strong style="color:var(--text)">2, 6, 9</strong>.</p>
+    </div>
+
+    <h2>Shipped from this ballot</h2>
+    <div class="list">
+      <div class="item">
+        <div class="item-top">
+          <h3><span class="num">1</span> Hook-only rewrite</h3>
+        </div>
+        <p>In 0.7.1. Swap the first line, keep the body. <a href="releases.html" style="color:var(--green)">What shipped</a></p>
+      </div>
     </div>
 
     <h2>On the ballot</h2>
     <div class="list" id="ballot">
-      <div class="item" data-idea="1">
-        <div class="item-top">
-          <h3><span class="num">1</span> Hook-only rewrite</h3>
-          <button class="vote" type="button" aria-pressed="false" aria-label="Upvote hook-only rewrite"><span class="vote-mark">▲</span><span class="vote-count">0</span></button>
-        </div>
-        <p>Swap the first line, keep the body you already wrote. Three opener angles, same post.</p>
-      </div>
       <div class="item" data-idea="2">
         <div class="item-top">
           <h3><span class="num">2</span> Voice Match from your X archive</h3>
@@ -220,11 +223,10 @@
 
     <h2>Share this</h2>
     <div class="share-box">
-      <pre id="share-text">0.7 is live. Help pick what PostPilot builds next.
+      <pre id="share-text">0.7.1 is live. Hook-only rewrite shipped.
 
-Upvote on the page (or reply with your top 3):
+Help pick what PostPilot builds next (upvote on the page, or reply with your top 3):
 
-1 Hook-only rewrite (keep your body)
 2 Voice Match from your X archive
 3 Multiple local profiles (per account)
 4 Quote-tweet rubric
@@ -243,7 +245,7 @@ https://postpilotforx.com/next.html</pre>
     </div>
     <button class="copy" type="button" id="copy-btn">Copy post</button>
 
-    <p class="note">Counts are stored as a random id in this browser — no X login, no post text. Something missing? Reply to @postpilotforx. <a href="releases.html">What 0.7 shipped</a> · <a href="manual.html">Manual</a></p>
+    <p class="note">Counts are stored as a random id in this browser — no X login, no post text. Something missing? Reply to @postpilotforx. <a href="releases.html">What 0.7.1 shipped</a> · <a href="manual.html">Manual</a></p>
 
     <footer>
       <span>© 2026 Brian McGrath LLC</span>
