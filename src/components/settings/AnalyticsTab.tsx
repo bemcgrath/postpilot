@@ -38,11 +38,12 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
   const csvInputRef = useRef<HTMLInputElement>(null)
 
   const loadData = useCallback(async () => {
-    const [ins, posts, week, snap] = await Promise.all([
+    const [ins, posts, week, snap, history] = await Promise.all([
       loadLearnedInsights(),
       loadCollectedPosts(),
       getWeekStats(),
-      loadFunnelSnapshot()
+      loadFunnelSnapshot(),
+      loadScoreHistory()
     ])
     setInsights(ins)
     setPostCount(posts.length)
