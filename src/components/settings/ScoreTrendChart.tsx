@@ -40,7 +40,13 @@ interface ScoreTrendChartProps { entries: ScoreEntry[] }
 
 export function ScoreTrendChart({ entries }: ScoreTrendChartProps) {
   const points = buildWeeklyScoreTrend(entries)
-  if (points.length < 2) return null
+  if (points.length < 2) {
+    return (
+      <div style={styles.empty} role="status">
+        Your trend chart appears after you have scores in two separate weeks.
+      </div>
+    )
+  }
   const width = 320
   const height = 138
   const inset = { top: 18, right: 10, bottom: 28, left: 25 }
@@ -78,6 +84,7 @@ function formatDate(timestamp: number): string {
 const styles: Record<string, React.CSSProperties> = {
   container: { margin: "12px 0 8px" },
   chart: { display: "block", width: "100%", maxWidth: 420, height: "auto" },
+  empty: { color: "#71767b", fontSize: 13, lineHeight: 1.5, margin: "12px 0 8px" },
   grid: { stroke: "#2f3336", strokeWidth: 1 },
   axisLabel: { fill: "#71767b", fontSize: 10, fontFamily: "system-ui, sans-serif" },
   wordmark: { fill: "#1d9bf0", fontSize: 11, fontWeight: 800, letterSpacing: 1.4, fontFamily: "system-ui, sans-serif" },
