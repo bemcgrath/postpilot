@@ -13,10 +13,11 @@ import { runLearningEngine } from "~learning/engine"
 import { parseAnalyticsCsv } from "~learning/csv-import"
 import type { CollectionFunnelSnapshot } from "~learning/funnel"
 import { humanizeHookType } from "~scoring/hook-types"
-import { getWeekStats, type WeekStats } from "~history/score-history-storage"
+import { getWeekStats, loadScoreHistory, type ScoreEntry, type WeekStats } from "~history/score-history-storage"
 
 import { InsightCard } from "./InsightCard"
 import { PerformanceChart } from "./PerformanceChart"
+import { ScoreTrendChart } from "./ScoreTrendChart"
 
 const UPGRADE_URL =
   "https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0"
@@ -32,6 +33,7 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [scoreHistory, setScoreHistory] = useState<ScoreEntry[]>([])
   const [status, setStatus] = useState("")
   const csvInputRef = useRef<HTMLInputElement>(null)
 
@@ -46,6 +48,7 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
     setPostCount(posts.length)
     setWeekStats(week)
     setFunnel(snap)
+    setScoreHistory(history)
   }, [])
 
   useEffect(() => {
@@ -259,6 +262,7 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
       {/* Score Trends — free tier, mirrors the compose-panel's 7-day average */}
       {weekStats && weekStats.thisWeekCount > 0 && (
         <InsightCard title="Score Trends">
+          <ScoreTrendChart entries={scoreHistory} />
           <div style={styles.row}>
             <span>This week's average</span>
             <span style={{
