@@ -261,25 +261,31 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
       </InsightCard>
 
       {/* Score Trends — free tier, mirrors the compose-panel's 7-day average */}
-      {weekStats && weekStats.thisWeekCount > 0 && (
+      {weekStats && scoreHistory.length > 0 && (
         <InsightCard title="Score Trends">
           <ScoreTrendChart entries={scoreHistory} />
           <div style={styles.row}>
             <span>This week's average</span>
-            <span style={{
-              ...styles.value,
-              color: weekStats.thisWeekAvg! >= 70 ? "#00ba7c" : weekStats.thisWeekAvg! >= 50 ? "#f7b731" : "#f4212e"
-            }}>
-              {weekStats.thisWeekAvg}
-            </span>
+            {weekStats.thisWeekAvg === null ? (
+              <span style={styles.valueMuted}>No posts scored yet this week</span>
+            ) : (
+              <span style={{
+                ...styles.value,
+                color: weekStats.thisWeekAvg >= 70 ? "#00ba7c" : weekStats.thisWeekAvg >= 50 ? "#f7b731" : "#f4212e"
+              }}>
+                {weekStats.thisWeekAvg}
+              </span>
+            )}
           </div>
-          <div style={styles.row}>
-            <span>From</span>
-            <span style={styles.valueMuted}>
-              {weekStats.thisWeekCount} post{weekStats.thisWeekCount !== 1 ? "s" : ""}
-            </span>
-          </div>
-          {weekStats.lastWeekAvg !== null && (
+          {weekStats.thisWeekCount > 0 && (
+            <div style={styles.row}>
+              <span>From</span>
+              <span style={styles.valueMuted}>
+                {weekStats.thisWeekCount} post{weekStats.thisWeekCount !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
+          {weekStats.thisWeekAvg !== null && weekStats.lastWeekAvg !== null && (
             <div style={styles.row}>
               <span>vs. last week</span>
               <span style={{
