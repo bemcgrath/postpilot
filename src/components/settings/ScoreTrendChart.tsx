@@ -80,6 +80,6 @@ const styles: Record<string, React.CSSProperties> = {
   chart: { display: "block", width: "100%", maxWidth: 420, height: "auto" },
   grid: { stroke: "#2f3336", strokeWidth: 1 },
   axisLabel: { fill: "#71767b", fontSize: 10, fontFamily: "system-ui, sans-serif" },
-  wordmark: { fill: "#71767b", fontSize: 9, fontWeight: 700, letterSpacing: 1.2, fontFamily: "system-ui, sans-serif" },
+  wordmark: { fill: "#1d9bf0", fontSize: 11, fontWeight: 800, letterSpacing: 1.4, fontFamily: "system-ui, sans-serif" },
   caption: { color: "#71767b", fontSize: 11, marginTop: 2 }
 }
