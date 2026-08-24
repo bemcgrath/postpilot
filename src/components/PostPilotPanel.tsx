@@ -156,6 +156,21 @@ function findNearestComposeBox(
   )
 }
 
+/**
+ * Draft.js renders each line as a sibling `[data-block="true"]` div rather
+ * than separating them with literal "\n" text nodes, so `.textContent` on
+ * the compose box glues every line together with no separator at all
+ * (three one-line sentences read back as one run-on string). Read the
+ * blocks in document order and rejoin them with "\n" instead.
+ */
+function readComposeText(composeBox: HTMLElement): string {
+  const blocks = composeBox.querySelectorAll<HTMLElement>('[data-block="true"]')
+  if (blocks.length === 0) return composeBox.textContent ?? ""
+  return Array.from(blocks)
+    .map((block) => block.textContent ?? "")
+    .join("\n")
+}
+
 function injectText(panelEl: HTMLElement | null, newText: string) {
   const editable = findNearestContentEditable(panelEl)
   if (!editable) return
@@ -203,7 +218,7 @@ function useComposeText(panelRef: React.RefObject<HTMLElement | null>): {
 
   const readNow = useCallback(() => {
     const composeBox = findNearestComposeBox(panelRef.current)
-    const raw = composeBox?.textContent ?? ""
+    const raw = composeBox ? readComposeText(composeBox) : ""
     if (raw !== lastTextRef.current) {
       lastTextRef.current = raw
       setText(raw)
@@ -472,7 +487,8 @@ export function PostPilotPanel() {
       if (!button) return
 
       const score = lastScoreRef.current
-      const currentText = findNearestComposeBox(panelRef.current)?.textContent ?? ""
+      const currentComposeBox = findNearestComposeBox(panelRef.current)
+      const currentText = currentComposeBox ? readComposeText(currentComposeBox) : ""
       if (
         currentText.length >= 20 &&
         score > 0 &&
