@@ -50,7 +50,8 @@
     h1 em { font-style: normal; color: var(--green); }
     .sub { color: var(--muted); font-size: 1.05rem; margin-bottom: 12px; }
     .fine { font-family: var(--mono); font-size: .72rem; color: var(--faint); margin-bottom: 40px; }
-    h2 { font-family: var(--display); font-weight: 700; font-size: 1.15rem; margin: 36px 0 14px; }
+    h2 { font-family: var(--display); font-weight: 700; font-size: 1.15rem; margin: 36px 0 14px; display: flex; align-items: baseline; gap: 10px; }
+    h2 .date { font-family: var(--mono); font-weight: 400; font-size: .72rem; color: var(--faint); letter-spacing: .02em; }
     .list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
     .item {
       background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
@@ -98,7 +99,7 @@
     <p class="sub">The compose box now scores media, names AI slop, and shows a reach range from your own posts — not a scheduler, not account access, not writing the post for you.</p>
     <p class="fine">STILL LOCAL · STILL NO X LOGIN · YOU HIT SEND</p>
 
-    <h2>Just shipped (v0.7.2)</h2>
+    <h2>Just shipped (v0.7.2) <span class="date">Aug 24, 2026</span></h2>
     <div class="list">
       <div class="item">
         <div class="tag shipped">Shipped</div>
@@ -107,7 +108,7 @@
       </div>
     </div>
 
-    <h2>v0.7.1</h2>
+    <h2>v0.7.1 <span class="date">Aug 19, 2026</span></h2>
     <div class="list">
       <div class="item">
         <div class="tag shipped">Shipped</div>
@@ -126,7 +127,7 @@
       </div>
     </div>
 
-    <h2>v0.7</h2>
+    <h2>v0.7 <span class="date">Aug 17, 2026</span></h2>
     <div class="list">
       <div class="item">
         <div class="tag shipped">Shipped · Pro</div>
