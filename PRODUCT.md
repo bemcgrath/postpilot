@@ -131,7 +131,7 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 
 | Store | Status |
 |-------|--------|
-| Chrome Web Store | **v0.7.0 live** (published 2026-08-17) — media/link scoring, pre-publish checklist, AI-slop lane, CSV import, reach range, draft compare, reply-invite, self-reply prompt. v0.6.19 was the prior live build (price/copy). |
+| Chrome Web Store | **v0.7.2 submitted for review** (2026-08-24) — weekly score trend chart in Settings → Analytics. v0.7.0 is the prior live build (published 2026-08-17) — media/link scoring, pre-publish checklist, AI-slop lane, CSV import, reach range, draft compare, reply-invite, self-reply prompt. |
 | LemonSqueezy | Live — store activated, product published 2026-07-16. Price updated 2026-08-13 to $24/mo / $240/yr (from $5/mo / $50/yr); license keys on, activation limit 5 |
 
 ---

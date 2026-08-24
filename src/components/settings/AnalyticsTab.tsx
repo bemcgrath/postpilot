@@ -13,10 +13,11 @@ import { runLearningEngine } from "~learning/engine"
 import { parseAnalyticsCsv } from "~learning/csv-import"
 import type { CollectionFunnelSnapshot } from "~learning/funnel"
 import { humanizeHookType } from "~scoring/hook-types"
-import { getWeekStats, type WeekStats } from "~history/score-history-storage"
+import { getWeekStats, loadScoreHistory, type ScoreEntry, type WeekStats } from "~history/score-history-storage"
 
 import { InsightCard } from "./InsightCard"
 import { PerformanceChart } from "./PerformanceChart"
+import { ScoreTrendChart } from "./ScoreTrendChart"
 
 const UPGRADE_URL =
   "https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0"
@@ -32,20 +33,23 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [scoreHistory, setScoreHistory] = useState<ScoreEntry[]>([])
   const [status, setStatus] = useState("")
   const csvInputRef = useRef<HTMLInputElement>(null)
 
   const loadData = useCallback(async () => {
-    const [ins, posts, week, snap] = await Promise.all([
+    const [ins, posts, week, snap, history] = await Promise.all([
       loadLearnedInsights(),
       loadCollectedPosts(),
       getWeekStats(),
-      loadFunnelSnapshot()
+      loadFunnelSnapshot(),
+      loadScoreHistory()
     ])
     setInsights(ins)
     setPostCount(posts.length)
     setWeekStats(week)
     setFunnel(snap)
+    setScoreHistory(history)
   }, [])
 
   useEffect(() => {
@@ -257,24 +261,31 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
       </InsightCard>
 
       {/* Score Trends — free tier, mirrors the compose-panel's 7-day average */}
-      {weekStats && weekStats.thisWeekCount > 0 && (
+      {weekStats && scoreHistory.length > 0 && (
         <InsightCard title="Score Trends">
+          <ScoreTrendChart entries={scoreHistory} />
           <div style={styles.row}>
             <span>This week's average</span>
-            <span style={{
-              ...styles.value,
-              color: weekStats.thisWeekAvg! >= 70 ? "#00ba7c" : weekStats.thisWeekAvg! >= 50 ? "#f7b731" : "#f4212e"
-            }}>
-              {weekStats.thisWeekAvg}
-            </span>
+            {weekStats.thisWeekAvg === null ? (
+              <span style={styles.valueMuted}>No posts scored yet this week</span>
+            ) : (
+              <span style={{
+                ...styles.value,
+                color: weekStats.thisWeekAvg >= 70 ? "#00ba7c" : weekStats.thisWeekAvg >= 50 ? "#f7b731" : "#f4212e"
+              }}>
+                {weekStats.thisWeekAvg}
+              </span>
+            )}
           </div>
-          <div style={styles.row}>
-            <span>From</span>
-            <span style={styles.valueMuted}>
-              {weekStats.thisWeekCount} post{weekStats.thisWeekCount !== 1 ? "s" : ""}
-            </span>
-          </div>
-          {weekStats.lastWeekAvg !== null && (
+          {weekStats.thisWeekCount > 0 && (
+            <div style={styles.row}>
+              <span>From</span>
+              <span style={styles.valueMuted}>
+                {weekStats.thisWeekCount} post{weekStats.thisWeekCount !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
+          {weekStats.thisWeekAvg !== null && weekStats.lastWeekAvg !== null && (
             <div style={styles.row}>
               <span>vs. last week</span>
               <span style={{
