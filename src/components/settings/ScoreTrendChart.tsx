@@ -11,29 +11,28 @@ export interface ScoreTrendPoint {
   timestamp: number
 }
 
+// Buckets are rolling 7-day windows anchored to `now` (age 0-7 days, 7-14 days, ...),
+// matching getWeekStats' definition of "this week" / "last week" so the chart's
+// latest point always agrees with the average shown next to it.
 export function buildWeeklyScoreTrend(entries: ScoreEntry[], now = Date.now()): ScoreTrendPoint[] {
-  const currentWeekStart = new Date(now)
-  currentWeekStart.setHours(0, 0, 0, 0)
-  currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay())
-  const start = currentWeekStart.getTime() - (WEEKS_TO_SHOW - 1) * WEEK_MS
-  const buckets = new Map<number, ScoreEntry[]>()
+  const buckets: ScoreEntry[][] = Array.from({ length: WEEKS_TO_SHOW }, () => [])
 
   for (const entry of entries) {
-    if (entry.timestamp < start || entry.timestamp > now) continue
-    const date = new Date(entry.timestamp)
-    date.setHours(0, 0, 0, 0)
-    date.setDate(date.getDate() - date.getDay())
-    const weekStart = date.getTime()
-    const bucket = buckets.get(weekStart) ?? []
-    bucket.push(entry)
-    buckets.set(weekStart, bucket)
+    const age = now - entry.timestamp
+    if (age < 0 || age >= WEEKS_TO_SHOW * WEEK_MS) continue
+    buckets[Math.floor(age / WEEK_MS)].push(entry)
   }
 
-  return Array.from(buckets.entries()).sort(([a], [b]) => a - b).map(([timestamp, scores]) => ({
-    timestamp,
-    count: scores.length,
-    average: Math.round(scores.reduce((sum, entry) => sum + entry.score, 0) / scores.length)
-  }))
+  return buckets
+    .map((scores, index) => ({
+      timestamp: now - index * WEEK_MS,
+      count: scores.length,
+      average: scores.length > 0
+        ? Math.round(scores.reduce((sum, entry) => sum + entry.score, 0) / scores.length)
+        : null
+    }))
+    .filter((point): point is ScoreTrendPoint => point.average !== null)
+    .reverse()
 }
 
 interface ScoreTrendChartProps { entries: ScoreEntry[] }
@@ -43,7 +42,9 @@ export function ScoreTrendChart({ entries }: ScoreTrendChartProps) {
   if (points.length < 2) {
     return (
       <div style={styles.empty} role="status">
-        Your trend chart appears after you have scores in two separate weeks.
+        {entries.length > 0 && points.length === 0
+          ? "Your recent scores have aged out of the trend window. Score a new post to start a fresh trend."
+          : "Your trend chart appears after you have scores in two separate weeks."}
       </div>
     )
   }
