@@ -131,7 +131,7 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 
 | Store | Status |
 |-------|--------|
-| Chrome Web Store | **v0.7.3 submitted for review** (2026-08-24) — supersedes v0.7.2, which is live/public but has a bug: reading a multi-line draft from X's Draft.js compose box via `.textContent` glued every line together with no separator, so a hook-only rewrite on a short multi-sentence draft could discard the whole body and post just the new hook line. v0.7.3 fixes the read (see `readComposeText` in `src/components/PostPilotPanel.tsx`) and also carries the weekly score trend chart from v0.7.2. v0.7.0 is the prior known-good live build (published 2026-08-17). |
+| Chrome Web Store | **v0.7.3 live** (published 2026-08-24) — supersedes v0.7.2, which had a bug: reading a multi-line draft from X's Draft.js compose box via `.textContent` glued every line together with no separator, so a hook-only rewrite on a short multi-sentence draft could discard the whole body and post just the new hook line. v0.7.3 fixes the read (see `readComposeText` in `src/components/PostPilotPanel.tsx`) and also carries the weekly score trend chart from v0.7.2. |
 | LemonSqueezy | Live — store activated, product published 2026-07-16. Price updated 2026-08-13 to $24/mo / $240/yr (from $5/mo / $50/yr); license keys on, activation limit 5 |
 
 ---
