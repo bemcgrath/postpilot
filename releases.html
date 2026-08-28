@@ -99,7 +99,16 @@
     <p class="sub">The compose box now scores media, names AI slop, and shows a reach range from your own posts — not a scheduler, not account access, not writing the post for you.</p>
     <p class="fine">STILL LOCAL · STILL NO X LOGIN · YOU HIT SEND</p>
 
-    <h2>Just shipped (v0.7.2) <span class="date">Aug 24, 2026</span></h2>
+    <h2>Just shipped (v0.7.4) <span class="date">Aug 28, 2026</span></h2>
+    <div class="list">
+      <div class="item">
+        <div class="tag shipped">Shipped</div>
+        <h3>Video scored separately from images</h3>
+        <p>X's own published ranking algorithm (xai-org/x-algorithm) weights a video open differently from a photo expand — so now we do too, instead of folding video into the image score like every version before this one. Your video posts get their own cold-start default and, once you have enough of them, their own learned boost in Settings → Analytics. The image and link priors stay untouched — the public algorithm doesn't publish a link penalty, so we're not inventing one.</p>
+      </div>
+    </div>
+
+    <h2>v0.7.2 <span class="date">Aug 24, 2026</span></h2>
     <div class="list">
       <div class="item">
         <div class="tag shipped">Shipped</div>
@@ -173,11 +182,11 @@
 
     <h2>Share this</h2>
     <div class="share-box">
-      <pre id="share-text">Just shipped in PostPilot 0.7.2:
+      <pre id="share-text">Just shipped in PostPilot 0.7.4:
 
-• Weekly score trend chart in Settings → Analytics — 13 weeks, matches your 7-day average
-• Stays visible between posting weeks instead of disappearing
-• Tells you honestly when there isn't enough recent history yet
+• Video now scored separately from images, matching X's own published ranking algorithm (it weights a video open differently from a photo expand)
+• No repriced link penalty — the public algorithm doesn't publish one, so we didn't invent one
+• Your own learned video boost shows up in Settings → Analytics once you've got enough posts
 
 Still local. Still no account access. You hit send.
 

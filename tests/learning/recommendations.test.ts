@@ -74,6 +74,9 @@ describe("generateRecommendations", () => {
       withImage: { postCount: 5, avgER: 0.06 },
       withoutImage: { postCount: 10, avgER: 0.02 },
       imageBoost: 3.0,
+      withVideo: { postCount: 0, avgER: 0 },
+      withoutVideo: { postCount: 15, avgER: 0.03 },
+      videoBoost: 1.0,
       withLink: { postCount: 3, avgER: 0.01 },
       withoutLink: { postCount: 12, avgER: 0.03 },
       linkBoost: 0.33
@@ -87,6 +90,30 @@ describe("generateRecommendations", () => {
     })
     expect(recs.some((r) => r.type === "media")).toBe(true)
     expect(recs.find((r) => r.type === "media")!.text).toContain("image")
+  })
+
+  it("generates a separate media recommendation for strong video boost", () => {
+    const mediaPerf: MediaPerformance = {
+      withImage: { postCount: 0, avgER: 0 },
+      withoutImage: { postCount: 15, avgER: 0.03 },
+      imageBoost: 1.0,
+      withVideo: { postCount: 4, avgER: 0.07 },
+      withoutVideo: { postCount: 11, avgER: 0.02 },
+      videoBoost: 3.5,
+      withLink: { postCount: 3, avgER: 0.01 },
+      withoutLink: { postCount: 12, avgER: 0.03 },
+      linkBoost: 0.33
+    }
+    const recs = generateRecommendations({
+      hookTypePerf: [],
+      lengthPerf: [],
+      timePerf: [],
+      mediaPerf,
+      topicPerf: []
+    })
+    const videoRec = recs.find((r) => r.text.includes("video"))
+    expect(videoRec).toBeDefined()
+    expect(videoRec!.text).toContain("3.5x")
   })
 
   it("generates topic recommendations", () => {

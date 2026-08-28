@@ -605,6 +605,7 @@ export function PostPilotPanel() {
     isPro && insights?.isReady && insights.mediaPerformance
       ? {
           imageBoost: insights.mediaPerformance.imageBoost,
+          videoBoost: insights.mediaPerformance.videoBoost,
           linkBoost: insights.mediaPerformance.linkBoost
         }
       : null

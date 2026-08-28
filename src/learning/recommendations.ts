@@ -14,6 +14,7 @@ const HOOK_BOOST_THRESHOLD = 1.3
 const LENGTH_BOOST_THRESHOLD = 1.2
 const TIME_BOOST_THRESHOLD = 1.3
 const IMAGE_BOOST_THRESHOLD = 1.5
+const VIDEO_BOOST_THRESHOLD = 1.5
 const TOPIC_BOOST_THRESHOLD = 1.3
 
 /** Format a boost as "1.8x". */
@@ -87,6 +88,23 @@ export function generateRecommendations(params: {
       type: "media",
       text: `Posts with images get ${fmtBoost(params.mediaPerf.imageBoost)} more engagement`,
       boostMultiplier: params.mediaPerf.imageBoost
+    })
+  }
+
+  // Video impact -- scored separately from images (see media-delta.ts):
+  // X's own ranking algorithm weights a video open differently from a photo
+  // expand, so a learned video boost deserves its own tip rather than being
+  // folded into the image recommendation above.
+  if (
+    params.mediaPerf &&
+    params.mediaPerf.videoBoost >= VIDEO_BOOST_THRESHOLD &&
+    params.mediaPerf.withVideo.postCount >= 2 &&
+    params.mediaPerf.withoutVideo.postCount >= 2
+  ) {
+    recs.push({
+      type: "media",
+      text: `Posts with video get ${fmtBoost(params.mediaPerf.videoBoost)} more engagement`,
+      boostMultiplier: params.mediaPerf.videoBoost
     })
   }
 

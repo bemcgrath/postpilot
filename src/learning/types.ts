@@ -62,6 +62,9 @@ export interface MediaPerformance {
   withImage: { postCount: number; avgER: number }
   withoutImage: { postCount: number; avgER: number }
   imageBoost: number // ratio
+  withVideo: { postCount: number; avgER: number }
+  withoutVideo: { postCount: number; avgER: number }
+  videoBoost: number // ratio
   withLink: { postCount: number; avgER: number }
   withoutLink: { postCount: number; avgER: number }
   linkBoost: number // ratio

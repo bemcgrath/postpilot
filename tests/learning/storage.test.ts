@@ -85,6 +85,46 @@ describe("normalizeInsights", () => {
     expect(result.postsAnalyzed).toBe(25)
   })
 
+  it("backfills a mediaPerformance cached before the video split shipped", () => {
+    // Mirrors a real stored object from before withVideo/withoutVideo/
+    // videoBoost existed on MediaPerformance -- these fields are absent, not
+    // zeroed, on disk. Reading .withVideo.avgER on this before the fix
+    // crashed the Analytics tab and the compose-time mediaBoosts lookup.
+    const staleFromDisk = {
+      generatedAt: 789,
+      postsAnalyzed: 24,
+      baselineEngagementRate: 0.03,
+      isReady: true,
+      hookTypePerformance: [],
+      lengthPerformance: [],
+      topicPerformance: [],
+      timePerformance: [],
+      weekdayTimePerformance: [],
+      weekendTimePerformance: [],
+      mediaPerformance: {
+        withImage: { postCount: 4, avgER: 0.05 },
+        withoutImage: { postCount: 20, avgER: 0.02 },
+        imageBoost: 2.5,
+        withLink: { postCount: 2, avgER: 0.01 },
+        withoutLink: { postCount: 22, avgER: 0.03 },
+        linkBoost: 0.33
+        // withVideo / withoutVideo / videoBoost intentionally absent
+      },
+      recommendations: [],
+      hookTypeBoosts: {},
+      optimalLengthRange: null
+    } as unknown as Partial<import("~learning/types").LearnedInsights>
+
+    const result = normalizeInsights(staleFromDisk)
+    expect(() => result.mediaPerformance!.withVideo.avgER).not.toThrow()
+    expect(result.mediaPerformance!.withVideo).toEqual({ postCount: 0, avgER: 0 })
+    expect(result.mediaPerformance!.withoutVideo).toEqual({ postCount: 0, avgER: 0 })
+    expect(result.mediaPerformance!.videoBoost).toBe(1.0)
+    // Real prior data (image/link) is preserved, not clobbered by the backfill.
+    expect(result.mediaPerformance!.imageBoost).toBe(2.5)
+    expect(result.mediaPerformance!.withImage.postCount).toBe(4)
+  })
+
   it("preserves a fully-populated object unchanged", () => {
     const full = {
       insightsVersion: 2,

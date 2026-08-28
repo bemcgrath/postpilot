@@ -109,6 +109,25 @@ export async function upsertCollectedPosts(
  * calls .length/.map on a field that simply didn't exist yet when that
  * object was computed and persisted.
  */
+/**
+ * Backfill a stored MediaPerformance with the video split added after it may
+ * have been persisted -- a stored object from before that change has
+ * withImage/withoutImage/imageBoost and withLink/withoutLink/linkBoost, but
+ * no withVideo/withoutVideo/videoBoost yet. Defaults match "no video data
+ * either way" (postCount 0, videoBoost 1.0 = no learned effect).
+ */
+function normalizeMediaPerformance(
+  raw: LearnedInsights["mediaPerformance"]
+): LearnedInsights["mediaPerformance"] {
+  if (!raw) return null
+  return {
+    ...raw,
+    withVideo: raw.withVideo ?? { postCount: 0, avgER: 0 },
+    withoutVideo: raw.withoutVideo ?? { postCount: 0, avgER: 0 },
+    videoBoost: raw.videoBoost ?? 1.0
+  }
+}
+
 export function normalizeInsights(raw: Partial<LearnedInsights>): LearnedInsights {
   return {
     insightsVersion: raw.insightsVersion ?? 1,
@@ -127,7 +146,7 @@ export function normalizeInsights(raw: Partial<LearnedInsights>): LearnedInsight
     timePerformance: raw.timePerformance ?? [],
     weekdayTimePerformance: raw.weekdayTimePerformance ?? [],
     weekendTimePerformance: raw.weekendTimePerformance ?? [],
-    mediaPerformance: raw.mediaPerformance ?? null,
+    mediaPerformance: normalizeMediaPerformance(raw.mediaPerformance ?? null),
     recommendations: raw.recommendations ?? [],
     hookTypeBoosts: raw.hookTypeBoosts ?? {},
     optimalLengthRange: raw.optimalLengthRange ?? null

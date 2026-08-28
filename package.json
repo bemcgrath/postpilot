@@ -1,7 +1,7 @@
 {
   "name": "postpilot",
   "displayName": "PostPilot for X — Twitter Post Score & Hook Checker",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "Score every Twitter/X post as you type — AI rewrites, thread scoring, voice coaching, and a hook library that learns what works.",
   "author": "PostPilot",
   "scripts": {

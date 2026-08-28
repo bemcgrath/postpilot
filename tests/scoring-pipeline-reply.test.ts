@@ -141,4 +141,15 @@ describe("scorePost reply-aware scoring", () => {
     expect(withImage.hookScore.totalScore).toBe(plain.hookScore.totalScore + 4)
     expect(withImage.hookScore.breakdown.media).toBe(4)
   })
+
+  it("scores an attached video independently of an image, with its own prior", () => {
+    const text = "The bottleneck is labeled neural recordings, not compute."
+    const plain = scorePost(text)
+    const withVideo = scorePost(text, null, undefined, null, {
+      media: { hasImage: false, hasVideo: true, hasLink: false }
+    })
+    expect(withVideo.mediaDelta).toBe(6)
+    expect(withVideo.hookScore.totalScore).toBe(plain.hookScore.totalScore + 6)
+    expect(withVideo.hookScore.breakdown.media).toBe(6)
+  })
 })

@@ -6,7 +6,7 @@ PostPilot is a Chrome extension that scores X/Twitter posts in real time as you 
 
 **Tagline:** Score every X post as you type. Pro learns your voice and your audience — AI rewrites, thread scoring, and a self-building hook library. $24/mo.
 
-**Version:** 0.7.1  
+**Version:** 0.7.4  
 **Framework:** Plasmo (React/TypeScript, Chrome MV3)  
 **Pricing:** Free tier + Pro at $24/mo via LemonSqueezy
 
@@ -190,7 +190,7 @@ User-facing list for Waves 1–4 (share with the user base): [releases.html](./r
 - [x] **X Analytics CSV import** — local parse of the official export into `CollectedPost`; DOM collection stays the ongoing feed. No X API. Settings → Analytics (Pro).
 
 ### Wave 2 — compose badge rivals can screenshot
-- [x] **Live media / link delta** — score attached image and external links in compose (use learned `imageBoost`/`linkBoost` when ready, else algorithm priors). ReachOS's whole demo.
+- [x] **Live media / link delta** — score attached image and external links in compose (use learned `imageBoost`/`linkBoost` when ready, else a conservative cold-start default). ReachOS's whole demo.
 - [x] Wire learned length + hook-type boosts into original-post scoring and the thread scorer
 - [x] **Now-a-good-time chip + pre-publish checklist** (hook, governor errors, sweet spot, media/link)
 - [x] **Named AI-slop lane** in the governor + resolve hook-type vs fabrication contradictions so the headline number means one thing
@@ -205,3 +205,26 @@ User-facing list for Waves 1–4 (share with the user base): [releases.html](./r
 - [x] Surface reply-craft in the breakdown instead of silently shifting the score
 - [x] Optional: suggest a self-reply after publish (user sends; never auto-post)
 - [ ] Custom domain `api.postpilotforx.com` — DNS still pending (ops). Popup version + Voice Match copy and client-side `voiceDigest` strip for Free are done.
+
+### Wave 5 — re-grounded against X's published algorithm (2026-08-28)
+- [x] **Video scored independently of images** — `xai-org/x-algorithm`'s
+      published weights (`home-mixer/params/param.rs`) give a video open and a
+      photo expand separate weights (`VideoOpenWeight` 0.07 vs
+      `PhotoExpandWeight` 0.05, ~1.4x). PostPilot previously folded
+      `hasVideo` into the image prior/boost everywhere in scoring
+      (`media-delta.ts`) and dropped it entirely in the learning engine
+      (`media-learner.ts`) despite already collecting it on every
+      `CollectedPost`. Video now has its own cold-start prior
+      (`VIDEO_PRIOR_DELTA`), its own learned `videoBoost`, its own row in the
+      Analytics tab, and its own recommendation.
+- [ ] **Not shipped, and deliberately so: a repriced link penalty.** The
+      public algorithm has no visible link penalty at all — `OpenLinkWeight`
+      and `ShareViaCopyLinkWeight` are both positive engagement signals — and
+      no Premium/non-Premium differential is exposed in the public repo
+      (some components, e.g. spam/gaming rules, are explicitly unpublished).
+      `LINK_PRIOR_DELTA = -3` stays as a conservative, clearly-labeled
+      cold-start default, not an algorithm-sourced number. Don't invent a new
+      value here without a primary-source citation.
+- [ ] **Not shipped: Premium/Blue-tier-aware scoring.** Confirmed absent
+      end-to-end (no DOM detection, no type field). Real feature, but new
+      detection work from scratch — its own plan, not a follow-on to this one.

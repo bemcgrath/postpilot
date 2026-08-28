@@ -455,6 +455,27 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
                 </span>
               </div>
               <div style={{ ...styles.row, marginTop: 6 }}>
+                <span>With video</span>
+                <span style={styles.value}>
+                  {fmtER(insights.mediaPerformance.withVideo.avgER)} ({insights.mediaPerformance.withVideo.postCount} posts)
+                </span>
+              </div>
+              <div style={styles.row}>
+                <span>Without video</span>
+                <span style={styles.valueMuted}>
+                  {fmtER(insights.mediaPerformance.withoutVideo.avgER)} ({insights.mediaPerformance.withoutVideo.postCount} posts)
+                </span>
+              </div>
+              <div style={styles.row}>
+                <span>Video boost</span>
+                <span style={{
+                  ...styles.value,
+                  color: insights.mediaPerformance.videoBoost >= 1.5 ? "#00ba7c" : "#e7e9ea"
+                }}>
+                  {insights.mediaPerformance.videoBoost.toFixed(1)}x
+                </span>
+              </div>
+              <div style={{ ...styles.row, marginTop: 6 }}>
                 <span>With link</span>
                 <span style={styles.value}>
                   {fmtER(insights.mediaPerformance.withLink.avgER)} ({insights.mediaPerformance.withLink.postCount} posts)
