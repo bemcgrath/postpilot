@@ -7,6 +7,47 @@ on:
     branches: [master]
 
 jobs:
+  core:
+    name: "@postpilot/core (test, typecheck, chrome-free check)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      # Root-level install: npm workspaces need this to symlink
+      # @postpilot/core into apps/extension/node_modules.
+      - run: npm ci
+
+      - name: Test
+        run: npm test --workspace=packages/core
+
+      - name: Typecheck
+        run: npm run typecheck --workspace=packages/core
+
+      # The actual enforcement point for the "pure core" invariant this repo
+      # depends on (see the mobile plan's "What already ports" section) --
+      # grepping the built score-widget bundle only proves the bundler
+      # tree-shook unused code, not that the source itself has no chrome/DOM
+      # dependency. This greps the source directly.
+      #
+      # Excludes packages/core/src/storage/: that's the platform-adapter
+      # layer, whose entire job is to safely *detect* chrome.storage when
+      # present (guarded by typeof checks) and no-op otherwise -- it's meant
+      # to reference chrome.*, the same way it's meant to eventually gain an
+      # MMKV-based mobile counterpart. The invariant this check actually
+      # protects is that scoring/learning computation stays chrome-free.
+      - name: Assert packages/core's scoring/learning stays chrome-and-DOM-free
+        run: |
+          if grep -rEq "chrome\.(storage|runtime)|document\.(querySelector|getElementById|createElement)|window\.(location|getComputedStyle)" --include="*.ts" packages/core/src/scoring packages/core/src/learning packages/core/src/config packages/core/src/rewrite; then
+            echo "packages/core's scoring/learning/config/rewrite code references a browser-extension or DOM API -- the pure scoring core has picked up a dependency it shouldn't have."
+            exit 1
+          fi
+          echo "OK: packages/core's scoring/learning/config/rewrite has no chrome.*/DOM API references."
+
   extension:
     name: Extension (test, typecheck, build)
     runs-on: ubuntu-latest
@@ -21,23 +62,19 @@ jobs:
       - run: npm ci
 
       - name: Test
-        run: npm test
+        run: npm test --workspace=apps/extension
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck --workspace=apps/extension
 
       - name: Build extension
-        run: npm run build
+        run: npm run build --workspace=apps/extension
 
       - name: Build score widget
         run: npm run build:score
 
-      # The scoring engine (src/scoring, src/learning, src/config) must never
-      # depend on chrome.*/document.*/window.* at the module level -- it's
-      # what makes the "pure core" behind score/postpilot-score.bundle.js
-      # (and, later, the mobile app) actually true rather than an accident of
-      # esbuild's tree-shaking. See the mobile plan's "What already ports"
-      # section for the full story of why this check exists.
+      # Same invariant as the core job's check, verified end-to-end through
+      # the actual esbuild output every user's browser would load.
       - name: Assert the score widget bundle stays chrome-free
         run: |
           if grep -qE "chrome\.(storage|runtime)|document\.(querySelector|getElementById|createElement)|window\.(location|getComputedStyle)" score/postpilot-score.bundle.js; then
