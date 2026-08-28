@@ -1,18 +1,7 @@
+import { getStore } from "~storage/adapter"
+
 const HOOK_KEY = "postpilot_hook_library"
 const MAX_HOOKS = 50
-
-function getStorage(): typeof chrome.storage.local | null {
-  try {
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.runtime?.id &&
-      typeof chrome.storage !== "undefined"
-    ) {
-      return chrome.storage.local
-    }
-  } catch {}
-  return null
-}
 
 export interface HookEntry {
   id: string
@@ -30,13 +19,10 @@ function firstLine(text: string): string {
 }
 
 export async function loadHooks(): Promise<HookEntry[]> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return []
-  return new Promise((resolve) => {
-    storage.get(HOOK_KEY, (result) => {
-      resolve((result[HOOK_KEY] as HookEntry[]) ?? [])
-    })
-  })
+  const result = await storage.get(HOOK_KEY)
+  return (result[HOOK_KEY] as HookEntry[]) ?? []
 }
 
 export async function saveHook(
@@ -45,7 +31,7 @@ export async function saveHook(
   score: number,
   source: "auto" | "manual"
 ): Promise<HookEntry> {
-  const storage = getStorage()
+  const storage = getStore()
   const existing = storage ? await loadHooks() : []
 
   // Re-saving the same text (e.g. reusing a hook via "Use", then posting it)
@@ -61,9 +47,8 @@ export async function saveHook(
       source,
     }
     const updated = [refreshed, ...existing.filter((h) => h.id !== dup.id)]
-    return new Promise((resolve) => {
-      storage.set({ [HOOK_KEY]: updated }, () => resolve(refreshed))
-    })
+    await storage.set({ [HOOK_KEY]: updated })
+    return refreshed
   }
 
   const entry: HookEntry = {
@@ -77,16 +62,13 @@ export async function saveHook(
   }
   if (!storage) return entry
   const updated = [entry, ...existing].slice(0, MAX_HOOKS)
-  return new Promise((resolve) => {
-    storage.set({ [HOOK_KEY]: updated }, () => resolve(entry))
-  })
+  await storage.set({ [HOOK_KEY]: updated })
+  return entry
 }
 
 export async function deleteHook(id: string): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
   const existing = await loadHooks()
-  return new Promise((resolve) => {
-    storage.set({ [HOOK_KEY]: existing.filter((h) => h.id !== id) }, resolve)
-  })
+  await storage.set({ [HOOK_KEY]: existing.filter((h) => h.id !== id) })
 }

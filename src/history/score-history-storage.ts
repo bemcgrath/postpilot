@@ -1,3 +1,5 @@
+import { getStore } from "~storage/adapter"
+
 const HISTORY_KEY = "postpilot_score_history"
 const MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
 
@@ -13,32 +15,15 @@ export interface WeekStats {
   totalCount: number
 }
 
-function getStorage(): typeof chrome.storage.local | null {
-  try {
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.runtime?.id &&
-      typeof chrome.storage !== "undefined" &&
-      typeof chrome.storage.local !== "undefined"
-    ) {
-      return chrome.storage.local
-    }
-  } catch {}
-  return null
-}
-
 export async function loadScoreHistory(): Promise<ScoreEntry[]> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return []
-  return new Promise((resolve) => {
-    storage.get(HISTORY_KEY, (result) => {
-      resolve((result[HISTORY_KEY] as ScoreEntry[]) ?? [])
-    })
-  })
+  const result = await storage.get(HISTORY_KEY)
+  return (result[HISTORY_KEY] as ScoreEntry[]) ?? []
 }
 
 export async function saveScoreEntry(score: number): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
 
   const now = Date.now()
@@ -48,9 +33,7 @@ export async function saveScoreEntry(score: number): Promise<void> {
   const pruned = existing.filter((e) => now - e.timestamp < MAX_AGE_MS)
   pruned.push({ score, timestamp: now })
 
-  return new Promise((resolve) => {
-    storage.set({ [HISTORY_KEY]: pruned }, resolve)
-  })
+  await storage.set({ [HISTORY_KEY]: pruned })
 }
 
 export async function getWeekStats(): Promise<WeekStats> {

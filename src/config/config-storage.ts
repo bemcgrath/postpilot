@@ -7,6 +7,7 @@ import type {
 } from "./types"
 
 import { buildDefaults } from "./defaults"
+import { getStore } from "~storage/adapter"
 
 const STORAGE_KEY = "postpilot_config"
 
@@ -15,23 +16,6 @@ let currentConfig: PostPilotConfig = buildDefaults()
 
 /** Listeners for config changes. */
 const changeListeners: Array<(config: PostPilotConfig) => void> = []
-
-/** Safely access chrome.storage.local — returns null if unavailable or context invalidated. */
-function getStorage(): typeof chrome.storage.local | null {
-  try {
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.runtime?.id &&
-      typeof chrome.storage !== "undefined" &&
-      typeof chrome.storage.local !== "undefined"
-    ) {
-      return chrome.storage.local
-    }
-  } catch {
-    // Extension context invalidated or not available
-  }
-  return null
-}
 
 /** Deep merge saved config over defaults so new defaults appear on update. */
 function mergeWithDefaults(
@@ -133,29 +117,24 @@ export function mergePhraseList(
 
 /** Load config from storage and merge with defaults. */
 export async function initConfig(): Promise<PostPilotConfig> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) {
     currentConfig = buildDefaults()
     return currentConfig
   }
 
-  return new Promise((resolve) => {
-    storage.get(STORAGE_KEY, (result) => {
-      const saved = result[STORAGE_KEY] as Partial<PostPilotConfig> | undefined
-      currentConfig = saved ? mergeWithDefaults(saved) : buildDefaults()
-      resolve(currentConfig)
-    })
-  })
+  const result = await storage.get(STORAGE_KEY)
+  const saved = result[STORAGE_KEY] as Partial<PostPilotConfig> | undefined
+  currentConfig = saved ? mergeWithDefaults(saved) : buildDefaults()
+  return currentConfig
 }
 
 /** Save config to storage. */
 export async function saveConfig(config: PostPilotConfig): Promise<void> {
   currentConfig = config
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => {
-    storage.set({ [STORAGE_KEY]: config }, resolve)
-  })
+  await storage.set({ [STORAGE_KEY]: config })
 }
 
 /** Get the full config (sync, from cache). */
@@ -189,26 +168,21 @@ export function onConfigChanged(
 ): () => void {
   changeListeners.push(cb)
 
-  const storage = getStorage()
+  const storage = getStore()
   if (storage) {
-    const listener = (changes: Record<string, { newValue?: unknown }>) => {
-      try {
-        if (STORAGE_KEY in changes) {
-          const saved = changes[STORAGE_KEY].newValue as
-            | Partial<PostPilotConfig>
-            | undefined
-          currentConfig = saved ? mergeWithDefaults(saved) : buildDefaults()
-          cb(currentConfig)
-        }
-      } catch {
-        // Extension context invalidated
+    const unsubscribe = storage.onChanged((changes) => {
+      if (STORAGE_KEY in changes) {
+        const saved = changes[STORAGE_KEY].newValue as
+          | Partial<PostPilotConfig>
+          | undefined
+        currentConfig = saved ? mergeWithDefaults(saved) : buildDefaults()
+        cb(currentConfig)
       }
-    }
-    storage.onChanged.addListener(listener)
+    })
     return () => {
       const idx = changeListeners.indexOf(cb)
       if (idx >= 0) changeListeners.splice(idx, 1)
-      try { storage.onChanged.removeListener(listener) } catch {}
+      unsubscribe()
     }
   }
 

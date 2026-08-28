@@ -1,3 +1,5 @@
+import { getStore, uuid } from "~storage/adapter"
+
 const DRAFTS_KEY = "postpilot_drafts"
 const MAX_DRAFTS = 20
 
@@ -9,36 +11,17 @@ export interface DraftEntry {
   savedAt: number
 }
 
-function getStorage(): typeof chrome.storage.local | null {
-  try {
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.runtime?.id &&
-      typeof chrome.storage !== "undefined" &&
-      typeof chrome.storage.local !== "undefined"
-    ) {
-      return chrome.storage.local
-    }
-  } catch {}
-  return null
-}
-
 export async function loadDrafts(): Promise<DraftEntry[]> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return []
-  return new Promise((resolve) => {
-    storage.get(DRAFTS_KEY, (result) => {
-      resolve((result[DRAFTS_KEY] as DraftEntry[]) ?? [])
-    })
-  })
+  const result = await storage.get(DRAFTS_KEY)
+  return (result[DRAFTS_KEY] as DraftEntry[]) ?? []
 }
 
 async function writeDrafts(drafts: DraftEntry[]): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => {
-    storage.set({ [DRAFTS_KEY]: drafts }, resolve)
-  })
+  await storage.set({ [DRAFTS_KEY]: drafts })
 }
 
 export async function saveDraft(
@@ -48,7 +31,7 @@ export async function saveDraft(
 ): Promise<DraftEntry> {
   const existing = await loadDrafts()
   const entry: DraftEntry = {
-    id: crypto.randomUUID(),
+    id: uuid(),
     text,
     score,
     hookType,

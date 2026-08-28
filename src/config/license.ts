@@ -5,6 +5,8 @@
  * from the main config so they survive config imports/resets.
  */
 
+import { getStore, uuid } from "~storage/adapter"
+
 const LS_LICENSE_KEY = "postpilot_license_key"
 const LS_INSTANCE_ID = "postpilot_instance_id"
 const LS_CACHE_ACTIVE = "postpilot_license_cache_active"
@@ -25,31 +27,24 @@ interface CacheEntry {
 }
 
 async function readCache(): Promise<CacheEntry | null> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return null
-  return new Promise((resolve) => {
-    storage.get([LS_CACHE_ACTIVE, LS_CACHE_CHECKED_AT], (result) => {
-      const checkedAt = result[LS_CACHE_CHECKED_AT]
-      if (typeof checkedAt !== "number") { resolve(null); return }
-      resolve({ active: result[LS_CACHE_ACTIVE] === true, checkedAt })
-    })
-  })
+  const result = await storage.get([LS_CACHE_ACTIVE, LS_CACHE_CHECKED_AT])
+  const checkedAt = result[LS_CACHE_CHECKED_AT]
+  if (typeof checkedAt !== "number") return null
+  return { active: result[LS_CACHE_ACTIVE] === true, checkedAt }
 }
 
 async function writeCache(active: boolean): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => {
-    storage.set({ [LS_CACHE_ACTIVE]: active, [LS_CACHE_CHECKED_AT]: Date.now() }, resolve)
-  })
+  await storage.set({ [LS_CACHE_ACTIVE]: active, [LS_CACHE_CHECKED_AT]: Date.now() })
 }
 
 async function clearCache(): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => {
-    storage.remove([LS_CACHE_ACTIVE, LS_CACHE_CHECKED_AT], resolve)
-  })
+  await storage.remove([LS_CACHE_ACTIVE, LS_CACHE_CHECKED_AT])
 }
 
 export interface LicenseStatus {
@@ -59,33 +54,23 @@ export interface LicenseStatus {
   error: string | null
 }
 
-function getStorage(): typeof chrome.storage.local | null {
-  try {
-    if (typeof chrome !== "undefined" && chrome.runtime?.id && chrome.storage?.local) {
-      return chrome.storage.local
-    }
-  } catch {}
-  return null
-}
-
 async function storageGet(keys: string[]): Promise<Record<string, string | null>> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return Object.fromEntries(keys.map((k) => [k, null]))
-  return new Promise((resolve) => {
-    storage.get(keys, (result) => resolve(result as Record<string, string | null>))
-  })
+  const result = await storage.get(keys)
+  return result as Record<string, string | null>
 }
 
 async function storageSet(items: Record<string, string | null>): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => storage.set(items, resolve))
+  await storage.set(items)
 }
 
 async function storageRemove(keys: string[]): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => storage.remove(keys, resolve))
+  await storage.remove(keys)
 }
 
 /** Load the current license status from local storage (no network call). */
@@ -103,7 +88,7 @@ export async function activateLicense(key: string): Promise<LicenseStatus> {
     return { isActive: false, licenseKey: null, instanceId: null, error: "Please enter a license key." }
   }
 
-  const instanceId = crypto.randomUUID()
+  const instanceId = uuid()
 
   try {
     const res = await fetch(ACTIVATE_URL, {

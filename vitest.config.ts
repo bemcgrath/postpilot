@@ -13,6 +13,7 @@ export default defineConfig({
       "~config": path.resolve(__dirname, "src/config"),
       "~components": path.resolve(__dirname, "src/components"),
       "~learning": path.resolve(__dirname, "src/learning"),
+      "~storage": path.resolve(__dirname, "src/storage"),
       "~": path.resolve(__dirname, "src")
     }
   }

@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  extension:
+    name: Extension (test, typecheck, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Build score widget
+        run: npm run build:score
+
+      # The scoring engine (src/scoring, src/learning, src/config) must never
+      # depend on chrome.*/document.*/window.* at the module level -- it's
+      # what makes the "pure core" behind score/postpilot-score.bundle.js
+      # (and, later, the mobile app) actually true rather than an accident of
+      # esbuild's tree-shaking. See the mobile plan's "What already ports"
+      # section for the full story of why this check exists.
+      - name: Assert the score widget bundle stays chrome-free
+        run: |
+          if grep -qE "chrome\.(storage|runtime)|document\.(querySelector|getElementById|createElement)|window\.(location|getComputedStyle)" score/postpilot-score.bundle.js; then
+            echo "score/postpilot-score.bundle.js references a browser-extension or DOM API -- the pure scoring core has picked up a dependency it shouldn't have."
+            exit 1
+          fi
+          echo "OK: score widget bundle has no chrome.*/DOM API references."
+
+  worker:
+    name: Worker (test, typecheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: worker/package-lock.json
+
+      - run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Typecheck
+        run: npm run typecheck

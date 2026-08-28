@@ -8,66 +8,40 @@ import {
   type OwnPostSkip,
   type StoredFunnel
 } from "./funnel"
-
-/** Safely access chrome.storage.local — returns null if unavailable. */
-function getStorage(): typeof chrome.storage.local | null {
-  try {
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.runtime?.id &&
-      typeof chrome.storage !== "undefined" &&
-      typeof chrome.storage.local !== "undefined"
-    ) {
-      return chrome.storage.local
-    }
-  } catch {
-    // Extension context invalidated
-  }
-  return null
-}
+import { getStore } from "~storage/adapter"
 
 // --- User Handle ---
 
 export async function loadUserHandle(): Promise<string | null> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return null
-  return new Promise((resolve) => {
-    storage.get(STORAGE_KEYS.USER_HANDLE, (result) => {
-      resolve((result[STORAGE_KEYS.USER_HANDLE] as string) ?? null)
-    })
-  })
+  const result = await storage.get(STORAGE_KEYS.USER_HANDLE)
+  return (result[STORAGE_KEYS.USER_HANDLE] as string) ?? null
 }
 
 export async function saveUserHandle(handle: string): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => {
-    storage.set({ [STORAGE_KEYS.USER_HANDLE]: handle }, resolve)
-  })
+  await storage.set({ [STORAGE_KEYS.USER_HANDLE]: handle })
 }
 
 // --- Collected Posts ---
 
 export async function loadCollectedPosts(): Promise<CollectedPost[]> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return []
-  return new Promise((resolve) => {
-    storage.get(STORAGE_KEYS.COLLECTED_POSTS, (result) => {
-      resolve((result[STORAGE_KEYS.COLLECTED_POSTS] as CollectedPost[]) ?? [])
-    })
-  })
+  const result = await storage.get(STORAGE_KEYS.COLLECTED_POSTS)
+  return (result[STORAGE_KEYS.COLLECTED_POSTS] as CollectedPost[]) ?? []
 }
 
 export async function saveCollectedPosts(posts: CollectedPost[]): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
   // Enforce cap: keep most recent posts
   const capped = posts.length > MAX_STORED_POSTS
     ? posts.slice(posts.length - MAX_STORED_POSTS)
     : posts
-  return new Promise((resolve) => {
-    storage.set({ [STORAGE_KEYS.COLLECTED_POSTS]: capped }, resolve)
-  })
+  await storage.set({ [STORAGE_KEYS.COLLECTED_POSTS]: capped })
 }
 
 /**
@@ -154,55 +128,45 @@ export function normalizeInsights(raw: Partial<LearnedInsights>): LearnedInsight
 }
 
 export async function loadLearnedInsights(): Promise<LearnedInsights | null> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return null
-  return new Promise((resolve) => {
-    storage.get(STORAGE_KEYS.LEARNED_INSIGHTS, (result) => {
-      const raw = result[STORAGE_KEYS.LEARNED_INSIGHTS] as
-        | Partial<LearnedInsights>
-        | undefined
-      resolve(raw ? normalizeInsights(raw) : null)
-    })
-  })
+  const result = await storage.get(STORAGE_KEYS.LEARNED_INSIGHTS)
+  const raw = result[STORAGE_KEYS.LEARNED_INSIGHTS] as
+    | Partial<LearnedInsights>
+    | undefined
+  return raw ? normalizeInsights(raw) : null
 }
 
 export async function saveLearnedInsights(
   insights: LearnedInsights
 ): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => {
-    storage.set({ [STORAGE_KEYS.LEARNED_INSIGHTS]: insights }, resolve)
-  })
+  await storage.set({ [STORAGE_KEYS.LEARNED_INSIGHTS]: insights })
 }
 
 // --- Collection funnel ---
 
 export async function loadStoredFunnel(): Promise<StoredFunnel> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return { ...EMPTY_FUNNEL }
-  return new Promise((resolve) => {
-    storage.get(STORAGE_KEYS.COLLECTION_FUNNEL, (result) => {
-      const raw = result[STORAGE_KEYS.COLLECTION_FUNNEL] as StoredFunnel | undefined
-      resolve({
-        waitingOnAgeIds: Array.isArray(raw?.waitingOnAgeIds) ? raw.waitingOnAgeIds : [],
-        missingImpressionIds: Array.isArray(raw?.missingImpressionIds)
-          ? raw.missingImpressionIds
-          : []
-      })
-    })
-  })
+  const result = await storage.get(STORAGE_KEYS.COLLECTION_FUNNEL)
+  const raw = result[STORAGE_KEYS.COLLECTION_FUNNEL] as StoredFunnel | undefined
+  return {
+    waitingOnAgeIds: Array.isArray(raw?.waitingOnAgeIds) ? raw.waitingOnAgeIds : [],
+    missingImpressionIds: Array.isArray(raw?.missingImpressionIds)
+      ? raw.missingImpressionIds
+      : []
+  }
 }
 
 export async function recordOwnPostSkips(skips: OwnPostSkip[]): Promise<void> {
   if (skips.length === 0) return
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
   const stored = await loadStoredFunnel()
   const merged = mergeSkipIds(stored, skips)
-  return new Promise((resolve) => {
-    storage.set({ [STORAGE_KEYS.COLLECTION_FUNNEL]: merged }, resolve)
-  })
+  await storage.set({ [STORAGE_KEYS.COLLECTION_FUNNEL]: merged })
 }
 
 export async function loadFunnelSnapshot(): Promise<CollectionFunnelSnapshot> {
@@ -222,17 +186,12 @@ export async function loadFunnelSnapshot(): Promise<CollectionFunnelSnapshot> {
 // --- Clearing ---
 
 export async function clearAllLearningData(): Promise<void> {
-  const storage = getStorage()
+  const storage = getStore()
   if (!storage) return
-  return new Promise((resolve) => {
-    storage.remove(
-      [
-        STORAGE_KEYS.USER_HANDLE,
-        STORAGE_KEYS.COLLECTED_POSTS,
-        STORAGE_KEYS.LEARNED_INSIGHTS,
-        STORAGE_KEYS.COLLECTION_FUNNEL
-      ],
-      resolve
-    )
-  })
+  await storage.remove([
+    STORAGE_KEYS.USER_HANDLE,
+    STORAGE_KEYS.COLLECTED_POSTS,
+    STORAGE_KEYS.LEARNED_INSIGHTS,
+    STORAGE_KEYS.COLLECTION_FUNNEL
+  ])
 }
