@@ -1,0 +1,1186 @@
+import React, { useCallback, useEffect, useRef, useState } from "react"
+
+import type { SamplePost, VoiceFingerprint, VoiceOverrides } from "@postpilot/core/scoring/voice-types"
+import type { PostPilotConfig } from "@postpilot/core/config/types"
+
+import { extractFingerprint } from "@postpilot/core/scoring/voice-fingerprint"
+import {
+  fingerprintFromProfile,
+  mergeProfileIntoFingerprint,
+  parseVoiceProfile
+} from "@postpilot/core/scoring/voice-profile-parser"
+import {
+  emptyOverrides,
+  loadFingerprint,
+  loadNicheSpec,
+  loadSamplePosts,
+  loadVoiceOverrides,
+  loadVoiceProfile,
+  saveFingerprint,
+  saveNicheSpec,
+  saveSamplePosts,
+  saveVoiceOverrides,
+  saveVoiceProfile
+} from "~scoring/voice-storage"
+import { diagnoseFingerprint } from "@postpilot/core/scoring/voice-diagnostics"
+import { humanizeHookType } from "@postpilot/core/scoring/hook-types"
+import { loadCollectedPosts } from "~learning/storage"
+import { selectBestPostsForImport, type BestPostCandidate } from "@postpilot/core/learning/best-posts"
+import { buildDefaults } from "@postpilot/core/config/defaults"
+import { initConfig, saveConfig } from "@postpilot/core/config/config-storage"
+import { activateLicense, deactivateLicense, loadLicenseStatus } from "~config/license"
+import type { LicenseStatus } from "~config/license"
+
+import { GovernorSettings } from "~components/settings/GovernorSettings"
+import { HookScoringSettings } from "~components/settings/HookScoringSettings"
+import { HookTypesSettings } from "~components/settings/HookTypesSettings"
+import { ConfigActions } from "~components/settings/ConfigActions"
+import { AnalyticsTab } from "~components/settings/AnalyticsTab"
+import { VoiceCoachPanel } from "~components/settings/VoiceCoachPanel"
+
+const MIN_POSTS = 5
+const SEPARATOR = "---"
+
+/** Open a file picker for .md/.txt files and call onLoad with the text content. */
+function importFile(onLoad: (text: string) => void) {
+  const input = document.createElement("input")
+  input.type = "file"
+  input.accept = ".md,.txt,.markdown"
+  input.onchange = () => {
+    const file = input.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        onLoad(reader.result)
+      }
+    }
+    reader.readAsText(file)
+  }
+  input.click()
+}
+
+type TabId = "license" | "profile" | "posts" | "governor" | "hooks" | "analytics" | "aiRewrites"
+
+function Options() {
+  const [posts, setPosts] = useState<SamplePost[]>([])
+  const [bestPostCandidates, setBestPostCandidates] = useState<BestPostCandidate[]>([])
+  const [expandedCandidateIds, setExpandedCandidateIds] = useState<Set<string>>(new Set())
+  const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null)
+  const [overrides, setOverrides] = useState<VoiceOverrides>(emptyOverrides())
+  const [inputText, setInputText] = useState("")
+  const [profileText, setProfileText] = useState("")
+  const [nicheText, setNicheText] = useState("")
+  const [status, setStatus] = useState("")
+  const [activeTab, setActiveTab] = useState<TabId>("license")
+  const [config, setConfig] = useState<PostPilotConfig>(buildDefaults())
+  const [license, setLicense] = useState<LicenseStatus>({ isActive: false, licenseKey: null, instanceId: null, error: null })
+  const [licenseInput, setLicenseInput] = useState("")
+  const [licenseLoading, setLicenseLoading] = useState(false)
+  const [devPro, setDevPro] = useState(false)
+  const [importStatus, setImportStatus] = useState("")
+  const importInputRef = useRef<HTMLInputElement>(null)
+  const [isDev, setIsDev] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  useEffect(() => {
+    Promise.all([loadSamplePosts(), loadCollectedPosts()]).then(
+      ([samplePosts, collected]) => {
+        setPosts(samplePosts)
+        const alreadyImported = new Set(
+          samplePosts
+            .map((p) => p.sourceTweetId)
+            .filter((id): id is string => !!id)
+        )
+        setBestPostCandidates(
+          selectBestPostsForImport(collected, alreadyImported)
+        )
+      }
+    )
+    loadFingerprint().then(setFingerprint)
+    loadVoiceOverrides().then(setOverrides)
+    loadVoiceProfile().then(setProfileText)
+    loadNicheSpec().then(setNicheText)
+    initConfig().then(setConfig)
+    loadLicenseStatus().then(setLicense)
+    chrome.storage.local.get("postpilot_dev_pro", (r) => {
+      if (r.postpilot_dev_pro === true) setDevPro(true)
+    })
+    if (!("update_url" in chrome.runtime.getManifest())) setIsDev(true)
+    const hash = window.location.hash.slice(1) as TabId
+    if (hash) {
+      setActiveTab(hash)
+      if (hash === "governor" || hash === "hooks") setShowAdvanced(true)
+    } else {
+      chrome.storage.local.get("postpilot_options_tab", (result) => {
+        const tab = result.postpilot_options_tab as TabId | undefined
+        if (tab) {
+          setActiveTab(tab)
+          if (tab === "governor" || tab === "hooks") setShowAdvanced(true)
+          chrome.storage.local.remove("postpilot_options_tab")
+        }
+      })
+    }
+  }, [])
+
+  // Auto-save config when it changes (debounced via state)
+  const updateConfig = useCallback(
+    (newConfig: PostPilotConfig) => {
+      setConfig(newConfig)
+      saveConfig(newConfig)
+    },
+    []
+  )
+
+  const updateOverrides = useCallback(
+    (newOverrides: VoiceOverrides) => {
+      setOverrides(newOverrides)
+      saveVoiceOverrides(newOverrides)
+    },
+    []
+  )
+
+  const addPosts = useCallback(() => {
+    const trimmed = inputText.trim()
+    if (!trimmed) return
+
+    const newTexts = trimmed
+      .split(SEPARATOR)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 10)
+
+    if (newTexts.length === 0) {
+      setStatus("No valid posts found (each must be >10 chars)")
+      return
+    }
+
+    const newPosts: SamplePost[] = newTexts.map((text) => ({
+      id: crypto.randomUUID(),
+      text,
+      addedAt: Date.now()
+    }))
+
+    const updated = [...posts, ...newPosts]
+    setPosts(updated)
+    saveSamplePosts(updated)
+    setInputText("")
+    setStatus(`Added ${newPosts.length} post${newPosts.length > 1 ? "s" : ""}`)
+  }, [inputText, posts])
+
+  const importCandidates = useCallback(
+    (tweetIds: string[]) => {
+      const toImport = bestPostCandidates.filter((c) =>
+        tweetIds.includes(c.tweetId)
+      )
+      if (toImport.length === 0) return
+
+      const newPosts: SamplePost[] = toImport.map((c) => ({
+        id: crypto.randomUUID(),
+        text: c.text,
+        addedAt: Date.now(),
+        sourceTweetId: c.tweetId
+      }))
+
+      const updated = [...posts, ...newPosts]
+      setPosts(updated)
+      saveSamplePosts(updated)
+      setBestPostCandidates((prev) =>
+        prev.filter((c) => !tweetIds.includes(c.tweetId))
+      )
+      setExpandedCandidateIds((prev) => {
+        const next = new Set(prev)
+        for (const id of tweetIds) next.delete(id)
+        return next
+      })
+      setStatus(
+        `Imported ${newPosts.length} post${newPosts.length > 1 ? "s" : ""} from your best performers`
+      )
+    },
+    [posts, bestPostCandidates]
+  )
+
+  const toggleCandidateExpanded = useCallback((tweetId: string) => {
+    setExpandedCandidateIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(tweetId)) next.delete(tweetId)
+      else next.add(tweetId)
+      return next
+    })
+  }, [])
+
+  const removePost = useCallback(
+    (id: string) => {
+      const updated = posts.filter((p) => p.id !== id)
+      setPosts(updated)
+      saveSamplePosts(updated)
+    },
+    [posts]
+  )
+
+  const saveProfile = useCallback(() => {
+    saveVoiceProfile(profileText)
+    saveNicheSpec(nicheText)
+    setStatus("Voice profile saved")
+  }, [profileText, nicheText])
+
+  const analyze = useCallback(() => {
+    const hasProfile = profileText.trim().length > 100
+    const hasPosts = posts.length >= MIN_POSTS
+
+    if (!hasProfile && !hasPosts) {
+      setStatus(
+        `Need a voice profile or at least ${MIN_POSTS} sample posts`
+      )
+      return
+    }
+
+    let fp: VoiceFingerprint
+
+    if (hasProfile && hasPosts) {
+      const postFp = extractFingerprint(posts.map((p) => p.text))
+      const profile = parseVoiceProfile(profileText, nicheText || undefined)
+      fp = mergeProfileIntoFingerprint(postFp, profile)
+    } else if (hasProfile) {
+      const profile = parseVoiceProfile(profileText, nicheText || undefined)
+      fp = fingerprintFromProfile(profile)
+    } else {
+      fp = extractFingerprint(posts.map((p) => p.text))
+    }
+
+    setFingerprint(fp)
+    saveFingerprint(fp)
+
+    const source = hasProfile && hasPosts
+      ? "profile + posts"
+      : hasProfile
+        ? "voice profile"
+        : "sample posts"
+    setStatus(`Voice fingerprint generated from ${source}`)
+  }, [posts, profileText, nicheText])
+
+  const clearFingerprint = useCallback(() => {
+    setFingerprint(null)
+    saveFingerprint(null)
+    setStatus("Fingerprint cleared")
+  }, [])
+
+  const canAnalyze = profileText.trim().length > 100 || posts.length >= MIN_POSTS
+  const accuracy =
+    posts.length >= 15 ? "Good" : posts.length >= 10 ? "Moderate" : "Limited"
+  const accuracyColor =
+    posts.length >= 15 ? "#00ba7c" : posts.length >= 10 ? "#f7b731" : "#71767b"
+
+  const isConfigTab = activeTab === "governor" || activeTab === "hooks"
+  // In dev/unpacked builds, the devPro toggle is the sole authority — this lets
+  // testing flip between free/Pro views even when a real license is active in
+  // shared storage (see the extension-ID-sharing setup used for local testing).
+  // devPro must never be consulted outside isDev: it's read from
+  // chrome.storage.local, which any user can write via devtools, so honoring
+  // it on a real Web Store build would unlock every Pro feature for free.
+  const isPro = isDev ? devPro : license.isActive
+
+  return (
+    <div style={styles.container}>
+      <h1 style={styles.title}>PostPilot Settings</h1>
+      <p style={styles.subtitle}>
+        Scoring works with no setup. Voice Match takes five posts. Leave the rest at the default.
+      </p>
+
+      <div style={styles.startHere}>
+        <div style={styles.startHereLabel}>Start here</div>
+        {!isPro ? (
+          <p style={styles.startHereText}>
+            You're done. Open x.com, write a post, watch the score. Nothing in Settings is required.
+          </p>
+        ) : fingerprint ? (
+          <p style={styles.startHereText}>
+            Voice Match is on. Keep writing — the score already uses your fingerprint.
+          </p>
+        ) : (
+          <>
+            <p style={styles.startHereText}>
+              Add 5 of your posts, then Analyze. That's Voice Match.
+            </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab("posts")}
+              style={{ ...styles.button, ...styles.primaryButton, marginTop: 8 }}>
+              Go to Posts ({posts.length}/{MIN_POSTS})
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div style={styles.tabBar}>
+        {([
+          { id: "license" as TabId, label: license.isActive ? "Pro ✓" : "License", indicator: "" },
+          { id: "profile" as TabId, label: "Voice", indicator: profileText.trim().length > 100 ? " *" : "" },
+          { id: "posts" as TabId, label: "Posts", indicator: posts.length > 0 ? ` (${posts.length})` : "" },
+          { id: "analytics" as TabId, label: "Analytics", indicator: "" },
+          { id: "aiRewrites" as TabId, label: "AI Rewrites", indicator: "" },
+          ...(showAdvanced
+            ? [
+                { id: "governor" as TabId, label: "Governor", indicator: "" },
+                { id: "hooks" as TabId, label: "Hooks", indicator: "" }
+              ]
+            : [])
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              ...styles.tab,
+              ...(activeTab === tab.id ? styles.tabActive : {})
+            }}>
+            {tab.label}
+            {tab.indicator && (
+              <span style={styles.tabCheck}>{tab.indicator}</span>
+            )}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !showAdvanced
+            setShowAdvanced(next)
+            if (!next && (activeTab === "governor" || activeTab === "hooks")) {
+              setActiveTab("license")
+            }
+          }}
+          style={{
+            ...styles.tab,
+            marginLeft: "auto"
+          }}
+          aria-expanded={showAdvanced}>
+          Advanced{showAdvanced ? " ▾" : " ▸"}
+        </button>
+      </div>
+
+      {/* License tab */}
+      {activeTab === "license" && (
+        <div style={{ padding: "24px 0" }}>
+          {license.isActive ? (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+                <span style={{ fontSize: "20px" }}>✓</span>
+                <span style={{ fontWeight: 600, fontSize: "15px" }}>PostPilot Pro is active</span>
+              </div>
+              <p style={{ color: "#555", fontSize: "13px", marginBottom: "20px" }}>
+                Voice Match and the learning engine are unlocked.
+              </p>
+              {isDev && !devPro && (
+                <p style={{ color: "#f7b731", fontSize: "12px", marginBottom: "20px" }}>
+                  On this unpacked build, Pro features actually follow the dev toggle below, not this license — and
+                  it's currently off, so Pro is off despite the license being active.
+                </p>
+              )}
+              <button
+                onClick={async () => {
+                  await deactivateLicense()
+                  setLicense({ isActive: false, licenseKey: null, instanceId: null, error: null })
+                  setLicenseInput("")
+                }}
+                style={{ fontSize: "12px", color: "#999", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                Deactivate license
+              </button>
+            </div>
+          ) : (
+            <div>
+              <h3 style={{ margin: "0 0 8px", fontSize: "15px" }}>Activate PostPilot Pro</h3>
+              <p style={{ color: "#555", fontSize: "13px", margin: "0 0 20px" }}>
+                Enter your license key from your purchase email to unlock Voice Match and the learning engine.
+              </p>
+              <p style={{ color: "#555", fontSize: "13px", margin: "0 0 20px" }}>
+                Don't have a license?{" "}
+                <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
+                  Get PostPilot Pro
+                </a>
+              </p>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+                <input
+                  type="text"
+                  value={licenseInput}
+                  onChange={(e) => setLicenseInput(e.target.value)}
+                  placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                  style={{ flex: 1, padding: "8px 10px", fontSize: "13px", border: "1px solid #ccc", borderRadius: "6px", fontFamily: "monospace" }}
+                />
+                <button
+                  disabled={licenseLoading || !licenseInput.trim()}
+                  onClick={async () => {
+                    setLicenseLoading(true)
+                    const result = await activateLicense(licenseInput)
+                    setLicense(result)
+                    if (result.isActive) setLicenseInput("")
+                    setLicenseLoading(false)
+                  }}
+                  style={{ padding: "8px 16px", fontSize: "13px", background: "#1d9bf0", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", opacity: licenseLoading ? 0.6 : 1 }}>
+                  {licenseLoading ? "Activating…" : "Activate"}
+                </button>
+              </div>
+              {license.error && (
+                <p style={{ color: "#e0245e", fontSize: "13px", margin: 0 }}>{license.error}</p>
+              )}
+            </div>
+          )}
+          <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #eee" }}>
+            <p style={{ fontSize: "12px", color: "#999", margin: "0 0 8px" }}>Backup & Restore</p>
+            <div>
+              <button
+                onClick={() => {
+                  chrome.storage.local.get(null, (data) => {
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url
+                    a.download = `postpilot-backup-${new Date().toISOString().slice(0, 10)}.json`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  })
+                }}
+                style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555" }}>
+                Export all data (backup)
+              </button>
+              <button
+                onClick={() => importInputRef.current?.click()}
+                style={{ padding: "6px 12px", fontSize: "12px", background: "none", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer", color: "#555", marginLeft: "8px" }}>
+                Import backup
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  e.target.value = ""
+                  if (!file) return
+                  // Import wipes storage, so make the destructive part explicit --
+                  // this is user-facing now, not a dev-only footgun.
+                  if (
+                    !window.confirm(
+                      "Restoring replaces everything currently stored (sample posts, scores, voice profile, license) with the contents of this file. Continue?"
+                    )
+                  ) {
+                    return
+                  }
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    try {
+                      const data = JSON.parse(reader.result as string)
+                      chrome.storage.local.clear(() => {
+                        chrome.storage.local.set(data, () => {
+                          setImportStatus("Restored — reloading…")
+                          setTimeout(() => window.location.reload(), 500)
+                        })
+                      })
+                    } catch {
+                      setImportStatus("Import failed — file isn't valid JSON")
+                    }
+                  }
+                  reader.readAsText(file)
+                }}
+              />
+              <p style={{ fontSize: "11px", color: "#999", margin: "6px 0 0" }}>
+                Export downloads everything stored on this device (sample posts, score history, voice profile, niche
+                spec, license) as a single JSON file — use it to move your setup to another browser or machine, or
+                as a safety net before a reinstall. Import replaces current storage entirely and reloads.
+              </p>
+              <p style={{ fontSize: "11px", color: "#999", margin: "4px 0 0" }}>
+                Keep the file somewhere private — it contains your license key in plain text.
+              </p>
+              {importStatus && (
+                <p style={{ fontSize: "12px", color: importStatus.startsWith("Restored") ? "#00ba7c" : "#e0245e", margin: "6px 0 0" }}>
+                  {importStatus}
+                </p>
+              )}
+            </div>
+          </div>
+          {isDev && (
+            <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #eee" }}>
+              <p style={{ fontSize: "12px", color: "#999", margin: "0 0 8px" }}>Developer</p>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={devPro}
+                  onChange={(e) => {
+                    const val = e.target.checked
+                    setDevPro(val)
+                    chrome.storage.local.set({ postpilot_dev_pro: val })
+                  }}
+                />
+                <span style={{ fontSize: "13px", color: "#999" }}>Enable Pro features without a license (dev only)</span>
+              </label>
+              <p style={{ fontSize: "11px", color: "#999", margin: "4px 0 0" }}>
+                On unpacked builds this toggle is the only thing controlling Pro — a real active license (e.g. if
+                you're sharing storage with your live install) is ignored here, so free/Pro views stay independently
+                testable.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Voice Profile tab */}
+      {activeTab === "profile" && (
+        <>
+          <div style={styles.section}>
+            <h2 style={styles.heading}>Voice Profile</h2>
+            <p style={styles.hint}>
+              Leave Governor and Hooks alone unless a score feels wrong.
+            </p>
+            <p style={styles.hint}>
+              Paste your voice_profile.md content or import a file. This defines
+              your niche, hook preferences, tone, and writing style.
+            </p>
+            <div style={styles.importRow}>
+              <button
+                onClick={() => importFile((text) => setProfileText(text))}
+                style={styles.button}>
+                Import .md file
+              </button>
+              {profileText.trim().length > 0 && (
+                <span style={styles.fileLoaded}>
+                  {Math.round(profileText.length / 1024)}KB loaded
+                </span>
+              )}
+            </div>
+            <textarea
+              value={profileText}
+              onChange={(e) => setProfileText(e.target.value)}
+              placeholder="# Voice Profile\n\nPaste your voice profile markdown here..."
+              style={{ ...styles.textarea, fontFamily: "monospace", fontSize: 12 }}
+              rows={10}
+            />
+          </div>
+
+          <div style={styles.section}>
+            <h2 style={styles.heading}>
+              Niche Spec
+              <span style={styles.optionalBadge}>optional</span>
+            </h2>
+            <p style={styles.hint}>
+              Paste your niche_spec.md or import a file for additional keyword extraction.
+            </p>
+            <div style={styles.importRow}>
+              <button
+                onClick={() => importFile((text) => setNicheText(text))}
+                style={styles.button}>
+                Import .md file
+              </button>
+              {nicheText.trim().length > 0 && (
+                <span style={styles.fileLoaded}>
+                  {Math.round(nicheText.length / 1024)}KB loaded
+                </span>
+              )}
+            </div>
+            <textarea
+              value={nicheText}
+              onChange={(e) => setNicheText(e.target.value)}
+              placeholder="# Niche Specification\n\nPaste your niche spec markdown here..."
+              style={{ ...styles.textarea, fontFamily: "monospace", fontSize: 12 }}
+              rows={6}
+            />
+          </div>
+
+          <div style={styles.section}>
+            <button onClick={saveProfile} style={styles.button}>
+              Save Profile
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Sample Posts tab */}
+      {activeTab === "posts" && (
+        <>
+          <div style={styles.section}>
+            <h2 style={styles.heading}>Add Posts</h2>
+            <p style={styles.hint}>
+              Leave Governor and Hooks alone unless a score feels wrong.
+            </p>
+            <p style={styles.hint}>
+              Paste one post, or multiple posts separated by <code>---</code>.
+              Posts refine statistical patterns (sentence length, fragment ratio, etc.)
+              that the voice profile alone can't capture.
+            </p>
+            <textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={"Paste your best posts here...\n---\nSeparate multiple posts with three dashes"}
+              style={styles.textarea}
+              rows={6}
+            />
+            <button onClick={addPosts} style={styles.button}>
+              Add Post{inputText.includes(SEPARATOR) ? "s" : ""}
+            </button>
+          </div>
+
+          {bestPostCandidates.length > 0 && (
+            <div style={styles.section}>
+              <h2 style={styles.heading}>
+                Import From Your Best Posts ({bestPostCandidates.length})
+              </h2>
+              <p style={styles.hint}>
+                These are posts we've collected from your timeline that performed
+                well above your baseline engagement rate. Add the ones that sound
+                like you.
+              </p>
+              <button
+                onClick={() =>
+                  importCandidates(bestPostCandidates.map((c) => c.tweetId))
+                }
+                style={styles.button}>
+                Add All {bestPostCandidates.length}
+              </button>
+              {bestPostCandidates.map((c) => {
+                const isExpanded = expandedCandidateIds.has(c.tweetId)
+                const isLong = c.text.length > 120
+                return (
+                  <div key={c.tweetId} style={styles.postCard}>
+                    <div
+                      style={{
+                        ...styles.postText,
+                        cursor: isLong ? "pointer" : "default"
+                      }}
+                      onClick={() => isLong && toggleCandidateExpanded(c.tweetId)}
+                      title={
+                        isLong
+                          ? isExpanded
+                            ? "Click to collapse"
+                            : "Click to see full post"
+                          : undefined
+                      }>
+                      {isExpanded || !isLong
+                        ? c.text
+                        : c.text.slice(0, 120) + "..."}
+                      <div style={styles.fpMuted}>
+                        {c.boostMultiplier.toFixed(1)}x your baseline engagement
+                        {" · "}
+                        {c.impressions.toLocaleString()} views
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => importCandidates([c.tweetId])}
+                      style={styles.removeBtn}
+                      title="Add to sample posts">
+                      +
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div style={styles.section}>
+            <h2 style={styles.heading}>
+              Sample Posts ({posts.length})
+              {posts.length > 0 && (
+                <span style={{ ...styles.accuracyBadge, color: accuracyColor }}>
+                  {accuracy} accuracy
+                </span>
+              )}
+            </h2>
+            {posts.length === 0 && (
+              <p style={styles.hint}>No posts added yet</p>
+            )}
+            {posts.map((post) => (
+              <div key={post.id} style={styles.postCard}>
+                <div style={styles.postText}>
+                  {post.text.length > 120
+                    ? post.text.slice(0, 120) + "..."
+                    : post.text}
+                </div>
+                <button
+                  onClick={() => removePost(post.id)}
+                  style={styles.removeBtn}
+                  title="Remove post">
+                  x
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Analyze button — usable from either input tab, since both feed the same fingerprint */}
+      {(activeTab === "profile" || activeTab === "posts") && (
+        <>
+          <div style={styles.section}>
+            <button
+              onClick={analyze}
+              disabled={!canAnalyze}
+              style={{
+                ...styles.button,
+                ...styles.primaryButton,
+                opacity: canAnalyze ? 1 : 0.5
+              }}>
+              {profileText.trim().length > 100 && posts.length >= MIN_POSTS
+                ? "Analyze (Profile + Posts)"
+                : profileText.trim().length > 100
+                  ? "Analyze (Profile)"
+                  : `Analyze (${posts.length}/${MIN_POSTS} posts min)`}
+            </button>
+            {fingerprint && (
+              <button
+                onClick={clearFingerprint}
+                style={{ ...styles.button, marginLeft: 8 }}>
+                Clear Fingerprint
+              </button>
+            )}
+          </div>
+
+          {status && <p style={styles.status}>{status}</p>}
+        </>
+      )}
+
+      {/* Fingerprint display + Voice Coach — Voice tab only, not duplicated under Posts */}
+      {activeTab === "profile" && (
+        <>
+          {fingerprint && (
+            <div style={styles.section}>
+              <h2 style={styles.heading}>Your Voice Fingerprint</h2>
+
+              <div style={styles.fpGrid}>
+                <FpCard title="Hook Preferences">
+                  {fingerprint.topHookTypes.length > 0 ? (
+                    <ol style={styles.fpList}>
+                      {fingerprint.topHookTypes.map((ht, i) => (
+                        <li key={ht}>
+                          #{i + 1} {humanizeHookType(ht)}
+                          {fingerprint.hookTypeDistribution[ht] != null && (
+                            <span style={styles.fpMuted}>
+                              {" "}
+                              ({Math.round(fingerprint.hookTypeDistribution[ht]! * 100)}%)
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <span style={styles.fpMuted}>No patterns detected</span>
+                  )}
+                </FpCard>
+
+                <FpCard title="Length Sweet Spot">
+                  <span style={styles.fpValue}>
+                    {Math.round(fingerprint.postLength.mean)} chars
+                  </span>
+                  <span style={styles.fpMuted}>
+                    {" "}(range {fingerprint.postLength.min}-{fingerprint.postLength.max})
+                  </span>
+                </FpCard>
+
+                <FpCard title="Signature Words">
+                  <div style={styles.tagContainer}>
+                    {fingerprint.distinctiveTerms.slice(0, 10).map((t) => (
+                      <span key={t.term} style={styles.tag}>
+                        {t.term}
+                      </span>
+                    ))}
+                  </div>
+                </FpCard>
+
+                <FpCard title="Niche Keywords">
+                  <div style={styles.tagContainer}>
+                    {fingerprint.nicheKeywords.slice(0, 10).map((t) => (
+                      <span key={t.term} style={styles.tag}>
+                        {t.term}
+                      </span>
+                    ))}
+                  </div>
+                </FpCard>
+
+                <FpCard title="Tone">
+                  <div style={styles.fpRow}>
+                    <span>First person (I/my):</span>
+                    <span style={styles.fpValue}>
+                      {Math.round(fingerprint.firstPersonRatio * 100)}%
+                    </span>
+                  </div>
+                  <div style={styles.fpRow}>
+                    <span>Addresses reader (you/your):</span>
+                    <span style={styles.fpValue}>
+                      {Math.round(fingerprint.secondPersonRatio * 100)}%
+                    </span>
+                  </div>
+                  <div style={styles.fpRow}>
+                    <span>Questions:</span>
+                    <span style={styles.fpValue}>
+                      {Math.round(fingerprint.questionRatio * 100)}%
+                    </span>
+                  </div>
+                  <div style={styles.fpRow}>
+                    <span>Formality:</span>
+                    <span style={styles.fpValue}>
+                      {fingerprint.formalityScore < 0.3
+                        ? "Casual"
+                        : fingerprint.formalityScore < 0.6
+                          ? "Conversational"
+                          : "Formal"}
+                    </span>
+                  </div>
+                </FpCard>
+
+                <FpCard title="Structure">
+                  <div style={styles.fpRow}>
+                    <span>Avg paragraphs:</span>
+                    <span style={styles.fpValue}>{fingerprint.avgParagraphs}</span>
+                  </div>
+                  <div style={styles.fpRow}>
+                    <span>Uses colons:</span>
+                    <span style={styles.fpValue}>
+                      {Math.round(fingerprint.usesColons * 100)}%
+                    </span>
+                  </div>
+                  <div style={styles.fpRow}>
+                    <span>Short fragments:</span>
+                    <span style={styles.fpValue}>
+                      {Math.round(fingerprint.fragmentRatio * 100)}%
+                    </span>
+                  </div>
+                  <div style={styles.fpRow}>
+                    <span>Avg sentence length:</span>
+                    <span style={styles.fpValue}>
+                      {fingerprint.sentenceLength.mean} words
+                    </span>
+                  </div>
+                </FpCard>
+              </div>
+
+              <p style={styles.fpTimestamp}>
+                {fingerprint.sampleCount > 0
+                  ? `Generated from ${fingerprint.sampleCount} posts`
+                  : "Generated from voice profile"}
+                {" \u2022 "}
+                {new Date(fingerprint.generatedAt).toLocaleDateString()}
+              </p>
+
+              <VoiceCoachPanel
+                fingerprint={fingerprint}
+                overrides={overrides}
+                diagnostics={diagnoseFingerprint(fingerprint, posts.length)}
+                onChange={updateOverrides}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Governor tab */}
+      {activeTab === "governor" && (
+        <div style={styles.section}>
+          <GovernorSettings
+            config={config.governor}
+            onChange={(governor) =>
+              updateConfig({ ...config, governor })
+            }
+          />
+        </div>
+      )}
+
+      {/* Hooks tab (scoring + types combined) */}
+      {activeTab === "hooks" && (
+        <>
+          <div style={styles.section}>
+            <HookScoringSettings
+              analyzerConfig={config.hookAnalyzer}
+              pipelineConfig={config.pipeline}
+              onAnalyzerChange={(hookAnalyzer) =>
+                updateConfig({ ...config, hookAnalyzer })
+              }
+              onPipelineChange={(pipeline) =>
+                updateConfig({ ...config, pipeline })
+              }
+            />
+          </div>
+          <div style={{ borderTop: "1px solid #2f3336", marginBottom: 24 }} />
+          <div style={styles.section}>
+            <HookTypesSettings
+              config={config.hookTypes}
+              onChange={(hookTypes) =>
+                updateConfig({ ...config, hookTypes })
+              }
+            />
+          </div>
+        </>
+      )}
+
+      {/* Analytics tab */}
+      {activeTab === "analytics" && (
+        <div style={styles.section}>
+          <AnalyticsTab isPro={isPro} />
+        </div>
+      )}
+
+      {/* AI Rewrites tab */}
+      {activeTab === "aiRewrites" && (
+        <div style={{ padding: "24px 0" }}>
+          <h3 style={{ margin: "0 0 8px", fontSize: "15px" }}>AI Rewrite Suggestions</h3>
+          <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.5 }}>
+            PostPilot can suggest stronger rewrites (always available; especially useful under 65). Generations are
+            included — there's no API key to manage.
+          </p>
+          <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.5 }}>
+            Free gets 3 rewrites/day, 1 variant each. Pro gets 40/day, 3 variants each, and rewrites are calibrated
+            to your Voice Match profile when one exists. Limits reset at midnight UTC.
+          </p>
+          <p style={{ color: "#71767b", fontSize: "13px", margin: "0 0 20px", lineHeight: 1.5 }}>
+            Your post text (and, for Pro, a compact summary of your writing style) is sent to PostPilot's rewrite
+            service to generate suggestions — see the{" "}
+            <a href="https://postpilotforx.com/privacy-policy.html" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
+              privacy policy
+            </a>{" "}
+            for exactly what that covers.
+          </p>
+        </div>
+      )}
+
+      {/* Config Actions footer (config tabs only) */}
+      {isConfigTab && (
+        <ConfigActions
+          config={config}
+          onImport={(imported) => updateConfig(imported)}
+          onReset={() => updateConfig(buildDefaults())}
+          onGovernorImport={(governor) => updateConfig({ ...config, governor })}
+        />
+      )}
+    </div>
+  )
+}
+
+function FpCard({
+  title,
+  children
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div style={styles.fpCard}>
+      <div style={styles.fpCardTitle}>{title}</div>
+      {children}
+    </div>
+  )
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    maxWidth: 640,
+    margin: "0 auto",
+    padding: "24px 20px",
+    fontFamily:
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    background: "#16181c",
+    color: "#e7e9ea",
+    minHeight: "100vh"
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 700,
+    margin: "0 0 4px"
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#71767b",
+    margin: "0 0 16px",
+    lineHeight: 1.5
+  },
+  startHere: {
+    background: "#1e2024",
+    border: "1px solid #2f3336",
+    borderRadius: 8,
+    padding: "12px 14px",
+    marginBottom: 20
+  },
+  startHereLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.6,
+    textTransform: "uppercase" as const,
+    color: "#1d9bf0",
+    marginBottom: 4
+  },
+  startHereText: {
+    fontSize: 13,
+    color: "#e7e9ea",
+    margin: 0,
+    lineHeight: 1.5
+  },
+  tabBar: {
+    display: "flex",
+    gap: 0,
+    marginBottom: 20,
+    borderBottom: "1px solid #2f3336",
+    overflowX: "auto" as const
+  },
+  tab: {
+    padding: "10px 16px",
+    background: "none",
+    border: "none",
+    borderBottom: "2px solid transparent",
+    color: "#71767b",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    whiteSpace: "nowrap" as const,
+    flexShrink: 0
+  },
+  tabActive: {
+    color: "#e7e9ea",
+    borderBottomColor: "#1d9bf0"
+  },
+  tabCheck: {
+    color: "#00ba7c"
+  },
+  section: {
+    marginBottom: 24
+  },
+  heading: {
+    fontSize: 15,
+    fontWeight: 600,
+    margin: "0 0 8px",
+    display: "flex",
+    alignItems: "center",
+    gap: 8
+  },
+  hint: {
+    fontSize: 13,
+    color: "#71767b",
+    margin: "0 0 8px"
+  },
+  textarea: {
+    width: "100%",
+    padding: 12,
+    background: "#1e2024",
+    border: "1px solid #2f3336",
+    borderRadius: 8,
+    color: "#e7e9ea",
+    fontSize: 14,
+    fontFamily: "inherit",
+    resize: "vertical" as const,
+    boxSizing: "border-box" as const
+  },
+  button: {
+    marginTop: 8,
+    padding: "8px 16px",
+    background: "#2f3336",
+    border: "none",
+    borderRadius: 8,
+    color: "#e7e9ea",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer"
+  },
+  primaryButton: {
+    background: "#1d9bf0",
+    color: "#fff"
+  },
+  optionalBadge: {
+    fontSize: 11,
+    color: "#71767b",
+    fontWeight: 400
+  },
+  importRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8
+  },
+  fileLoaded: {
+    fontSize: 12,
+    color: "#00ba7c"
+  },
+  postCard: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 8,
+    padding: "8px 10px",
+    background: "#1e2024",
+    border: "1px solid #2f3336",
+    borderRadius: 8,
+    marginBottom: 6,
+    fontSize: 13,
+    lineHeight: 1.4
+  },
+  postText: {
+    flex: 1,
+    color: "#e7e9ea",
+    whiteSpace: "pre-wrap" as const,
+    wordBreak: "break-word" as const
+  },
+  removeBtn: {
+    background: "none",
+    border: "none",
+    color: "#71767b",
+    cursor: "pointer",
+    fontSize: 14,
+    padding: "0 4px",
+    flexShrink: 0
+  },
+  status: {
+    fontSize: 13,
+    color: "#1d9bf0",
+    margin: "8px 0"
+  },
+  accuracyBadge: {
+    fontSize: 11,
+    fontWeight: 400
+  },
+  fpGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10
+  },
+  fpCard: {
+    background: "#1e2024",
+    border: "1px solid #2f3336",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 13
+  },
+  fpCardTitle: {
+    fontSize: 11,
+    color: "#71767b",
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
+    marginBottom: 6
+  },
+  fpList: {
+    margin: 0,
+    paddingLeft: 18,
+    lineHeight: 1.6
+  },
+  fpValue: {
+    color: "#1d9bf0",
+    fontWeight: 600
+  },
+  fpMuted: {
+    color: "#71767b"
+  },
+  fpRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "2px 0"
+  },
+  tagContainer: {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: 4
+  },
+  tag: {
+    background: "#2f3336",
+    padding: "2px 8px",
+    borderRadius: 10,
+    fontSize: 12,
+    color: "#e7e9ea"
+  },
+  fpTimestamp: {
+    fontSize: 11,
+    color: "#71767b",
+    marginTop: 12,
+    textAlign: "center" as const
+  }
+}
+
+export default Options

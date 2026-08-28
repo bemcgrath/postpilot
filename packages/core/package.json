@@ -1,0 +1,22 @@
+{
+  "name": "@postpilot/core",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    "./scoring/*": "./src/scoring/*.ts",
+    "./learning/*": "./src/learning/*.ts",
+    "./config/*": "./src/config/*.ts",
+    "./storage/*": "./src/storage/*.ts",
+    "./rewrite/*": "./src/rewrite/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  }
+}

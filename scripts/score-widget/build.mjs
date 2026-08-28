@@ -6,13 +6,19 @@ import path from "path"
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, "..", "..")
 
-/** Resolves the project's `~*` -> `./src/*` tsconfig path alias for esbuild. */
+/**
+ * Resolves the `~*` tsconfig path alias for esbuild, against
+ * packages/core/src -- the pure scoring/learning/config code this widget
+ * bundles moved there in the 2026-08-28 monorepo extraction. Everything
+ * entry.ts imports lives under packages/core; nothing here needs
+ * apps/extension/src.
+ */
 const tildeAlias = {
   name: "tilde-alias",
   setup(build) {
     build.onResolve({ filter: /^~/ }, (args) => {
       const rel = args.path.slice(1)
-      const base = path.resolve(root, "src", rel)
+      const base = path.resolve(root, "packages", "core", "src", rel)
       for (const ext of ["", ".ts", ".tsx"]) {
         if (existsSync(base + ext)) return { path: base + ext }
       }
