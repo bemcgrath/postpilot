@@ -42,7 +42,7 @@ jobs:
       # protects is that scoring/learning computation stays chrome-free.
       - name: Assert packages/core's scoring/learning stays chrome-and-DOM-free
         run: |
-          if grep -rEq "chrome\.(storage|runtime)|document\.(querySelector|getElementById|createElement)|window\.(location|getComputedStyle)" --include="*.ts" packages/core/src/scoring packages/core/src/learning packages/core/src/config packages/core/src/rewrite; then
+          if grep -rEq "chrome\.(storage|runtime)|document\.(querySelector|getElementById|createElement)|window\.(location|getComputedStyle)" --include="*.ts" packages/core/src/scoring packages/core/src/learning packages/core/src/config packages/core/src/rewrite packages/core/src/drafts; then
             echo "packages/core's scoring/learning/config/rewrite code references a browser-extension or DOM API -- the pure scoring core has picked up a dependency it shouldn't have."
             exit 1
           fi
@@ -82,6 +82,32 @@ jobs:
             exit 1
           fi
           echo "OK: score widget bundle has no chrome.*/DOM API references."
+
+  mobile:
+    name: Mobile (typecheck, export)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck --workspace=apps/mobile
+
+      # Bundles the JS/TS graph without building native code -- proves Metro
+      # actually resolves @postpilot/core through the workspace symlink (and
+      # its package.json exports map) at real bundle time, the mobile
+      # equivalent of the extension job's `plasmo build` check. Does not
+      # exercise anything native-module-specific (MMKV, etc.) -- that needs
+      # a real device or a dev-client build, which CI can't do here.
+      - name: Export (bundle check)
+        working-directory: apps/mobile
+        run: npx expo export --platform ios
 
   worker:
     name: Worker (test, typecheck)

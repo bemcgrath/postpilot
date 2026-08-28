@@ -13,6 +13,15 @@
  * `if (!storage) return <default>` behavior exactly, with zero required
  * changes at the extension's entry points -- `installPlatform()` exists so
  * a future mobile build can swap in an MMKV-backed store instead.
+ *
+ * Deliberately does NOT reference the global ambient `chrome` type from
+ * `@types/chrome`. That type is only available in a checking context that
+ * happens to have `@types/chrome` hoisted into its type search path (true
+ * for apps/extension, and, by accident, for packages/core checked alone) --
+ * it is NOT available when apps/mobile's stricter Expo-derived tsconfig
+ * typechecks this same shared file. A package multiple platforms consume
+ * can't depend on any one consumer's ambient types; every reference below
+ * goes through `globalThis` with a small local structural type instead.
  */
 
 export interface KeyValueStore {
@@ -32,16 +41,35 @@ export interface Platform {
   randomUUID(): string
 }
 
+/** Minimal structural shape of chrome.storage.local -- only what this file calls. */
+interface ChromeStorageAreaLike {
+  get(keys: string | string[] | null, callback: (result: Record<string, unknown>) => void): void
+  set(items: Record<string, unknown>, callback?: () => void): void
+  remove(keys: string | string[], callback?: () => void): void
+  clear(callback?: () => void): void
+}
+
+interface ChromeOnChangedLike {
+  addListener(cb: (changes: Record<string, { newValue?: unknown }>) => void): void
+  removeListener(cb: (changes: Record<string, { newValue?: unknown }>) => void): void
+}
+
+interface ChromeGlobalLike {
+  runtime?: { id?: string }
+  storage?: { local?: ChromeStorageAreaLike; onChanged?: ChromeOnChangedLike }
+}
+
+/** The chrome global, read structurally through globalThis -- never assumes @types/chrome is present. */
+function getChromeGlobal(): ChromeGlobalLike | undefined {
+  return (globalThis as { chrome?: ChromeGlobalLike }).chrome
+}
+
 /** Safely detect a live chrome.storage.local — mirrors the guard every getStorage() used to repeat. */
-function detectChromeStorage(): typeof chrome.storage.local | null {
+function detectChromeStorage(): ChromeStorageAreaLike | null {
   try {
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.runtime?.id &&
-      typeof chrome.storage !== "undefined" &&
-      typeof chrome.storage.local !== "undefined"
-    ) {
-      return chrome.storage.local
+    const chromeGlobal = getChromeGlobal()
+    if (chromeGlobal?.runtime?.id && chromeGlobal.storage?.local) {
+      return chromeGlobal.storage.local
     }
   } catch {
     // Extension context invalidated or not available
@@ -55,7 +83,7 @@ function fallbackUuid(): string {
 }
 
 class ChromeStorageAdapter implements KeyValueStore {
-  constructor(private readonly area: typeof chrome.storage.local) {}
+  constructor(private readonly area: ChromeStorageAreaLike) {}
 
   get(keys: string | string[]): Promise<Record<string, unknown>> {
     return new Promise((resolve) => this.area.get(keys, resolve))
@@ -78,6 +106,7 @@ class ChromeStorageAdapter implements KeyValueStore {
   }
 
   onChanged(cb: (changes: Record<string, { newValue?: unknown }>) => void): () => void {
+    const onChanged = getChromeGlobal()?.storage?.onChanged
     const listener = (changes: Record<string, { newValue?: unknown }>) => {
       try {
         cb(changes)
@@ -85,10 +114,10 @@ class ChromeStorageAdapter implements KeyValueStore {
         // Extension context invalidated
       }
     }
-    chrome.storage.onChanged.addListener(listener)
+    onChanged?.addListener(listener)
     return () => {
       try {
-        chrome.storage.onChanged.removeListener(listener)
+        onChanged?.removeListener(listener)
       } catch {
         // Extension context invalidated
       }
@@ -97,7 +126,7 @@ class ChromeStorageAdapter implements KeyValueStore {
 }
 
 let installedPlatform: Platform | null = null
-let cachedArea: typeof chrome.storage.local | null = null
+let cachedArea: ChromeStorageAreaLike | null = null
 let cachedChromePlatform: Platform | null = null
 
 /** Explicitly install a platform (e.g. an MMKV-backed one on mobile, or a MemoryStore in tests). Overrides auto-detection. */

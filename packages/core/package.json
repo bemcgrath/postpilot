@@ -8,7 +8,8 @@
     "./learning/*": "./src/learning/*.ts",
     "./config/*": "./src/config/*.ts",
     "./storage/*": "./src/storage/*.ts",
-    "./rewrite/*": "./src/rewrite/*.ts"
+    "./rewrite/*": "./src/rewrite/*.ts",
+    "./drafts/*": "./src/drafts/*.ts"
   },
   "scripts": {
     "test": "vitest run",

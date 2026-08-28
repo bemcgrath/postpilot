@@ -1,5 +1,5 @@
 import React from "react"
-import type { DraftEntry } from "~drafts/draft-storage"
+import type { DraftEntry } from "@postpilot/core/drafts/draft-storage"
 import { humanizeHookType } from "@postpilot/core/scoring/hook-types"
 
 interface Props {

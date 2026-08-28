@@ -1,4 +1,4 @@
-import { getStore, uuid } from "@postpilot/core/storage/adapter"
+import { getStore, uuid } from "../storage/adapter"
 
 const DRAFTS_KEY = "postpilot_drafts"
 const MAX_DRAFTS = 20
