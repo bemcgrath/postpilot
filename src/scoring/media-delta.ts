@@ -13,19 +13,24 @@ import type { ComposeMedia } from "./types"
  * rough proportion are grounded in the public source; the rest is a modest,
  * intentionally conservative default.
  *
- * LINK_PRIOR_DELTA: a conservative default, NOT sourced from X's published
- * algorithm. The public weights file has no link penalty at all — a link
- * open/share is modeled as a positive engagement signal, not a negative one
- * — and nothing in the public repo distinguishes Premium/non-Premium
- * treatment. Some ranking components (e.g. spam/gaming rules) are
- * deliberately unpublished, so a real penalty may exist that this can't cite.
- * This prior exists only to give free-tier and cold-start users *some*
- * signal; it is replaced entirely by the user's own learned linkBoost once
- * enough of their posts with and without links have been collected.
+ * LINK_PRIOR_DELTA: a small, deliberately weak default, NOT sourced from
+ * X's published algorithm. A second research pass across the public repo --
+ * the weights file plus visibility-filtering/rules (NSFW gating, social-graph
+ * rules, tweet/user label drops), botmaker-rules/scarecrow (bot detection),
+ * and grox/flows (reply_spam, and three unrelated flows) -- found no link
+ * penalty or link-spam rule anywhere. Both public link weights
+ * (OpenLinkWeight, ShareViaCopyLinkWeight) are positive engagement signals.
+ * Some components (e.g. Grox prompts, some botmaker rules) are deliberately
+ * unpublished, so an undisclosed penalty may still exist, and keeping people
+ * on-platform is a plausible general incentive independent of X specifically
+ * -- but nothing here supports a strong penalty, so this stays small rather
+ * than confident in either direction. Replaced entirely by the user's own
+ * learned linkBoost once enough of their posts with and without links have
+ * been collected.
  */
 export const IMAGE_PRIOR_DELTA = 4
 export const VIDEO_PRIOR_DELTA = 6
-export const LINK_PRIOR_DELTA = -3
+export const LINK_PRIOR_DELTA = -1
 
 export interface MediaBoosts {
   imageBoost: number

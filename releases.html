@@ -99,7 +99,16 @@
     <p class="sub">The compose box now scores media, names AI slop, and shows a reach range from your own posts — not a scheduler, not account access, not writing the post for you.</p>
     <p class="fine">STILL LOCAL · STILL NO X LOGIN · YOU HIT SEND</p>
 
-    <h2>Just shipped (v0.7.4) <span class="date">Aug 28, 2026</span></h2>
+    <h2>Just shipped (v0.7.5) <span class="date">Aug 28, 2026</span></h2>
+    <div class="list">
+      <div class="item">
+        <div class="tag shipped">Shipped</div>
+        <h3>Link penalty softened, on the evidence</h3>
+        <p>We went looking for a real link penalty in X's published ranking algorithm and didn't find one — checked the visibility filters, the bot rules, the spam classifiers. The only two public link weights are both positive. So instead of guessing a bigger number, we moved our own conservative default closer to neutral (-3 → -1). Your own learned link data still overrides this the moment you have enough posts either way.</p>
+      </div>
+    </div>
+
+    <h2>v0.7.4 <span class="date">Aug 28, 2026</span></h2>
     <div class="list">
       <div class="item">
         <div class="tag shipped">Shipped</div>
@@ -182,11 +191,11 @@
 
     <h2>Share this</h2>
     <div class="share-box">
-      <pre id="share-text">Just shipped in PostPilot 0.7.4:
+      <pre id="share-text">Just shipped in PostPilot 0.7.5:
 
-• Video now scored separately from images, matching X's own published ranking algorithm (it weights a video open differently from a photo expand)
-• No repriced link penalty — the public algorithm doesn't publish one, so we didn't invent one
-• Your own learned video boost shows up in Settings → Analytics once you've got enough posts
+• Went looking for a real link penalty in X's published ranking algorithm — didn't find one, so we softened ours (-3 → -1) instead of guessing bigger
+• v0.7.4: video now scored separately from images, matching how X's own algorithm weights the two differently
+• Your own learned data still overrides both defaults once you've got enough posts
 
 Still local. Still no account access. You hit send.
 

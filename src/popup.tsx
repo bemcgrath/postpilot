@@ -64,7 +64,7 @@ function Popup() {
       <div style={{ fontSize: 12, color: "#71767b", marginBottom: 16 }}>
         v{typeof chrome !== "undefined" && chrome.runtime?.getManifest
           ? chrome.runtime.getManifest().version
-          : "0.7.4"}{" "}
+          : "0.7.5"}{" "}
         &mdash; Voice Match &amp; scoring as you type
       </div>
 

@@ -6,7 +6,7 @@ PostPilot is a Chrome extension that scores X/Twitter posts in real time as you 
 
 **Tagline:** Score every X post as you type. Pro learns your voice and your audience — AI rewrites, thread scoring, and a self-building hook library. $24/mo.
 
-**Version:** 0.7.4  
+**Version:** 0.7.5  
 **Framework:** Plasmo (React/TypeScript, Chrome MV3)  
 **Pricing:** Free tier + Pro at $24/mo via LemonSqueezy
 
@@ -217,14 +217,27 @@ User-facing list for Waves 1–4 (share with the user base): [releases.html](./r
       `CollectedPost`. Video now has its own cold-start prior
       (`VIDEO_PRIOR_DELTA`), its own learned `videoBoost`, its own row in the
       Analytics tab, and its own recommendation.
-- [ ] **Not shipped, and deliberately so: a repriced link penalty.** The
-      public algorithm has no visible link penalty at all — `OpenLinkWeight`
-      and `ShareViaCopyLinkWeight` are both positive engagement signals — and
-      no Premium/non-Premium differential is exposed in the public repo
-      (some components, e.g. spam/gaming rules, are explicitly unpublished).
-      `LINK_PRIOR_DELTA = -3` stays as a conservative, clearly-labeled
-      cold-start default, not an algorithm-sourced number. Don't invent a new
-      value here without a primary-source citation.
-- [ ] **Not shipped: Premium/Blue-tier-aware scoring.** Confirmed absent
-      end-to-end (no DOM detection, no type field). Real feature, but new
-      detection work from scratch — its own plan, not a follow-on to this one.
+- [x] **Link prior softened from -3 to -1 (0.7.5).** A second research pass
+      went beyond the weights file into `visibility-filtering/rules` (12
+      files: NSFW gating, social-graph rules, tweet/user label drops),
+      `botmaker-rules/scarecrow` (bot detection), and `grox/flows`
+      (`reply_spam` and three unrelated flows) — no link penalty or
+      link-spam rule anywhere. `OpenLinkWeight` and `ShareViaCopyLinkWeight`
+      remain the only public link-related weights, both positive. That's
+      real evidence pointing *toward* less penalty, not more, so `-3` (never
+      itself algorithm-sourced) moved to `-1` rather than being reinforced.
+      Still not a claim of X's real behavior — some components (Grox
+      prompts, some botmaker rules) are deliberately unpublished, and
+      keeping people on-platform is a plausible general incentive
+      independent of X specifically. `-1` reflects genuine uncertainty in
+      both directions, not confidence in either. Replaced entirely by the
+      user's own learned `linkBoost` once they have enough data either way.
+- [~] **Not planned: Premium/Blue-tier-aware scoring.** Confirmed absent
+      end-to-end (no DOM detection, no type field) — but shelved on purpose,
+      not just unbuilt. Even with reliable detection, there's nothing a
+      rewrite could do with it: Premium status is an account attribute, not
+      something the post text controls. The only output would be "this will
+      land softer because you're not Premium" — an ad for X's own upsell, not
+      actionable guidance — and we still have no verified magnitude to score
+      it against. Revisit only if a future feature actually needs the account
+      state for something other than a scoring delta.
