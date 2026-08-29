@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Linking,
@@ -13,6 +13,11 @@ import * as Clipboard from "expo-clipboard";
 
 import { scorePost } from "@postpilot/core/scoring/scoring-pipeline";
 import { humanizeHookType } from "@postpilot/core/scoring/hook-types";
+import { applyOverrides } from "@postpilot/core/scoring/voice-fingerprint";
+import { loadFingerprint, loadVoiceOverrides } from "@postpilot/core/scoring/voice-storage";
+import { loadLearnedInsights } from "@postpilot/core/learning/storage";
+import type { VoiceFingerprint, VoiceOverrides } from "@postpilot/core/scoring/voice-types";
+import type { LearnedInsights } from "@postpilot/core/learning/types";
 import { saveDraft } from "@postpilot/core/drafts/draft-storage";
 
 // ---------------------------------------------------------------------------
@@ -21,6 +26,15 @@ import { saveDraft } from "@postpilot/core/drafts/draft-storage";
 // multi-line-text edge case) -- this port only changes where scorePost() and
 // humanizeHookType() come from: the real @postpilot/core package instead of
 // files copied by hand into a throwaway prototype.
+//
+// M3 completion pass: wires the Voice Match fingerprint (built in Settings)
+// and learned insights (built via CSV import in Insights) into the actual
+// score, mirroring PostPilotPanel.tsx's scorePost(text, fingerprint,
+// hookTypeBoosts, overrides, context) call -- without this, Settings/
+// Insights would be settings that visibly do nothing to the live score.
+// No Free/Pro gate here (unlike the extension's isPro checks): mobile has
+// no tier enforcement yet, so anything the user has built (fingerprint,
+// insights) always applies.
 // ---------------------------------------------------------------------------
 
 function scoreColor(score: number): string {
@@ -37,14 +51,43 @@ interface ComposeScreenProps {
 export function ComposeScreen({ text, onChangeText }: ComposeScreenProps) {
   const [lastScoreMs, setLastScoreMs] = useState<number | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null);
+  const [overrides, setOverrides] = useState<VoiceOverrides | null>(null);
+  const [insights, setInsights] = useState<LearnedInsights | null>(null);
   const scoreStartRef = useRef<number>(0);
+
+  useEffect(() => {
+    Promise.all([loadFingerprint(), loadVoiceOverrides(), loadLearnedInsights()]).then(
+      ([fp, ov, ins]) => {
+        setFingerprint(fp);
+        setOverrides(ov);
+        setInsights(ins);
+      }
+    );
+  }, []);
+
+  const effectiveFingerprint = useMemo(() => {
+    if (!fingerprint) return null;
+    return overrides ? applyOverrides(fingerprint, overrides) : fingerprint;
+  }, [fingerprint, overrides]);
 
   const score = useMemo(() => {
     scoreStartRef.current = Date.now();
-    const result = text.length > 0 ? scorePost(text) : null;
+    const result =
+      text.length > 0
+        ? scorePost(
+            text,
+            effectiveFingerprint,
+            insights?.isReady ? insights.hookTypeBoosts : undefined,
+            overrides,
+            {
+              originalLengthRange: insights?.isReady ? insights.optimalLengthRange : null
+            }
+          )
+        : null;
     setLastScoreMs(Date.now() - scoreStartRef.current);
     return result;
-  }, [text]);
+  }, [text, effectiveFingerprint, overrides, insights]);
 
   async function openInX() {
     setStatus(null);
