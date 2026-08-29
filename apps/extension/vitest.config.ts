@@ -9,15 +9,13 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // ~scoring/~config/~learning still resolve a small number of modules
-      // that deliberately stayed extension-side in the monorepo extraction
-      // (voice-storage.ts, license.ts, learning/storage.ts) -- everything
-      // else moved to @postpilot/core, resolved via the workspace link in
-      // node_modules, no alias needed for it.
-      "~scoring": path.resolve(__dirname, "src/scoring"),
+      // ~config still resolves the one module that deliberately stayed
+      // extension-side (license.ts) -- voice-storage.ts, hook-storage.ts,
+      // and learning/storage.ts all promoted to @postpilot/core (2026-08-29),
+      // so ~scoring and ~learning have no files left under them and were
+      // removed here; both directories are gone from src/ too.
       "~config": path.resolve(__dirname, "src/config"),
       "~components": path.resolve(__dirname, "src/components"),
-      "~learning": path.resolve(__dirname, "src/learning"),
       "~dom": path.resolve(__dirname, "src/dom"),
       "~": path.resolve(__dirname, "src")
     }

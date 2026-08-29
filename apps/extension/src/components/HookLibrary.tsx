@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-import type { HookEntry } from "~hooks/hook-storage"
+import type { HookEntry } from "@postpilot/core/hooks/hook-storage"
 import { humanizeHookType } from "@postpilot/core/scoring/hook-types"
 
 function scoreColor(s: number): string {

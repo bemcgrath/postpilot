@@ -3,6 +3,7 @@ import type { HookTypeName } from "../scoring/types"
 
 import { MIN_POSTS_FOR_LEARNING, MIN_ORIGINALS_FOR_LEARNING } from "./types"
 import { partitionPosts } from "./segment"
+import { loadCollectedPosts, loadLearnedInsights, saveLearnedInsights } from "./storage"
 import {
   analyzeHookTypePerformance,
   smoothHookTypeBoosts
@@ -15,13 +16,30 @@ import { analyzeReplyCraft } from "./algorithms/reply-craft-learner"
 import { generateRecommendations } from "./recommendations"
 
 /**
- * Split from the extension's src/learning/engine.ts (2026-08-28 monorepo
- * extraction): this file is the pure computation only. `runLearningEngine()`
- * -- the load-from-storage / compute / save-to-storage wrapper -- moved to
- * the extension, since it depends on learning/storage.ts (extension-storage
- * backed, deliberately not moved to core). Mobile will need its own such
- * wrapper once it has a data source to run this against.
+ * Originally split across core (pure computeInsights()) and the extension
+ * (storage-touching runLearningEngine()) during the 2026-08-28 monorepo
+ * extraction, because learning/storage.ts was extension-only at the time.
+ * Re-merged (2026-08-29) once storage.ts itself was confirmed to have no
+ * DOM/chrome dependency beyond the storage adapter and promoted to core
+ * alongside hook-storage.ts and voice-storage.ts -- the split's only reason
+ * to exist went away, so apps/extension/src/learning/engine.ts is gone and
+ * both functions live here again, same file, mobile and extension both
+ * import runLearningEngine directly from @postpilot/core/learning/engine.
  */
+
+/**
+ * Run the full learning engine on collected posts: load from storage, run
+ * the pure computation, save the result.
+ */
+export async function runLearningEngine(): Promise<LearnedInsights> {
+  const posts = await loadCollectedPosts()
+  const previousInsights = await loadLearnedInsights()
+
+  const insights = computeInsights(posts, previousInsights)
+
+  await saveLearnedInsights(insights)
+  return insights
+}
 
 /**
  * Compute insights from posts (pure function, testable without storage).

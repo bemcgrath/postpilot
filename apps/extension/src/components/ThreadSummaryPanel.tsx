@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react"
 
 import { scorePost } from "@postpilot/core/scoring/scoring-pipeline"
-import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
-import { loadLearnedInsights } from "~learning/storage"
+import { loadFingerprint, loadVoiceOverrides } from "@postpilot/core/scoring/voice-storage"
+import { loadLearnedInsights } from "@postpilot/core/learning/storage"
 import type { LearnedInsights } from "@postpilot/core/learning/types"
 import { validateStoredLicense } from "~config/license"
 import { initConfig } from "@postpilot/core/config/config-storage"

@@ -1,5 +1,5 @@
 import { resolveUserHandle } from "@postpilot/core/learning/user-detector"
-import { loadUserHandle, saveUserHandle } from "~learning/storage"
+import { loadUserHandle, saveUserHandle } from "@postpilot/core/learning/storage"
 
 export { resolveUserHandle }
 

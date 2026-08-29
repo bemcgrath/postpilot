@@ -9,8 +9,8 @@ import type { ComposerKind } from "@postpilot/core/scoring/reply-context"
 import { scorePost } from "@postpilot/core/scoring/scoring-pipeline"
 import type { ScoreContext } from "@postpilot/core/scoring/scoring-pipeline"
 import { detectComposerKind, readParentTweetText } from "~dom/reply-context"
-import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
-import { loadLearnedInsights, loadFunnelSnapshot, loadCollectedPosts } from "~learning/storage"
+import { loadFingerprint, loadVoiceOverrides } from "@postpilot/core/scoring/voice-storage"
+import { loadLearnedInsights, loadFunnelSnapshot, loadCollectedPosts } from "@postpilot/core/learning/storage"
 import type { CollectedPost } from "@postpilot/core/learning/types"
 import { estimateReachRange, formatReach } from "@postpilot/core/learning/reach"
 import { evaluatePostingTime } from "@postpilot/core/scoring/timing"
@@ -68,8 +68,8 @@ import { loadDrafts, saveDraft, deleteDraft } from "@postpilot/core/drafts/draft
 import { ReviewPrompt } from "./ReviewPrompt"
 import { recordHighScorePost, shouldShowPrompt } from "~review/review-prompt-storage"
 import type { DraftEntry } from "@postpilot/core/drafts/draft-storage"
-import { loadHooks, saveHook, deleteHook } from "~hooks/hook-storage"
-import type { HookEntry } from "~hooks/hook-storage"
+import { loadHooks, saveHook, deleteHook } from "@postpilot/core/hooks/hook-storage"
+import type { HookEntry } from "@postpilot/core/hooks/hook-storage"
 
 function findNearestContentEditable(
   panelEl: HTMLElement | null

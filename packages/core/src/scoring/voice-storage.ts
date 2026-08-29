@@ -1,5 +1,5 @@
-import type { SamplePost, VoiceFingerprint, VoiceOverrides } from "@postpilot/core/scoring/voice-types"
-import { getStore } from "@postpilot/core/storage/adapter"
+import type { SamplePost, VoiceFingerprint, VoiceOverrides } from "./voice-types"
+import { getStore } from "../storage/adapter"
 
 const KEY_SAMPLE_POSTS = "postpilot_sample_posts"
 const KEY_FINGERPRINT = "postpilot_voice_fingerprint"

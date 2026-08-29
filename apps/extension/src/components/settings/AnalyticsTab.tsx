@@ -8,8 +8,8 @@ import {
   loadLearnedInsights,
   clearAllLearningData,
   upsertCollectedPosts
-} from "~learning/storage"
-import { runLearningEngine } from "~learning/engine"
+} from "@postpilot/core/learning/storage"
+import { runLearningEngine } from "@postpilot/core/learning/engine"
 import { parseAnalyticsCsv } from "@postpilot/core/learning/csv-import"
 import type { CollectionFunnelSnapshot } from "@postpilot/core/learning/funnel"
 import { humanizeHookType } from "@postpilot/core/scoring/hook-types"

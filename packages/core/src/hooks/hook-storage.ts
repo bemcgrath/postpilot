@@ -1,4 +1,4 @@
-import { getStore } from "@postpilot/core/storage/adapter"
+import { getStore } from "../storage/adapter"
 
 const HOOK_KEY = "postpilot_hook_library"
 const MAX_HOOKS = 50

@@ -42,7 +42,7 @@ jobs:
       # protects is that scoring/learning computation stays chrome-free.
       - name: Assert packages/core's scoring/learning stays chrome-and-DOM-free
         run: |
-          if grep -rEq "chrome\.(storage|runtime)|document\.(querySelector|getElementById|createElement)|window\.(location|getComputedStyle)" --include="*.ts" packages/core/src/scoring packages/core/src/learning packages/core/src/config packages/core/src/rewrite packages/core/src/drafts; then
+          if grep -rEq "chrome\.(storage|runtime)|document\.(querySelector|getElementById|createElement)|window\.(location|getComputedStyle)" --include="*.ts" packages/core/src/scoring packages/core/src/learning packages/core/src/config packages/core/src/rewrite packages/core/src/drafts packages/core/src/hooks; then
             echo "packages/core's scoring/learning/config/rewrite code references a browser-extension or DOM API -- the pure scoring core has picked up a dependency it shouldn't have."
             exit 1
           fi

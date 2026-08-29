@@ -1,5 +1,5 @@
-import type { CollectedPost, LearnedInsights } from "@postpilot/core/learning/types"
-import { STORAGE_KEYS, MAX_STORED_POSTS } from "@postpilot/core/learning/types"
+import type { CollectedPost, LearnedInsights } from "./types"
+import { STORAGE_KEYS, MAX_STORED_POSTS } from "./types"
 import {
   EMPTY_FUNNEL,
   mergeSkipIds,
@@ -7,8 +7,8 @@ import {
   type CollectionFunnelSnapshot,
   type OwnPostSkip,
   type StoredFunnel
-} from "@postpilot/core/learning/funnel"
-import { getStore } from "@postpilot/core/storage/adapter"
+} from "./funnel"
+import { getStore } from "../storage/adapter"
 
 // --- User Handle ---
 

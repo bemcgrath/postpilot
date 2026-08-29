@@ -21,10 +21,10 @@ import {
   saveSamplePosts,
   saveVoiceOverrides,
   saveVoiceProfile
-} from "~scoring/voice-storage"
+} from "@postpilot/core/scoring/voice-storage"
 import { diagnoseFingerprint } from "@postpilot/core/scoring/voice-diagnostics"
 import { humanizeHookType } from "@postpilot/core/scoring/hook-types"
-import { loadCollectedPosts } from "~learning/storage"
+import { loadCollectedPosts } from "@postpilot/core/learning/storage"
 import { selectBestPostsForImport, type BestPostCandidate } from "@postpilot/core/learning/best-posts"
 import { buildDefaults } from "@postpilot/core/config/defaults"
 import { initConfig, saveConfig } from "@postpilot/core/config/config-storage"

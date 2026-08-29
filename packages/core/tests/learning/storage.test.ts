@@ -47,7 +47,7 @@ describe("normalizeInsights", () => {
       optimalLengthRange: null
       // insightsVersion / segmentation / originalsAnalyzed / repliesAnalyzed /
       // unknownSegmentCount / replyInsights intentionally absent
-    } as unknown as Partial<import("@postpilot/core/learning/types").LearnedInsights>
+    } as unknown as Partial<import("~learning/types").LearnedInsights>
 
     const result = normalizeInsights(staleFromDisk)
     expect(result.insightsVersion).toBe(1)
@@ -73,7 +73,7 @@ describe("normalizeInsights", () => {
       hookTypeBoosts: {},
       optimalLengthRange: null
       // weekdayTimePerformance / weekendTimePerformance intentionally absent
-    } as unknown as Partial<import("@postpilot/core/learning/types").LearnedInsights>
+    } as unknown as Partial<import("~learning/types").LearnedInsights>
 
     const result = normalizeInsights(staleFromDisk)
     // Would have been undefined before the fix -- .length on this crashed the UI.
@@ -113,7 +113,7 @@ describe("normalizeInsights", () => {
       recommendations: [],
       hookTypeBoosts: {},
       optimalLengthRange: null
-    } as unknown as Partial<import("@postpilot/core/learning/types").LearnedInsights>
+    } as unknown as Partial<import("~learning/types").LearnedInsights>
 
     const result = normalizeInsights(staleFromDisk)
     expect(() => result.mediaPerformance!.withVideo.avgER).not.toThrow()

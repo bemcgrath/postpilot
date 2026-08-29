@@ -2,7 +2,7 @@ import type { PostScore } from "@postpilot/core/scoring/types"
 import type { ScoreContext } from "@postpilot/core/scoring/scoring-pipeline"
 import { humanizeHookType } from "@postpilot/core/scoring/hook-types"
 import { loadLicenseStatus } from "~config/license"
-import { loadFingerprint, loadVoiceOverrides } from "~scoring/voice-storage"
+import { loadFingerprint, loadVoiceOverrides } from "@postpilot/core/scoring/voice-storage"
 import { getOrCreateDeviceId } from "./device-id-storage"
 
 export interface RewriteSuggestion {

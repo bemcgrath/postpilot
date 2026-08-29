@@ -20,8 +20,8 @@ import {
   upsertCollectedPosts,
   loadLearnedInsights,
   recordOwnPostSkips
-} from "~learning/storage"
-import { runLearningEngine } from "~learning/engine"
+} from "@postpilot/core/learning/storage"
+import { runLearningEngine } from "@postpilot/core/learning/engine"
 import type { OwnPostSkip } from "@postpilot/core/learning/funnel"
 
 export const config: PlasmoCSConfig = {

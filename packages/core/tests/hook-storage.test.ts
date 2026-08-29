@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { installPlatform, resetPlatform } from "@postpilot/core/storage/adapter"
-import { createMemoryPlatform } from "@postpilot/core/storage/memory-store"
+import { installPlatform, resetPlatform } from "../src/storage/adapter"
+import { createMemoryPlatform } from "../src/storage/memory-store"
 import { deleteHook, loadHooks, saveHook } from "../src/hooks/hook-storage"
 
 // First real coverage for this module -- see draft-storage.test.ts for why.

@@ -9,7 +9,8 @@
     "./config/*": "./src/config/*.ts",
     "./storage/*": "./src/storage/*.ts",
     "./rewrite/*": "./src/rewrite/*.ts",
-    "./drafts/*": "./src/drafts/*.ts"
+    "./drafts/*": "./src/drafts/*.ts",
+    "./hooks/*": "./src/hooks/*.ts"
   },
   "scripts": {
     "test": "vitest run",
