@@ -9,3 +9,5 @@ marketing/
 .env.local
 .env.chrome
 .env.production
+scripts/.triage_state.json
+scripts/nightly_triage.py
