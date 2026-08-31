@@ -4,29 +4,16 @@ import { callAnthropic } from "./anthropic"
 import { buildSystemPrompt, buildUserContent, parseRewrites } from "./prompt"
 import { handleVotes } from "./votes"
 import { handleSurvey } from "./survey"
+import { handleTrial } from "./trial"
+import { isAuthorized } from "./auth"
 import { splitHookBody, stitchHook } from "./hook-split"
 import type { Env, RewriteRequestBody } from "./types"
-
-const CLIENT_KEY_HEADER = "X-PostPilot-Key"
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
   })
-}
-
-function isAuthorized(request: Request, env: Env): boolean {
-  const expected = env.REWRITE_CLIENT_SECRET
-  // Secret is not set on this worker yet. Fail *open* so a missing secret
-  // cannot take down rewrites. Once `wrangler secret put REWRITE_CLIENT_SECRET`
-  // matches the extension's PLASMO_PUBLIC_REWRITE_KEY, this branch stops
-  // running and the header is required.
-  if (!expected) {
-    console.warn("[postpilot-rewrite-worker] REWRITE_CLIENT_SECRET unset; allowing request")
-    return true
-  }
-  return request.headers.get(CLIENT_KEY_HEADER) === expected
 }
 
 function isValidIdentity(identity: unknown): identity is RewriteRequestBody["identity"] {
@@ -72,10 +59,10 @@ export async function handleRewrite(request: Request, env: Env): Promise<Respons
 
   const tier = await resolveTier(env, body.identity)
 
-  // Server owns variant count. A Free identity can't claim 3, and a Pro
-  // identity always gets 3 even if the client UI thought it was Free.
-  const count = tier === "pro" ? 3 : 1
-  const voiceDigest = tier === "pro" ? body.voiceDigest : undefined
+  // Server owns variant count. A Free identity can't claim 3; Pro and Trial
+  // identities always get 3 even if the client UI thought otherwise.
+  const count = tier === "pro" || tier === "trial" ? 3 : 1
+  const voiceDigest = tier === "pro" || tier === "trial" ? body.voiceDigest : undefined
 
   const cap = dailyCapFor(env, tier)
   const idKey = identityKey(body.identity)
@@ -126,6 +113,13 @@ export default {
 
     if (url.pathname === "/v1/survey") {
       return handleSurvey(request, env)
+    }
+
+    if (url.pathname === "/v1/trial") {
+      if (!isAuthorized(request, env)) {
+        return json({ error: "UNAUTHORIZED" }, 401)
+      }
+      return handleTrial(request, env)
     }
 
     if (request.method === "POST" && url.pathname === "/v1/rewrite") {

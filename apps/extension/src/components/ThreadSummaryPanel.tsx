@@ -4,7 +4,7 @@ import { scorePost } from "@postpilot/core/scoring/scoring-pipeline"
 import { loadFingerprint, loadVoiceOverrides } from "@postpilot/core/scoring/voice-storage"
 import { loadLearnedInsights } from "@postpilot/core/learning/storage"
 import type { LearnedInsights } from "@postpilot/core/learning/types"
-import { validateStoredLicense } from "~config/license"
+import { getEffectiveTier } from "~rewrite/trial-service"
 import { initConfig } from "@postpilot/core/config/config-storage"
 
 interface TweetScore {
@@ -76,9 +76,10 @@ export function ThreadSummaryPanel() {
   useEffect(() => {
     initConfig().catch((err) => console.error("[PostPilot]", err))
     // Dev bypass, dev builds only (mirrors PostPilotPanel.tsx) -- devPro must
-    // never be honored on a real Web Store build.
-    validateStoredLicense().then((status) => {
-      if (status.isActive) { setIsPro(true); return }
+    // never be honored on a real Web Store build. Trial is treated the same
+    // as Pro here (isPro && isTrial both unlock scoring with the fingerprint).
+    getEffectiveTier().then((tier) => {
+      if (tier.isPro || tier.isTrial) { setIsPro(true); return }
       if (!isDevBuild()) return
       const storage = getStorage()
       if (!storage) return

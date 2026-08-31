@@ -194,6 +194,36 @@ describe("handleRewrite orchestration", () => {
     expect(userContent).toContain("shipping")
   })
 
+  it("passes a trial identity's voiceDigest through and grants 3 variants, same as pro", async () => {
+    vi.mocked(resolveTier).mockResolvedValue("trial")
+    vi.mocked(checkAndIncrement).mockResolvedValue({
+      allowed: true,
+      remaining: 2,
+      resetsAt: "2026-01-01T00:00:00.000Z",
+    })
+
+    const trialBody = {
+      ...validBody,
+      count: 1, // client shouldn't matter -- server owns the count for trial too
+      voiceDigest: {
+        distinctiveTerms: ["shipping", "iterate"],
+        sentenceLengthTarget: 14,
+        firstPersonRatio: 0.4,
+        secondPersonRatio: 0.2,
+        topHookTypes: ["contrarian"],
+      },
+    }
+
+    const res = await handleRewrite(makeRequest(trialBody), makeEnv())
+    expect(res.status).toBe(200)
+
+    const [, , userContent] = vi.mocked(callAnthropic).mock.calls[0]
+    expect(userContent).toContain("VOICE PROFILE")
+    expect(userContent).toContain("shipping")
+    const data = (await res.json()) as { tier: string }
+    expect(data.tier).toBe("trial")
+  })
+
   it("returns 502 when generation fails", async () => {
     vi.mocked(resolveTier).mockResolvedValue("free")
     vi.mocked(checkAndIncrement).mockResolvedValue({

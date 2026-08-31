@@ -30,6 +30,8 @@ import { buildDefaults } from "@postpilot/core/config/defaults"
 import { initConfig, saveConfig } from "@postpilot/core/config/config-storage"
 import { activateLicense, deactivateLicense, loadLicenseStatus } from "~config/license"
 import type { LicenseStatus } from "~config/license"
+import { getTrialStatus, startTrial } from "~rewrite/trial-service"
+import type { TrialStatus } from "~rewrite/trial-service"
 
 import { GovernorSettings } from "~components/settings/GovernorSettings"
 import { HookScoringSettings } from "~components/settings/HookScoringSettings"
@@ -77,6 +79,8 @@ function Options() {
   const [license, setLicense] = useState<LicenseStatus>({ isActive: false, licenseKey: null, instanceId: null, error: null })
   const [licenseInput, setLicenseInput] = useState("")
   const [licenseLoading, setLicenseLoading] = useState(false)
+  const [trial, setTrial] = useState<TrialStatus>({ active: false })
+  const [trialStarting, setTrialStarting] = useState(false)
   const [devPro, setDevPro] = useState(false)
   const [importStatus, setImportStatus] = useState("")
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -103,6 +107,7 @@ function Options() {
     loadNicheSpec().then(setNicheText)
     initConfig().then(setConfig)
     loadLicenseStatus().then(setLicense)
+    getTrialStatus().then(setTrial)
     chrome.storage.local.get("postpilot_dev_pro", (r) => {
       if (r.postpilot_dev_pro === true) setDevPro(true)
     })
@@ -278,6 +283,7 @@ function Options() {
   // chrome.storage.local, which any user can write via devtools, so honoring
   // it on a real Web Store build would unlock every Pro feature for free.
   const isPro = isDev ? devPro : license.isActive
+  const isTrial = !license.isActive && trial.active
 
   return (
     <div style={styles.container}>
@@ -314,7 +320,7 @@ function Options() {
       {/* Tabs */}
       <div style={styles.tabBar}>
         {([
-          { id: "license" as TabId, label: license.isActive ? "Pro ✓" : "License", indicator: "" },
+          { id: "license" as TabId, label: license.isActive ? "Pro ✓" : isTrial ? `Trial: ${trial.daysLeft ?? 7}d` : "License", indicator: "" },
           { id: "profile" as TabId, label: "Voice", indicator: profileText.trim().length > 100 ? " *" : "" },
           { id: "posts" as TabId, label: "Posts", indicator: posts.length > 0 ? ` (${posts.length})` : "" },
           { id: "analytics" as TabId, label: "Analytics", indicator: "" },
@@ -385,6 +391,35 @@ function Options() {
                 Deactivate license
               </button>
             </div>
+          ) : isTrial ? (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+                <span style={{ fontSize: "20px" }}>⏳</span>
+                <span style={{ fontWeight: 600, fontSize: "15px" }}>
+                  Trial: {trial.daysLeft ?? 7} day{trial.daysLeft === 1 ? "" : "s"} left
+                </span>
+              </div>
+              <p style={{ color: "#555", fontSize: "13px", marginBottom: "20px" }}>
+                Voice Match and the learning engine are unlocked for your trial. No card required — it ends
+                automatically, no action needed either way.
+              </p>
+              <a
+                href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0"
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: "inline-block", padding: "8px 16px", fontSize: "13px", background: "#1d9bf0", color: "#fff", borderRadius: "6px", textDecoration: "none" }}>
+                Upgrade to keep Pro after the trial
+              </a>
+              <p style={{ color: "#555", fontSize: "13px", margin: "20px 0 0" }}>
+                Already have a license?{" "}
+                <button
+                  type="button"
+                  onClick={() => setTrial({ ...trial, active: false })}
+                  style={{ color: "#1d9bf0", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "13px", textDecoration: "underline" }}>
+                  Enter it here
+                </button>
+              </p>
+            </div>
           ) : (
             <div>
               <h3 style={{ margin: "0 0 8px", fontSize: "15px" }}>Activate PostPilot Pro</h3>
@@ -396,6 +431,24 @@ function Options() {
                 <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0" }}>
                   Get PostPilot Pro
                 </a>
+                {" "}or{" "}
+                <button
+                  type="button"
+                  disabled={trialStarting}
+                  onClick={async () => {
+                    setTrialStarting(true)
+                    try {
+                      const status = await startTrial()
+                      setTrial(status)
+                    } catch (err) {
+                      console.error("[PostPilot]", err)
+                    } finally {
+                      setTrialStarting(false)
+                    }
+                  }}
+                  style={{ color: "#1d9bf0", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "13px", textDecoration: "underline" }}>
+                  {trialStarting ? "Starting…" : "start a free 7-day trial"}
+                </button>
               </p>
               <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
                 <input
@@ -909,7 +962,7 @@ function Options() {
       {/* Analytics tab */}
       {activeTab === "analytics" && (
         <div style={styles.section}>
-          <AnalyticsTab isPro={isPro} />
+          <AnalyticsTab isPro={isPro || isTrial} />
         </div>
       )}
 

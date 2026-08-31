@@ -33,6 +33,22 @@ describe("resolveTier", () => {
     expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 
+  it("returns trial for a device identity with an active trial record", async () => {
+    const env = makeEnv()
+    await env.RATE_LIMIT_KV.put("trial:dev-2", JSON.stringify({ started: Date.now() }))
+    const tier = await resolveTier(env, { type: "device", deviceId: "dev-2" })
+    expect(tier).toBe("trial")
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+  })
+
+  it("returns free for a device identity whose trial record has expired", async () => {
+    const env = makeEnv()
+    const eightDaysAgo = Date.now() - 8 * 24 * 60 * 60 * 1000
+    await env.RATE_LIMIT_KV.put("trial:dev-3", JSON.stringify({ started: eightDaysAgo }))
+    const tier = await resolveTier(env, { type: "device", deviceId: "dev-3" })
+    expect(tier).toBe("free")
+  })
+
   it("returns pro when LemonSqueezy confirms the license is valid", async () => {
     const env = makeEnv()
     ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -85,6 +101,7 @@ describe("dailyCapFor", () => {
     const env = makeEnv()
     expect(dailyCapFor(env, "free")).toBe(3)
     expect(dailyCapFor(env, "pro")).toBe(40)
+    expect(dailyCapFor(env, "trial")).toBe(40)
   })
 
   it("falls back to safe defaults on malformed env vars", () => {

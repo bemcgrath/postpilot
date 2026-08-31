@@ -1,4 +1,5 @@
 import type { Env, Identity, Tier } from "./types"
+import { isOnTrial } from "./trial"
 
 const VALIDATE_URL = "https://api.lemonsqueezy.com/v1/licenses/validate"
 
@@ -43,10 +44,15 @@ async function writeCachedEntitlement(env: Env, licenseKey: string, instanceId: 
  * Resolve the caller's tier. For a `license` identity, this independently
  * re-validates against LemonSqueezy (with a short KV cache) -- it never
  * trusts anything the client asserted about its own Pro status. For a
- * `device` identity there's nothing to validate; it's always Free.
+ * `device` identity there's no license to validate, but it may be mid a
+ * server-recorded trial window (see trial.ts) -- check that before falling
+ * back to Free.
  */
 export async function resolveTier(env: Env, identity: Identity): Promise<Tier> {
-  if (identity.type === "device") return "free"
+  if (identity.type === "device") {
+    const onTrial = await isOnTrial(env, identity.deviceId)
+    return onTrial ? "trial" : "free"
+  }
 
   const { licenseKey, instanceId } = identity
   if (!licenseKey || !instanceId) return "free"
@@ -73,9 +79,9 @@ export async function resolveTier(env: Env, identity: Identity): Promise<Tier> {
 }
 
 export function dailyCapFor(env: Env, tier: Tier): number {
-  const raw = tier === "pro" ? env.PRO_DAILY_CAP : env.FREE_DAILY_CAP
+  const raw = tier === "pro" || tier === "trial" ? env.PRO_DAILY_CAP : env.FREE_DAILY_CAP
   const n = Number.parseInt(raw, 10)
-  return Number.isFinite(n) && n > 0 ? n : tier === "pro" ? 40 : 3
+  return Number.isFinite(n) && n > 0 ? n : tier === "pro" || tier === "trial" ? 40 : 3
 }
 
 /**
