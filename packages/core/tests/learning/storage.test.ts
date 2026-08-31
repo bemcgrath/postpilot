@@ -146,7 +146,8 @@ describe("normalizeInsights", () => {
       mediaPerformance: null,
       recommendations: [],
       hookTypeBoosts: { data_reveal: 1.2 },
-      optimalLengthRange: { min: 200, max: 300 }
+      optimalLengthRange: { min: 200, max: 300 },
+      previewInsights: null
     }
     const result = normalizeInsights(full)
     expect(result).toEqual(full)

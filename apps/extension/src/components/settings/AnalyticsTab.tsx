@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 
-import type { LearnedInsights } from "@postpilot/core/learning/types"
-import { MIN_POSTS_FOR_LEARNING } from "@postpilot/core/learning/types"
+import type { LearnedInsights, PreviewInsights } from "@postpilot/core/learning/types"
+import { MIN_POSTS_FOR_LEARNING, PREVIEW_POSTS_FOR_LEARNING } from "@postpilot/core/learning/types"
 import {
   loadCollectedPosts,
   loadFunnelSnapshot,
@@ -305,6 +305,41 @@ export function AnalyticsTab({ isPro }: AnalyticsTabProps) {
         </InsightCard>
       )}
 
+      {/* Breakdown Preview — free users see real partial insights from n=5,
+          well before the n=20 full-breakdown gate, so Pro's value shows up
+          before it's earned rather than only after (Pro spec Change 1). */}
+      {!isPro &&
+        postCount >= PREVIEW_POSTS_FOR_LEARNING &&
+        postCount < MIN_POSTS_FOR_LEARNING &&
+        insights?.previewInsights && (
+          <InsightCard title="Breakdown Preview">
+            <div style={styles.hint}>
+              A first look at your personalized insights. The full breakdown
+              unlocks at {MIN_POSTS_FOR_LEARNING} posts.
+            </div>
+            <div style={{ marginTop: 8 }}>
+              {renderPreviewRows(insights.previewInsights)}
+            </div>
+            <div style={{ ...styles.row, marginTop: 8 }}>
+              <span>Progress</span>
+              <span style={styles.value}>
+                {MIN_POSTS_FOR_LEARNING - postCount} more post
+                {MIN_POSTS_FOR_LEARNING - postCount !== 1 ? "s" : ""} to your
+                full breakdown
+              </span>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <a
+                href={UPGRADE_URL}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "#1d9bf0", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                Upgrade to Pro →
+              </a>
+            </div>
+          </InsightCard>
+        )}
+
       {/* Full breakdown teaser — shown to free users once there's enough data to unlock */}
       {!isPro && insights?.isReady && (
         <InsightCard title="Full Breakdown">
@@ -575,6 +610,116 @@ function formatHour(hour: number): string {
   return hour < 12 ? `${hour} AM` : `${hour - 12} PM`
 }
 
+/**
+ * Cap of real preview rows shown to free users (Pro spec Change 1: "2-3
+ * preview insight rows max"). Locked sections beyond this render as blurred
+ * one-liners instead, so the card always shows a fixed sense of "more to
+ * come" no matter how many sub-analyzers already have data.
+ */
+const MAX_PREVIEW_ROWS = 3
+
+/** Renders up to MAX_PREVIEW_ROWS real partial insights, plus blurred
+ *  one-line placeholders for whichever sections don't have data yet. */
+function renderPreviewRows(preview: PreviewInsights) {
+  type Row = { key: string; label: string; node: React.ReactNode }
+  const rows: Row[] = []
+
+  const topHook = [...preview.hookTypePerformance].sort(
+    (a, b) => b.boostMultiplier - a.boostMultiplier
+  )[0]
+  if (topHook) {
+    rows.push({
+      key: "hook",
+      label: "Hook performance",
+      node: (
+        <div style={styles.rec}>
+          <span style={styles.recBadge}>{topHook.boostMultiplier.toFixed(1)}x</span>
+          {humanizeHookType(topHook.hookType)} hooks outperform your baseline (
+          {topHook.postCount} posts)
+        </div>
+      )
+    })
+  }
+
+  if (preview.optimalLengthRange) {
+    rows.push({
+      key: "length",
+      label: "Length sweet spot",
+      node: (
+        <div style={styles.rec}>
+          <span style={styles.recBadge}>length</span>
+          Best-performing posts run {preview.optimalLengthRange.min}-
+          {preview.optimalLengthRange.max} chars
+        </div>
+      )
+    })
+  }
+
+  const topTopic = [...preview.topicPerformance].sort(
+    (a, b) => b.boostMultiplier - a.boostMultiplier
+  )[0]
+  if (topTopic) {
+    rows.push({
+      key: "topic",
+      label: "Topic performance",
+      node: (
+        <div style={styles.rec}>
+          <span style={styles.recBadge}>{topTopic.boostMultiplier.toFixed(1)}x</span>
+          Posts about "{topTopic.keyword}" are landing ({topTopic.postCount} posts)
+        </div>
+      )
+    })
+  }
+
+  if (preview.replyInsights) {
+    rows.push({
+      key: "reply",
+      label: "Reply craft",
+      node: (
+        <div style={styles.rec}>
+          <span style={styles.recBadge}>reply</span>
+          Learned length band {preview.replyInsights.optimalLengthRange.min}-
+          {preview.replyInsights.optimalLengthRange.max} chars from{" "}
+          {preview.replyInsights.repliesAnalyzed} replies
+        </div>
+      )
+    })
+  }
+
+  // Sections that have data but got bumped past the MAX_PREVIEW_ROWS cap,
+  // plus sections with no data yet, all render as locked placeholders --
+  // the free tier sees the same "there's more" shape either way.
+  const shown = rows.slice(0, MAX_PREVIEW_ROWS)
+  const shownKeys = new Set(shown.map((r) => r.key))
+  const allSections: Array<{ key: string; label: string }> = [
+    { key: "hook", label: "Hook performance" },
+    { key: "length", label: "Length sweet spot" },
+    { key: "topic", label: "Topic performance" },
+    { key: "reply", label: "Reply craft" },
+    { key: "time", label: "Best posting times" },
+    { key: "media", label: "Media impact" }
+  ]
+  const locked = allSections.filter((s) => !shownKeys.has(s.key))
+
+  return (
+    <>
+      {shown.map((row) => (
+        <React.Fragment key={row.key}>{row.node}</React.Fragment>
+      ))}
+      {shown.length === 0 && (
+        <div style={styles.hint}>
+          Still gathering enough data for a preview — check back after a few more posts.
+        </div>
+      )}
+      {locked.map((section) => (
+        <div key={section.key} style={styles.lockedRow}>
+          {section.label} unlocks with more data
+        </div>
+      ))}
+    </>
+  )
+}
+
 const styles: Record<string, React.CSSProperties> = {
   row: {
     display: "flex",
@@ -597,6 +742,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontStyle: "italic",
     marginTop: 6
+  },
+  lockedRow: {
+    color: "#71767b",
+    fontSize: 12,
+    fontStyle: "italic",
+    padding: "4px 0",
+    filter: "blur(2px)",
+    userSelect: "none",
+    opacity: 0.7
   },
   progressTrack: {
     height: 4,

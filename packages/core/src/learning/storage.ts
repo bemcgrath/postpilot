@@ -123,7 +123,8 @@ export function normalizeInsights(raw: Partial<LearnedInsights>): LearnedInsight
     mediaPerformance: normalizeMediaPerformance(raw.mediaPerformance ?? null),
     recommendations: raw.recommendations ?? [],
     hookTypeBoosts: raw.hookTypeBoosts ?? {},
-    optimalLengthRange: raw.optimalLengthRange ?? null
+    optimalLengthRange: raw.optimalLengthRange ?? null,
+    previewInsights: raw.previewInsights ?? null
   }
 }
 

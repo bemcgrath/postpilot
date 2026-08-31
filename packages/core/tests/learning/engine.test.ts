@@ -118,6 +118,56 @@ describe("computeInsights", () => {
     expect(insights.weekendTimePerformance).toEqual([])
   })
 
+  describe("preview insights (Breakdown Preview, n>=5)", () => {
+    it("is null below PREVIEW_POSTS_FOR_LEARNING", () => {
+      const posts = Array.from({ length: 4 }, () => makePost())
+      const insights = computeInsights(posts, null)
+      expect(insights.isReady).toBe(false)
+      expect(insights.previewInsights).toBeNull()
+    })
+
+    it("populates previewInsights between PREVIEW_POSTS_FOR_LEARNING and MIN_POSTS_FOR_LEARNING", () => {
+      const posts = Array.from({ length: 10 }, (_, i) =>
+        makePost({
+          hookType: i < 6 ? "data_reveal" : "contrarian",
+          engagementRate: i < 6 ? 0.03 : 0.01
+        })
+      )
+      const insights = computeInsights(posts, null)
+      expect(insights.isReady).toBe(false)
+      expect(insights.previewInsights).not.toBeNull()
+      expect(insights.previewInsights!.postsAnalyzed).toBe(10)
+      // data_reveal has 6 posts (>= MIN_POSTS_PER_TYPE), contrarian has 4
+      expect(
+        insights.previewInsights!.hookTypePerformance.some(
+          (h) => h.hookType === "data_reveal"
+        )
+      ).toBe(true)
+    })
+
+    it("previewInsights.replyInsights stays null below MIN_REPLIES_FOR_LEARNING", () => {
+      const posts = Array.from({ length: 6 }, () => makePost({ isReply: true }))
+      const insights = computeInsights(posts, null)
+      expect(insights.previewInsights).not.toBeNull()
+      expect(insights.previewInsights!.replyInsights).toBeNull()
+    })
+
+    it("previewInsights.replyInsights populates once replies reach MIN_REPLIES_FOR_LEARNING", () => {
+      const posts = Array.from({ length: 8 }, () => makePost({ isReply: true }))
+      const insights = computeInsights(posts, null)
+      expect(insights.isReady).toBe(false) // still under 20 overall
+      expect(insights.previewInsights).not.toBeNull()
+      expect(insights.previewInsights!.replyInsights).not.toBeNull()
+    })
+
+    it("is null on the ready path (isReady=true)", () => {
+      const posts = Array.from({ length: 20 }, () => makePost())
+      const insights = computeInsights(posts, null)
+      expect(insights.isReady).toBe(true)
+      expect(insights.previewInsights).toBeNull()
+    })
+  })
+
   it("splits time performance by weekday vs weekend, not blended by hour alone", () => {
     // Fixed reference points: a known Wednesday and a known Saturday, same hour.
     const wednesday9am = new Date(2026, 6, 22, 9, 0, 0).getTime() // Jul 22 2026 is a Wednesday
