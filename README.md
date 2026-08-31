@@ -5,8 +5,6 @@ Score every X (Twitter) post as you type. PostPilot overlays a live score panel 
 - **Website:** https://postpilotforx.com
 - **Pricing:** Free tier + Pro at $24/mo
 
-**CA:** `AHJ9aeo9qmqj8YM3rvdNcn7zqMBYdRkBC7JtKjy1Cory`
-
 See [PRODUCT.md](./PRODUCT.md) for full product documentation.
 
 Competitive research: [RESEARCH/X_AI_WRITING_ASSISTANTS_GAP_ANALYSIS.md](./RESEARCH/X_AI_WRITING_ASSISTANTS_GAP_ANALYSIS.md) — what X writers want vs what AI writing assistants ship (Aug 2026).
