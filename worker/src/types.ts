@@ -59,7 +59,7 @@ export interface GenericErrorResponse {
   error: string
 }
 
-export type Tier = "free" | "pro"
+export type Tier = "free" | "trial" | "pro"
 
 export interface Env {
   RATE_LIMIT_KV: KVNamespace

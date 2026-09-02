@@ -20,7 +20,7 @@ import { scoreReplyInvite } from "@postpilot/core/scoring/reply-invite"
 import { suggestSelfReply } from "@postpilot/core/scoring/self-reply"
 import { EMPTY_MEDIA } from "@postpilot/core/scoring/media-delta"
 import { initConfig, onConfigChanged } from "@postpilot/core/config/config-storage"
-import { validateStoredLicense } from "~config/license"
+import { getEffectiveTier } from "~rewrite/trial-service"
 
 /** Safely access chrome.storage.local — returns null if unavailable or context invalidated. */
 function getStorage(): typeof chrome.storage.local | null {
@@ -252,6 +252,8 @@ export function PostPilotPanel() {
   const [selfReply, setSelfReply] = useState<string | null>(null)
   const [configRevision, setConfigRevision] = useState(0)
   const [isPro, setIsPro] = useState(false)
+  const [isTrial, setIsTrial] = useState(false)
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | undefined>(undefined)
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
   const [drafts, setDrafts] = useState<DraftEntry[]>([])
   const [hooks, setHooks] = useState<HookEntry[]>([])
@@ -265,7 +267,7 @@ export function PostPilotPanel() {
   const lastSavedAtRef = useRef<number>(0)
   const pendingClearRef = useRef<{ prev: string; score: number; timer: number } | null>(null)
   const isProRef = useRef(isPro)
-  isProRef.current = isPro
+  isProRef.current = isPro || isTrial
 
   // Initialize config on mount and listen for config changes
   useEffect(() => {
@@ -285,8 +287,9 @@ export function PostPilotPanel() {
   // real Web Store build -- that storage key is writable by anyone via
   // devtools, so trusting it there would unlock Pro for free.
   useEffect(() => {
-    validateStoredLicense().then((status) => {
-      if (status.isActive) { setIsPro(true); return }
+    getEffectiveTier().then((tier) => {
+      if (tier.isPro) { setIsPro(true); return }
+      if (tier.isTrial) { setIsTrial(true); setTrialDaysLeft(tier.trialDaysLeft); return }
       if (!isDevBuild()) return
       const storage = getStorage()
       if (!storage) return
@@ -452,11 +455,11 @@ export function PostPilotPanel() {
       const score = lastScoreRef.current
       const timer = window.setTimeout(() => {
         pendingClearRef.current = null
-        commitClearSave(prev, score, isPro)
+        commitClearSave(prev, score, isPro || isTrial)
       }, 600)
       pendingClearRef.current = { prev, score, timer }
     }
-  }, [text, isPro, commitClearSave])
+  }, [text, isPro, isTrial, commitClearSave])
 
   // If the panel unmounts while a clear-save is pending (reply modal closes
   // right after posting), flush it so the post still gets recorded.
@@ -598,11 +601,16 @@ export function PostPilotPanel() {
 
   // configRevision forces re-render when config changes, scorePost reads updated config
   void configRevision
-  const proFingerprint = isPro ? fingerprint : null
-  const proOverrides = isPro ? overrides : null
-  const hookTypeBoosts = isPro && insights?.isReady ? insights.hookTypeBoosts : undefined
+  // Trial gets the same treatment as Pro everywhere in this panel -- the
+  // worker already grants trial identities Pro's cap + voice digest
+  // (worker/src/entitlement.ts), so the client mirrors that for a
+  // consistent "you have Pro" experience during the 7-day window.
+  const hasPro = isPro || isTrial
+  const proFingerprint = hasPro ? fingerprint : null
+  const proOverrides = hasPro ? overrides : null
+  const hookTypeBoosts = hasPro && insights?.isReady ? insights.hookTypeBoosts : undefined
   const mediaBoosts =
-    isPro && insights?.isReady && insights.mediaPerformance
+    hasPro && insights?.isReady && insights.mediaPerformance
       ? {
           imageBoost: insights.mediaPerformance.imageBoost,
           videoBoost: insights.mediaPerformance.videoBoost,
@@ -611,10 +619,10 @@ export function PostPilotPanel() {
       : null
   const scoreContext: ScoreContext = {
     kind,
-    replyInsights: isPro && insights?.replyInsights ? insights.replyInsights : null,
+    replyInsights: hasPro && insights?.replyInsights ? insights.replyInsights : null,
     parentText,
     originalLengthRange:
-      isPro && insights?.isReady ? insights.optimalLengthRange : null,
+      hasPro && insights?.isReady ? insights.optimalLengthRange : null,
     media,
     mediaBoosts
   }
@@ -666,11 +674,11 @@ export function PostPilotPanel() {
     (i) => i.severity === "warning"
   ).length
   const totalIssues = errorCount + warningCount
-  const showLearnFunnel = isPro && !insights?.isReady && funnel !== null
+  const showLearnFunnel = hasPro && !insights?.isReady && funnel !== null
   const postingTime =
-    isPro && insights?.isReady ? evaluatePostingTime(insights) : null
+    hasPro && insights?.isReady ? evaluatePostingTime(insights) : null
   const reach =
-    isPro && insights?.isReady
+    hasPro && insights?.isReady
       ? estimateReachRange(collectedPosts, {
           hookType: result.hookScore.hookType,
           charCount: result.charCount,
@@ -712,7 +720,7 @@ export function PostPilotPanel() {
           inSweetSpot={result.inSweetSpot}
           sweetSpotRange={result.sweetSpotRange}
         />
-        {isPro && result.voiceMatch && (
+        {hasPro && result.voiceMatch && (
           <VoiceMatchBadge voiceMatch={result.voiceMatch} />
         )}
         {totalIssues > 0 && (
@@ -764,7 +772,7 @@ export function PostPilotPanel() {
               onClick={handleSaveDraft}>
               {savedMsg ? "Saved!" : "Save draft"}
             </button>
-            {isPro && result.hookScore.totalScore >= 70 && (
+            {hasPro && result.hookScore.totalScore >= 70 && (
               <button
                 className={`postpilot-save-btn${hookSavedMsg ? " postpilot-save-btn--saved" : ""}`}
                 onClick={handleSaveHook}>
@@ -783,7 +791,7 @@ export function PostPilotPanel() {
           <RewriteSuggestions
             originalText={text}
             score={result}
-            isPro={isPro}
+            isPro={hasPro}
             fingerprint={proFingerprint}
             overrides={proOverrides}
             hookTypeBoosts={hookTypeBoosts}
@@ -796,10 +804,10 @@ export function PostPilotPanel() {
             }}
           />
           {weekStats && <ScoreHistoryBadge stats={weekStats} />}
-          {isPro && result.voiceMatch && (
+          {hasPro && result.voiceMatch && (
             <VoiceMatchBreakdown voiceMatch={result.voiceMatch} />
           )}
-          {isPro && insights?.isReady && (
+          {hasPro && insights?.isReady && (
             <InsightsPanel
               insights={insights}
               currentHookType={result.hookScore.hookType}
@@ -848,7 +856,7 @@ export function PostPilotPanel() {
             onRestore={handleRestoreDraft}
             onDelete={handleDeleteDraft}
           />
-          {isPro && hooks.length > 0 && (
+          {hasPro && hooks.length > 0 && (
             <HookLibrary
               hooks={hooks}
               onUse={(entry) => setTimeout(() => injectText(panelRef.current, entry.fullText), 10)}
@@ -857,7 +865,15 @@ export function PostPilotPanel() {
               }}
             />
           )}
-          {!isPro && (
+          {isTrial && (
+            <div style={{ padding: "8px 12px", fontSize: "12px", color: "#888", borderTop: "1px solid #eee", marginTop: "4px" }}>
+              Trial: {trialDaysLeft ?? 7} day{trialDaysLeft === 1 ? "" : "s"} left.{" "}
+              <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0", textDecoration: "none" }}>
+                Upgrade to keep Pro
+              </a>
+            </div>
+          )}
+          {!isPro && !isTrial && (
             <div style={{ padding: "8px 12px", fontSize: "12px", color: "#888", borderTop: "1px solid #eee", marginTop: "4px" }}>
               <a href="https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-ac42-0d9cbdf7885f?discount=0" target="_blank" rel="noreferrer" style={{ color: "#1d9bf0", textDecoration: "none" }}>
                 Upgrade to PostPilot Pro
