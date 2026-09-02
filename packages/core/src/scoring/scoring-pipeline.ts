@@ -87,9 +87,16 @@ export function scorePost(
 
   const governor = checkGovernor(text)
 
-  // Fabrication vs data-reveal: don't pay a hook bonus for an unverified claim.
+  // Fabrication vs data-reveal: don't pay a hook bonus for an unverified
+  // claim -- but only when the flagged phrase is IN the hook that earned the
+  // bonus. `governor` runs over the whole post, so a fabrication match
+  // living in the body (e.g. a stat two lines down) must not zero out a hook
+  // bonus that has nothing to do with it.
+  const hookHasFabrication = governor.issues.some(
+    (i) => i.lane === "fabrication" && hookScore.hookText.includes(i.matchedText ?? "\0")
+  )
   if (
-    governor.hasFabrication &&
+    hookHasFabrication &&
     hookScore.hookType &&
     CLAIM_HOOKS.has(hookScore.hookType) &&
     hookScore.breakdown.hookType > 0
