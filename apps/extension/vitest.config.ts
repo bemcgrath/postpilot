@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   test: {
     globals: true,
-    include: ["tests/**/*.test.ts"]
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"]
   },
   resolve: {
     alias: {
@@ -17,6 +17,7 @@ export default defineConfig({
       "~config": path.resolve(__dirname, "src/config"),
       "~components": path.resolve(__dirname, "src/components"),
       "~dom": path.resolve(__dirname, "src/dom"),
+      "~rewrite": path.resolve(__dirname, "src/rewrite"),
       "~": path.resolve(__dirname, "src")
     }
   }

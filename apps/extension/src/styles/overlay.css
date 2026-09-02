@@ -920,6 +920,108 @@
   line-height: 1.4;
 }
 
+/* Upgrade-friction survey prompt -- secondary ask next to the quota upsell */
+.postpilot-survey {
+  position: relative;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #1e2024;
+  border: 1px solid #2f3336;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #e7e9ea;
+}
+
+.postpilot-survey__close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: #71767b;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.postpilot-survey__close:hover {
+  color: #e7e9ea;
+}
+
+.postpilot-survey__question {
+  font-weight: 600;
+  margin-bottom: 6px;
+  padding-right: 16px;
+}
+
+.postpilot-survey__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.postpilot-survey__option {
+  background: #16181c;
+  border: 1px solid #2f3336;
+  border-radius: 999px;
+  color: #e7e9ea;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.postpilot-survey__option:hover {
+  border-color: #536471;
+}
+
+.postpilot-survey__option--selected {
+  background: #1d9bf0;
+  border-color: #1d9bf0;
+  color: #fff;
+}
+
+.postpilot-survey__freetext {
+  width: 100%;
+  box-sizing: border-box;
+  background: #16181c;
+  border: 1px solid #2f3336;
+  border-radius: 6px;
+  color: #e7e9ea;
+  font-size: 11px;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+  resize: vertical;
+}
+
+.postpilot-survey__submit {
+  background: #1d9bf0;
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 14px;
+  cursor: pointer;
+}
+
+.postpilot-survey__submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.postpilot-survey__privacy {
+  margin-top: 5px;
+  font-size: 10px;
+  color: #71767b;
+}
+
+.postpilot-survey__thanks {
+  color: #00ba7c;
+  padding: 2px 0;
+}
+
 .postpilot-rewrites__results {
   display: flex;
   flex-direction: column;
