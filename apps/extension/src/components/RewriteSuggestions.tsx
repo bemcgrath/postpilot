@@ -6,8 +6,18 @@ import { scorePost } from "@postpilot/core/scoring/scoring-pipeline"
 import type { ScoreContext } from "@postpilot/core/scoring/scoring-pipeline"
 import { generateRewrites } from "~rewrite/rewrite-service"
 import type { RewriteSuggestion } from "~rewrite/rewrite-service"
+import { shouldShowSurvey } from "~rewrite/survey-service"
+import { SurveyPrompt } from "./SurveyPrompt"
 import { splitHookBody } from "@postpilot/core/rewrite/hook-split"
 import { humanizeHookType } from "@postpilot/core/scoring/hook-types"
+
+/** Survey renders only when cooldown/answered gating allows it; keep import light. */
+function SurveyPromptLazy() {
+  const [ready, setReady] = React.useState(false)
+  React.useEffect(() => setReady(true), [])
+  return ready ? <SurveyPrompt /> : null
+}
+
 
 interface ScoredSuggestion extends RewriteSuggestion {
   computedScore: number
@@ -51,6 +61,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
   const [replacedIdx, setReplacedIdx] = useState<number | null>(null)
   const [undoText, setUndoText] = useState<string | null>(null)
   const [lastMode, setLastMode] = useState<"full" | "hook">("full")
+  const [showSurvey, setShowSurvey] = useState(false)
 
   const originalScore = score.hookScore.totalScore
   const isBorderlineOrAbove = originalScore >= 65
@@ -99,6 +110,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
       if (msg === "QUOTA_EXCEEDED") {
         setError("QUOTA_EXCEEDED")
         setQuotaResetsAt(resetsAt ?? null)
+        if (!isPro) void shouldShowSurvey().then(setShowSurvey)
       } else {
         setError(msg || "Failed to generate rewrites. Try again in a moment.")
       }
@@ -168,6 +180,7 @@ export function RewriteSuggestions({ originalText, score, isPro, fingerprint, ov
               .
             </>
           )}
+          {showSurvey && <SurveyPromptLazy />}
         </div>
       ) : error ? (
         <div className="postpilot-rewrites__error">{error}</div>

@@ -98,6 +98,21 @@ export interface ReplyCraftInsights {
 /** How the originals side of an insights payload was computed. */
 export type InsightsSegmentation = "segmented" | "blended"
 
+/**
+ * Partial insights shown to free users between PREVIEW_POSTS_FOR_LEARNING and
+ * MIN_POSTS_FOR_LEARNING (the "Breakdown Preview" teaser). Only sub-analyzers
+ * that already have enough data populate their field -- an empty array or
+ * null means that section stays locked, not that it errored.
+ */
+export interface PreviewInsights {
+  postsAnalyzed: number
+  segmentation: InsightsSegmentation
+  hookTypePerformance: HookTypePerformance[] // originals when segmented, else blended
+  optimalLengthRange: { min: number; max: number } | null
+  topicPerformance: TopicPerformance[]
+  replyInsights: ReplyCraftInsights | null // null below MIN_REPLIES_FOR_LEARNING
+}
+
 /** Output of the learning engine — all personalized insights. */
 export interface LearnedInsights {
   insightsVersion: number // 1 = pre-split (absent in stored data), 2 = segmented
@@ -123,6 +138,9 @@ export interface LearnedInsights {
   recommendations: Recommendation[]
   hookTypeBoosts: Partial<Record<HookTypeName, number>> // 0.5-2.0
   optimalLengthRange: { min: number; max: number } | null
+
+  /** Populated only when !isReady && postsAnalyzed >= PREVIEW_POSTS_FOR_LEARNING. */
+  previewInsights: PreviewInsights | null
 }
 
 /** Storage keys used by the learning engine. */
@@ -135,6 +153,9 @@ export const STORAGE_KEYS = {
 
 /** Minimum posts required before learning engine produces insights. */
 export const MIN_POSTS_FOR_LEARNING = 20
+
+/** Minimum posts before the "Breakdown Preview" teaser starts showing partial insights to free users. */
+export const PREVIEW_POSTS_FOR_LEARNING = 5
 
 /** Minimum originals required before the originals-side analyzers run segmented rather than blended. */
 export const MIN_ORIGINALS_FOR_LEARNING = 12

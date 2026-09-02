@@ -1,7 +1,11 @@
-import type { CollectedPost, LearnedInsights } from "./types"
+import type { CollectedPost, LearnedInsights, PreviewInsights } from "./types"
 import type { HookTypeName } from "../scoring/types"
 
-import { MIN_POSTS_FOR_LEARNING, MIN_ORIGINALS_FOR_LEARNING } from "./types"
+import {
+  MIN_POSTS_FOR_LEARNING,
+  MIN_ORIGINALS_FOR_LEARNING,
+  PREVIEW_POSTS_FOR_LEARNING
+} from "./types"
 import { partitionPosts } from "./segment"
 import { loadCollectedPosts, loadLearnedInsights, saveLearnedInsights } from "./storage"
 import {
@@ -58,6 +62,11 @@ export function computeInsights(
   const baselineEngagementRate = computeBaselineER(posts)
 
   if (!isReady) {
+    const previewInsights =
+      postsAnalyzed >= PREVIEW_POSTS_FOR_LEARNING
+        ? computePreviewInsights(posts, originals, replies)
+        : null
+
     return {
       insightsVersion: 2,
       segmentation: "blended",
@@ -78,7 +87,8 @@ export function computeInsights(
       mediaPerformance: null,
       recommendations: [],
       hookTypeBoosts: {},
-      optimalLengthRange: null
+      optimalLengthRange: null,
+      previewInsights
     }
   }
 
@@ -169,7 +179,8 @@ export function computeInsights(
     mediaPerformance,
     recommendations,
     hookTypeBoosts,
-    optimalLengthRange: optimalRange
+    optimalLengthRange: optimalRange,
+    previewInsights: null
   }
 }
 
@@ -179,7 +190,40 @@ function isWeekendPost(postedAt: number): boolean {
   return day === 0 || day === 6
 }
 
-/** Compute baseline ER as median of all post engagement rates. */
+/**
+ * Compute the "Breakdown Preview" shown to free users between
+ * PREVIEW_POSTS_FOR_LEARNING and MIN_POSTS_FOR_LEARNING. Reuses the same
+ * sub-analyzers as the full engine but renders only what already has enough
+ * data at each analyzer's own threshold -- MIN_ORIGINALS_FOR_LEARNING for the
+ * originals-side segmenting decision, MIN_REPLIES_FOR_LEARNING for reply
+ * craft. No new algorithms; this is strictly a "run early, show what's real"
+ * pass over the same corpus rules as the ready-path branch above.
+ */
+function computePreviewInsights(
+  posts: CollectedPost[],
+  originals: CollectedPost[],
+  replies: CollectedPost[]
+): PreviewInsights {
+  const segmented = originals.length >= MIN_ORIGINALS_FOR_LEARNING
+  const corpus = segmented ? originals : posts
+  const corpusBaseline = computeBaselineER(corpus)
+
+  const hookTypePerformance = analyzeHookTypePerformance(corpus, corpusBaseline)
+  const { optimalRange } = analyzeLengthPerformance(corpus, corpusBaseline)
+  const topicPerformance = analyzeTopicPerformance(corpus, corpusBaseline)
+  // analyzeReplyCraft already returns null below MIN_REPLIES_FOR_LEARNING.
+  const replyInsights = analyzeReplyCraft(replies)
+
+  return {
+    postsAnalyzed: posts.length,
+    segmentation: segmented ? "segmented" : "blended",
+    hookTypePerformance,
+    optimalLengthRange: optimalRange,
+    topicPerformance,
+    replyInsights
+  }
+}
+
 export function computeBaselineER(posts: CollectedPost[]): number {
   if (posts.length === 0) return 0
   const sorted = posts.map((p) => p.engagementRate).sort((a, b) => a - b)

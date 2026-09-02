@@ -3,6 +3,7 @@ import { checkAndIncrement, decrement } from "./rateLimit"
 import { callAnthropic } from "./anthropic"
 import { buildSystemPrompt, buildUserContent, parseRewrites } from "./prompt"
 import { handleVotes } from "./votes"
+import { handleSurvey } from "./survey"
 import { splitHookBody, stitchHook } from "./hook-split"
 import type { Env, RewriteRequestBody } from "./types"
 
@@ -121,6 +122,10 @@ export default {
 
     if (url.pathname === "/v1/votes") {
       return handleVotes(request, env)
+    }
+
+    if (url.pathname === "/v1/survey") {
+      return handleSurvey(request, env)
     }
 
     if (request.method === "POST" && url.pathname === "/v1/rewrite") {
