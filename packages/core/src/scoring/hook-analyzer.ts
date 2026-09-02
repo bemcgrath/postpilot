@@ -219,7 +219,14 @@ export class HookAnalyzer {
     ) {
       return [cfg.length.acceptableScore, null]
     } else if (length < cfg.length.acceptableMin) {
-      return [0, "Hook is too short - add more substance"]
+      // Graduated instead of a hard cliff to 0 -- a punchy 25-char hook a
+      // few characters under the floor is meaningfully different from an
+      // empty one, and a rewrite that tightens the opener shouldn't lose
+      // the whole length bonus for it.
+      const partial = Math.round(
+        (length / cfg.length.acceptableMin) * cfg.length.acceptableScore
+      )
+      return [partial, "Hook is too short - add more substance"]
     } else {
       return [
         0,
