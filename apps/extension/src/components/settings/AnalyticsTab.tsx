@@ -13,7 +13,7 @@ import { runLearningEngine } from "@postpilot/core/learning/engine"
 import { parseAnalyticsCsv } from "@postpilot/core/learning/csv-import"
 import type { CollectionFunnelSnapshot } from "@postpilot/core/learning/funnel"
 import { humanizeHookType } from "@postpilot/core/scoring/hook-types"
-import { getWeekStats, loadScoreHistory, type ScoreEntry, type WeekStats } from "~history/score-history-storage"
+import { getWeekStats, loadScoreHistory, type ScoreEntry, type WeekStats } from "@postpilot/core/history/score-history-storage"
 
 import { InsightCard } from "./InsightCard"
 import { PerformanceChart } from "./PerformanceChart"

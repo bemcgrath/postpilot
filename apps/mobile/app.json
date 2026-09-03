@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "plugins": [
       [
         "expo-share-intent",
@@ -32,7 +32,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.postpilotforx.app"
+      "package": "com.postpilotforx.app",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -10,7 +10,8 @@
     "./storage/*": "./src/storage/*.ts",
     "./rewrite/*": "./src/rewrite/*.ts",
     "./drafts/*": "./src/drafts/*.ts",
-    "./hooks/*": "./src/hooks/*.ts"
+    "./hooks/*": "./src/hooks/*.ts",
+    "./history/*": "./src/history/*.ts"
   },
   "scripts": {
     "test": "vitest run",

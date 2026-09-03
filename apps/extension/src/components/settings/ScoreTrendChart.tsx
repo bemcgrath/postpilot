@@ -1,6 +1,6 @@
 import React from "react"
 
-import type { ScoreEntry } from "~history/score-history-storage"
+import type { ScoreEntry } from "@postpilot/core/history/score-history-storage"
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const WEEKS_TO_SHOW = 13

@@ -24,9 +24,9 @@
 <body>
 
 <h1>PostPilot Privacy Policy</h1>
-<p class="updated">Last updated: August 11, 2026</p>
+<p class="updated">Last updated: September 2, 2026</p>
 
-<p>PostPilot is a Chrome extension that scores your X/Twitter posts in real time. This policy explains what data the extension accesses, what it stores, and what it sends over the network.</p>
+<p>PostPilot is a Chrome extension, and now an Android app, that scores your X/Twitter posts in real time. This policy explains what data each app accesses, what it stores, and what it sends over the network. The Chrome extension is covered first; the Android app has its own section below, since it works differently.</p>
 
 <h2>What data PostPilot accesses</h2>
 <p>PostPilot reads the following from the X.com page you are viewing:</p>
@@ -61,11 +61,29 @@
 <h2>Data retention and deletion</h2>
 <p>All locally stored data can be cleared at any time by removing the PostPilot extension from Chrome (<em>chrome://extensions</em>). Uninstalling the extension permanently deletes all stored data from your device.</p>
 
+<h1>PostPilot Mobile (Android)</h1>
+<p>PostPilot Mobile is a standalone Android app: a composer with the same live 0&ndash;100 scoring engine as the Chrome extension, plus a draft queue, a hook library, and Voice Match. It is not a browser extension and does not connect to your X account &mdash; there is no login, and it never posts on your behalf. When you're ready to post, it hands your text to the official X app or x.com and stops there.</p>
+
+<h2>What data PostPilot Mobile accesses</h2>
+<p>Only the text you type into the app's own compose box. PostPilot Mobile has no access to X, your X account, or any other app's data. If you use Android's share feature to send text into PostPilot from another app, that shared text is the only thing it receives.</p>
+
+<h2>What data PostPilot Mobile stores</h2>
+<p>All data is stored locally on your device using an on-device key-value store (MMKV), the mobile equivalent of the Chrome extension's <code>chrome.storage.local</code>. This includes your drafts, saved hooks, score history, and Voice Match profile (built from posts you paste in, or optionally import from an X Analytics CSV export). None of it is bundled into a backup or account &mdash; it lives only in this app's own storage on this device.</p>
+
+<h2>What data PostPilot Mobile transmits</h2>
+<p><strong>Nothing.</strong> PostPilot Mobile makes no network requests at all &mdash; no server, no analytics, no crash reporting, no ads. Every feature (scoring, drafts, hooks, Voice Match, CSV-based insights) runs entirely on your device. This is narrower than the Chrome extension, which does call PostPilot's own AI Rewrite server and LemonSqueezy for Pro license checks (see above) &mdash; the Android app does not yet have either of those features, and this policy will be updated before it does.</p>
+
+<h2>Permissions</h2>
+<p>PostPilot Mobile does not request access to your contacts, location, camera, microphone, or files, and does not require an account. The only Android-level integration is the share sheet (so you can send text into the app from other apps to be scored), which is a standard Android intent, not a permission grant.</p>
+
+<h2>Data retention and deletion</h2>
+<p>Uninstalling PostPilot Mobile permanently deletes all data it stored, since nothing is kept anywhere else.</p>
+
 <h2>Children's privacy</h2>
 <p>PostPilot is not directed at children under 13 and does not knowingly collect data from minors.</p>
 
 <h2>Changes to this policy</h2>
-<p>If this policy changes materially, the "Last updated" date above will be revised. Continued use of the extension after an update constitutes acceptance of the revised policy.</p>
+<p>If this policy changes materially, the "Last updated" date above will be revised. Continued use of either app after an update constitutes acceptance of the revised policy.</p>
 
 <h2>Contact</h2>
 <p>Questions about this policy can be sent to <a href="mailto:brianemcgrath@gmail.com">brianemcgrath@gmail.com</a>.</p>

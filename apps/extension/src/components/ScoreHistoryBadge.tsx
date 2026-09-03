@@ -1,5 +1,5 @@
 import React from "react"
-import type { WeekStats } from "~history/score-history-storage"
+import type { WeekStats } from "@postpilot/core/history/score-history-storage"
 
 interface Props {
   stats: WeekStats

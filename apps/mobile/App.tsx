@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useShareIntent } from "expo-share-intent";
 
@@ -57,33 +58,40 @@ export default function App() {
     setScreen("compose");
   }
 
+  // SafeAreaProvider is introduced here purely as a JSX wrapper around the
+  // existing tree -- useShareIntent() above still runs at the top of App's
+  // own render, not inside a descendant of the provider, so the "before any
+  // Provider" constraint from expo-share-intent's docs still holds even
+  // though a Provider now exists in the returned tree.
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar style="light" />
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.safe}>
+        <StatusBar style="light" />
 
-      <View style={styles.header}>
-        <Text style={styles.title}>PostPilot</Text>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBarScroll}>
-        <View style={styles.tabBar}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, screen === tab.key && styles.tabActive]}
-              onPress={() => setScreen(tab.key)}>
-              <Text style={[styles.tabText, screen === tab.key && styles.tabTextActive]}>{tab.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.header}>
+          <Text style={styles.title}>PostPilot</Text>
         </View>
-      </ScrollView>
 
-      {screen === "compose" && <ComposeScreen text={text} onChangeText={setText} />}
-      {screen === "drafts" && <DraftsScreen onRestore={restoreDraft} />}
-      {screen === "hooks" && <HooksScreen onUse={useHook} />}
-      {screen === "insights" && <InsightsScreen />}
-      {screen === "settings" && <SettingsScreen />}
-    </SafeAreaView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBarScroll}>
+          <View style={styles.tabBar}>
+            {TABS.map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tab, screen === tab.key && styles.tabActive]}
+                onPress={() => setScreen(tab.key)}>
+                <Text style={[styles.tabText, screen === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        {screen === "compose" && <ComposeScreen text={text} onChangeText={setText} />}
+        {screen === "drafts" && <DraftsScreen onRestore={restoreDraft} />}
+        {screen === "hooks" && <HooksScreen onUse={useHook} />}
+        {screen === "insights" && <InsightsScreen />}
+        {screen === "settings" && <SettingsScreen />}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

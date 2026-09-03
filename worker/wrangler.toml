@@ -25,9 +25,13 @@ PRO_DAILY_CAP = "40"
 # Secrets (set via `wrangler secret put <NAME>`, never committed):
 #   ANTHROPIC_API_KEY        -- PostPilot's own Anthropic key, used for every rewrite call.
 #   REWRITE_CLIENT_SECRET    -- shared with the extension (`PLASMO_PUBLIC_REWRITE_KEY` in
-#                               the repo-root `.env`). Worker fails closed (401) if unset.
-#                               Ship the extension that sends X-PostPilot-Key FIRST, then
-#                               deploy this worker, or live rewrites 401.
+#                               the repo-root `.env`). NOTE: src/auth.ts currently fails
+#                               OPEN (allows the request) if this is unset, not closed --
+#                               see that file's isAuthorized() comment. Fixing that to fail
+#                               closed is scoped to M4, before a second (mobile) client
+#                               ships with its own secret. Ship the extension that sends
+#                               X-PostPilot-Key FIRST, then deploy this worker, or live
+#                               rewrites 401 once the fail-open behavior is removed.
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"

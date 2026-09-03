@@ -84,7 +84,7 @@ jobs:
           echo "OK: score widget bundle has no chrome.*/DOM API references."
 
   mobile:
-    name: Mobile (typecheck, export)
+    name: Mobile (test, typecheck, export)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -96,6 +96,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Test
+        run: npm test --workspace=apps/mobile
+
       - name: Typecheck
         run: npm run typecheck --workspace=apps/mobile
 
@@ -105,9 +108,14 @@ jobs:
       # equivalent of the extension job's `plasmo build` check. Does not
       # exercise anything native-module-specific (MMKV, etc.) -- that needs
       # a real device or a dev-client build, which CI can't do here.
+      #
+      # Android, not iOS: this app ships Android-only for now (no Apple
+      # Developer account yet), and app.json's expo-share-intent plugin
+      # config sets disableIOS: true -- an iOS export wouldn't exercise the
+      # real plugin config anyway.
       - name: Export (bundle check)
         working-directory: apps/mobile
-        run: npx expo export --platform ios
+        run: npx expo export --platform android
 
   worker:
     name: Worker (test, typecheck)

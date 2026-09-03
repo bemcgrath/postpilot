@@ -1,4 +1,4 @@
-import { getStore } from "@postpilot/core/storage/adapter"
+import { getStore } from "../storage/adapter"
 
 const HISTORY_KEY = "postpilot_score_history"
 const MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000

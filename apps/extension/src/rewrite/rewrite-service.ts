@@ -168,23 +168,29 @@ function buildRequestBody(
   }
 }
 
+// Mirrors worker/src/types.ts's Tier -- not imported directly since the
+// extension doesn't depend on the worker package, but it must stay in sync
+// with what /v1/rewrite actually returns (worker/src/index.ts's `tier`
+// field comes straight from resolveTier()).
+type RewriteTier = "free" | "trial" | "pro"
+
 function parseRewriteResponse(data: unknown): {
   suggestions: RewriteSuggestion[]
   remaining?: number
   resetsAt?: string
-  tier?: "free" | "pro"
+  tier?: RewriteTier
 } {
   const d = data as {
     rewrites?: RewriteSuggestion[]
     remaining?: number
     resetsAt?: string
-    tier?: "free" | "pro"
+    tier?: RewriteTier
   }
   return {
     suggestions: d.rewrites ?? [],
     remaining: typeof d.remaining === "number" ? d.remaining : undefined,
     resetsAt: typeof d.resetsAt === "string" ? d.resetsAt : undefined,
-    tier: d.tier === "pro" || d.tier === "free" ? d.tier : undefined,
+    tier: d.tier === "pro" || d.tier === "trial" || d.tier === "free" ? d.tier : undefined,
   }
 }
 
@@ -199,6 +205,7 @@ export async function generateRewrites(
   suggestions: RewriteSuggestion[]
   remaining?: number
   resetsAt?: string
+  tier?: RewriteTier
 }> {
   const [identity, voiceDigest] = await Promise.all([
     resolveIdentity(),
