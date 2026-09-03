@@ -6,7 +6,7 @@ PostPilot is a Chrome extension that scores X/Twitter posts in real time as you 
 
 **Tagline:** Score every X post as you type. Pro learns your voice and your audience — AI rewrites, thread scoring, and a self-building hook library. $24/mo.
 
-**Version:** 0.7.5  
+**Version:** 0.9.1  
 **Framework:** Plasmo (React/TypeScript, Chrome MV3)  
 **Pricing:** Free tier + Pro at $24/mo via LemonSqueezy
 
@@ -131,7 +131,7 @@ Checkout: https://postpilotpro.lemonsqueezy.com/checkout/buy/40669ef5-0219-4b06-
 
 | Store | Status |
 |-------|--------|
-| Chrome Web Store | **v0.7.3 live** (published 2026-08-24) — supersedes v0.7.2, which had a bug: reading a multi-line draft from X's Draft.js compose box via `.textContent` glued every line together with no separator, so a hook-only rewrite on a short multi-sentence draft could discard the whole body and post just the new hook line. v0.7.3 fixes the read (see `readComposeText` in `src/components/PostPilotPanel.tsx`) and also carries the weekly score trend chart from v0.7.2. |
+| Chrome Web Store | **v0.9.0 live** (published 2026-09-02) — ships the Breakdown Preview for free users at n≥5 posts, the upgrade-friction survey at quota exhaustion, the 7-day no-card Pro trial tier, and the rewrite-scoring fixes (hook-length cliff, over-broad fabrication strip). **v0.9.1 bumped** (`apps/extension/package.json`), built and packaged, **not yet submitted** — same gate as the Android Play launch: someone has to upload the zip and click submit in the CWS Developer Dashboard by hand. Ships the Voice Profile onboarding guide (see Post-launch todo above) plus two invisible internal changes (score-history-storage.ts promoted to packages/core, a latent tier-type fix in rewrite-service.ts). |
 | LemonSqueezy | Live — store activated, product published 2026-07-16. Price updated 2026-08-13 to $24/mo / $240/yr (from $5/mo / $50/yr); license keys on, activation limit 5 |
 
 ---

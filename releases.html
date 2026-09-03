@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Releases — PostPilot for X</title>
-  <meta name="description" content="PostPilot 0.7.2: a weekly score trend chart in Settings, still built from scores that never leave your device." />
+  <meta name="description" content="PostPilot 0.9.1: a real guide and worked example for the Voice Profile box, plus a 7-day no-card Pro trial in 0.9.0." />
   <link rel="canonical" href="https://postpilotforx.com/releases.html" />
   <meta property="og:title" content="Releases — PostPilot for X" />
-  <meta property="og:description" content="See your score trend over the last 13 weeks, right next to your 7-day average — no cloud dashboard, no account access." />
+  <meta property="og:description" content="What goes in a Voice Profile, and why — a guide and worked example, not a blank box. Still local, still no account access." />
   <meta property="og:image" content="https://postpilotforx.com/assets/icon.png" />
   <meta property="og:url" content="https://postpilotforx.com/releases.html" />
   <link rel="icon" href="assets/icon.png" />
@@ -96,10 +96,38 @@
     </header>
 
     <h1>What's <em>out</em></h1>
-    <p class="sub">The compose box now scores media, names AI slop, and shows a reach range from your own posts — not a scheduler, not account access, not writing the post for you.</p>
+    <p class="sub">The Voice Profile box finally explains itself, a no-card Pro trial landed, and the compose box still scores media, names AI slop, and shows a reach range from your own posts — not a scheduler, not account access, not writing the post for you.</p>
     <p class="fine">STILL LOCAL · STILL NO X LOGIN · YOU HIT SEND</p>
 
-    <h2>Just shipped (v0.7.5) <span class="date">Aug 28, 2026</span></h2>
+    <h2>Just shipped (v0.9.1) <span class="date">Sep 3, 2026</span></h2>
+    <div class="list">
+      <div class="item">
+        <div class="tag shipped">Shipped</div>
+        <h3>What actually goes in a Voice Profile</h3>
+        <p>The Voice tab's text box used to be a blank prompt: "paste your voice profile." Now it explains what each section (niche, hook preferences, length, tone) is for and why, makes clear it's optional — five pasted posts already gets you Voice Match — and has a "Load Example" button that drops in a real, worked profile you can edit into your own. It's a fully populated example, not a placeholder: it exercises every signal PostPilot's parser actually reads.</p>
+      </div>
+    </div>
+
+    <h2>v0.9.0 <span class="date">Sep 2, 2026</span></h2>
+    <div class="list">
+      <div class="item">
+        <div class="tag shipped">Shipped</div>
+        <h3>7-day Pro trial, no card required</h3>
+        <p>Try the full Pro tier — 3 AI rewrite variants, Voice Match, the Full Breakdown — for a week without entering a payment method. Starts once, from Settings; it doesn't reset by asking again.</p>
+      </div>
+      <div class="item">
+        <div class="tag shipped">Shipped</div>
+        <h3>A preview of what the Full Breakdown looks like</h3>
+        <p>Free users with 5+ scored posts now see a preview of the Pro Analytics breakdown instead of a locked, empty tab — so the upgrade decision is based on what's actually on the other side of it.</p>
+      </div>
+      <div class="item">
+        <div class="tag shipped">Shipped</div>
+        <h3>Rewrite-scoring fixes</h3>
+        <p>Two bugs that could make an AI rewrite score no better than the post it was rewriting: a hook-length cliff in the scoring curve, and a fabrication check that was stripping credit too broadly. Both fixed at the source, not patched around.</p>
+      </div>
+    </div>
+
+    <h2>v0.7.5 <span class="date">Aug 28, 2026</span></h2>
     <div class="list">
       <div class="item">
         <div class="tag shipped">Shipped</div>
@@ -191,11 +219,11 @@
 
     <h2>Share this</h2>
     <div class="share-box">
-      <pre id="share-text">Just shipped in PostPilot 0.7.5:
+      <pre id="share-text">Just shipped in PostPilot 0.9.1:
 
-• Went looking for a real link penalty in X's published ranking algorithm — didn't find one, so we softened ours (-3 → -1) instead of guessing bigger
-• v0.7.4: video now scored separately from images, matching how X's own algorithm weights the two differently
-• Your own learned data still overrides both defaults once you've got enough posts
+• The Voice Profile box finally explains itself — what to put in it, why, and a real worked example you can edit into your own
+• v0.9.0: a 7-day Pro trial with no card required, plus a preview of the Full Breakdown for free users at 5+ scored posts
+• Two rewrite-scoring bugs fixed so a rewrite can't score worse than the post it started from
 
 Still local. Still no account access. You hit send.
 
