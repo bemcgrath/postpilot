@@ -124,6 +124,16 @@
     td { color: var(--muted); }
     td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
     .note { color: var(--faint); font-size: .85rem; margin: 28px 0 8px; }
+    .example-block {
+      background: #0d0f12; border: 1px solid var(--line); border-radius: 10px;
+      padding: 14px 16px; margin: 10px 0 16px; overflow-x: auto;
+    }
+    .example-block pre {
+      font-family: var(--mono); font-size: .78rem; line-height: 1.6;
+      color: var(--text); white-space: pre; margin: 0;
+    }
+    .example-block .h1 { color: var(--green); }
+    .example-block .h2 { color: var(--amber); }
     footer {
       border-top: 1px solid var(--line); padding: 24px 0 40px;
       font-size: .8rem; color: var(--faint); display: flex; gap: 18px; flex-wrap: wrap;
@@ -333,11 +343,48 @@
         <p class="tags"><span class="tag pro">Pro</span></p>
         <p>Voice Match is a local fingerprint of how you write: sentence length, fragments, hook mix, formality, you vs I, niche words, and more (13 dimensions). Scoring and Pro rewrites use it so “better” still sounds like you.</p>
         <ol>
-          <li>Add at least <strong>5 sample posts</strong> on the Posts tab (paste, or import from collected high-performers).</li>
-          <li>Optionally paste a longer voice profile markdown on the Voice tab.</li>
+          <li>Add at least <strong>5 sample posts</strong> on the Posts tab (paste, or import from collected high-performers). This alone is enough for most people.</li>
+          <li>Optionally paste a longer voice profile markdown on the Voice tab, if you want to hand-tune things posts alone can't capture.</li>
           <li>Generate the fingerprint. The compose bar then shows a Voice Match badge on drafts.</li>
         </ol>
         <p>Nothing in the fingerprint is uploaded except a compact style digest when you, on Pro, request a rewrite.</p>
+
+        <h3>What goes in a voice profile, and why</h3>
+        <p>The Voice tab's text box isn't a form with required fields — it's a plain-text document you write once and refine over time. Four things are worth including:</p>
+        <table>
+          <thead><tr><th>Section</th><th>Why it's there</th></tr></thead>
+          <tbody>
+            <tr><td>Niche</td><td>Keywords that mark a post as "on topic" for you. Used in scoring and to steer AI rewrites toward your subject matter.</td></tr>
+            <tr><td>Hook Preferences</td><td>Rank the 3–5 hook types that actually land for you. Not sure which? Check which of your posts scored highest on the Posts tab first.</td></tr>
+            <tr><td>Length</td><td>Your typical or target post length. Sets the "sweet spot" range scoring checks drafts against.</td></tr>
+            <tr><td>Tone</td><td>Plain-language notes on person, formality, and rhythm — phrases like "conversational tone," "first person," or "short paragraphs" (see the example below for the exact wording PostPilot recognizes).</td></tr>
+          </tbody>
+        </table>
+        <p>A filled-out example — the same one behind the "Load Example" button on the Voice tab, adapted to a generic indie-software-founder voice so it's easy to swap for your own:</p>
+        <div class="example-block"><pre><span class="h1"># Voice Profile</span>
+
+<span class="h2">## Niche</span>
+Trending keywords: indie SaaS, solo founder, bootstrapping, cold start problem, pricing page, churn
+
+<span class="h2">## Hook Preferences</span>
+Ranked by performance:
+
+| Rank | Hook Type | Why it works for me |
+|------|-----------|----------------------|
+| 1 | **Data Reveal** | I always have a number or metric worth leading with |
+| 2 | **Personal Failure** | My best posts are honest about what didn't work |
+| 3 | **Contrarian** | I push back on common advice in my niche |
+
+<span class="h2">## Length</span>
+Typical post length: 220-320 chars
+
+<span class="h2">## Tone</span>
+- Conversational tone -- like talking to one reader, not a boardroom.
+- Mostly first person, often narrating a personal experiment or what I tried.
+- Occasionally reader-directed -- a callout like "if you're building solo, this matters."
+- Short paragraphs, often one-line punches for emphasis.
+- Uses colon framing ("here's what I found") to set up the payoff line.</pre></div>
+        <p class="note">Click into the box and hit "Load Example" in Settings → Voice to drop this straight in, then edit each line until it's true of your actual writing.</p>
 
         <h2 id="insights">Score Trends and the Full Breakdown</h2>
         <p class="where">Where: Settings → Analytics · compose chips once ready</p>

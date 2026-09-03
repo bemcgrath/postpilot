@@ -9,6 +9,7 @@ import {
   mergeProfileIntoFingerprint,
   parseVoiceProfile
 } from "@postpilot/core/scoring/voice-profile-parser"
+import { EXAMPLE_VOICE_PROFILE } from "@postpilot/core/scoring/voice-profile-example"
 import {
   emptyOverrides,
   loadFingerprint,
@@ -227,6 +228,17 @@ function Options() {
     saveNicheSpec(nicheText)
     setStatus("Voice profile saved")
   }, [profileText, nicheText])
+
+  const loadExampleProfile = useCallback(() => {
+    if (
+      profileText.trim().length > 0 &&
+      !window.confirm("This replaces the current contents of the Voice Profile box with a worked example. Continue?")
+    ) {
+      return
+    }
+    setProfileText(EXAMPLE_VOICE_PROFILE)
+    setStatus("Example loaded — edit it to match your own voice, then Save Profile")
+  }, [profileText])
 
   const analyze = useCallback(() => {
     const hasProfile = profileText.trim().length > 100
@@ -578,19 +590,29 @@ function Options() {
       {activeTab === "profile" && (
         <>
           <div style={styles.section}>
-            <h2 style={styles.heading}>Voice Profile</h2>
+            <h2 style={styles.heading}>
+              Voice Profile
+              <span style={styles.optionalBadge}>optional</span>
+            </h2>
             <p style={styles.hint}>
-              Leave Governor and Hooks alone unless a score feels wrong.
+              Voice Match already works from 5+ posts on the Posts tab — that alone is enough for most people.
+              Come here only if you want to hand-tune things posts alone can't capture: your niche vocabulary,
+              which hook types to lean into, and your target length and tone.
             </p>
-            <p style={styles.hint}>
-              Paste your voice_profile.md content or import a file. This defines
-              your niche, hook preferences, tone, and writing style.
-            </p>
+            <ul style={styles.guideList}>
+              <li><strong>Niche</strong> — keywords that mark a post as "on topic" for you. Used in scoring and to steer AI rewrites toward your subject matter.</li>
+              <li><strong>Hook Preferences</strong> — rank the 3–5 hook types that actually land for you. Not sure? Check which of your posts scored highest on the Posts tab.</li>
+              <li><strong>Length</strong> — your typical or target post length. Sets the "sweet spot" range scoring checks drafts against.</li>
+              <li><strong>Tone</strong> — plain-language notes on person, formality, and rhythm. See the example for the exact phrasing PostPilot recognizes (e.g. "conversational tone," "first person," "short paragraphs").</li>
+            </ul>
             <div style={styles.importRow}>
               <button
                 onClick={() => importFile((text) => setProfileText(text))}
                 style={styles.button}>
                 Import .md file
+              </button>
+              <button onClick={loadExampleProfile} style={styles.button}>
+                Load Example
               </button>
               {profileText.trim().length > 0 && (
                 <span style={styles.fileLoaded}>
@@ -601,7 +623,7 @@ function Options() {
             <textarea
               value={profileText}
               onChange={(e) => setProfileText(e.target.value)}
-              placeholder="# Voice Profile\n\nPaste your voice profile markdown here..."
+              placeholder="# Voice Profile\n\nPaste your voice profile markdown here, or click Load Example above to start from a worked one."
               style={{ ...styles.textarea, fontFamily: "monospace", fontSize: 12 }}
               rows={10}
             />
@@ -613,7 +635,9 @@ function Options() {
               <span style={styles.optionalBadge}>optional</span>
             </h2>
             <p style={styles.hint}>
-              Paste your niche_spec.md or import a file for additional keyword extraction.
+              Rarely needed — the Niche line inside the Voice Profile above already covers most people. Use this
+              only if you track niche keywords in a separate document (e.g. an existing research doc) and want to
+              paste it in without merging it into the Voice Profile text.
             </p>
             <div style={styles.importRow}>
               <button
@@ -649,9 +673,6 @@ function Options() {
         <>
           <div style={styles.section}>
             <h2 style={styles.heading}>Add Posts</h2>
-            <p style={styles.hint}>
-              Leave Governor and Hooks alone unless a score feels wrong.
-            </p>
             <p style={styles.hint}>
               Paste one post, or multiple posts separated by <code>---</code>.
               Posts refine statistical patterns (sentence length, fragment ratio, etc.)
@@ -1101,6 +1122,13 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     color: "#71767b",
     margin: "0 0 8px"
+  },
+  guideList: {
+    fontSize: 12,
+    color: "#71767b",
+    lineHeight: 1.5,
+    margin: "0 0 12px",
+    paddingLeft: 18
   },
   textarea: {
     width: "100%",
